@@ -1,7 +1,12 @@
 # KẾ HOẠCH BÀI DẠY — VẬT LÍ 12, CHƯƠNG 2: KHÍ LÍ TƯỞNG
 ## Các tiết bài tập và ôn tập bằng trò chơi tương tác theo nhóm
 
-> Dùng với ứng dụng **Đấu trường Khí lí tưởng** (`tro-choi-on-tap.html`): mở tệp bằng trình duyệt trên máy tính nối máy chiếu, không cần cài đặt. Ứng dụng có sẵn đồng hồ đếm ngược, âm thanh, bảng điểm các đội, vòng quay chọn đội ngẫu nhiên và màn hình vinh danh.
+> Mỗi tiết có một trò chơi riêng, mở bằng trình duyệt trên máy tính nối máy chiếu, không cần cài đặt:
+> - **Tiết 1 – Thử thách Boyle–Charles**: `tiet-1.html`
+> - **Tiết 2 – Rung chuông Clapeyron**: `tiet-2.html`
+> - **Tiết 3 – Đại chiến Khí lí tưởng**: `tiet-3.html`
+>
+> Mỗi tệp có bảng điểm riêng (điểm tiết này không lẫn sang tiết khác), có sẵn đồng hồ đếm ngược, âm thanh, bảng điểm các đội, vòng quay chọn đội ngẫu nhiên và màn hình vinh danh.
 >
 > Áp dụng cho chương trình GDPT 2018 (các bộ sách Kết nối tri thức, Chân trời sáng tạo, Cánh diều). Chương 2 gồm: mô hình động học phân tử chất khí; định luật Boyle; định luật Charles; phương trình trạng thái khí lí tưởng; áp suất khí theo mô hình động học phân tử; động năng phân tử khí.
 
@@ -10,14 +15,14 @@
 ## PHẦN CHUNG CHO CẢ BA TIẾT
 
 ### 1. Tổ chức lớp
-- Chia lớp thành **4–6 đội**, mỗi đội 6–8 học sinh, cố định trong cả 3 tiết để tính điểm thi đua cả chương. Tên đội gợi ý: Boyle, Charles, Avogadro, Kelvin, Boltzmann, Clapeyron (đổi được trong tab **Đội chơi**).
+- Chia lớp thành **4–6 đội**, mỗi đội 6–8 học sinh, nên cố định trong cả 3 tiết. Mỗi trò chơi tính điểm riêng; muốn thi đua cả chương, GV ghi lại điểm tổng kết của từng tiết rồi cộng dồn. Tên đội gợi ý: Boyle, Charles, Avogadro, Kelvin, Boltzmann, Clapeyron (đổi được trong tab **Đội chơi**).
 - Mỗi đội cử: 1 **đội trưởng** (điều phối, giơ thẻ, chọn ★), 1 **thư kí** (viết bảng con), 1 **người báo cáo** (trình bày lời giải). Luân phiên vai trò qua các tiết.
 
 ### 2. Chuẩn bị
 | Giáo viên | Mỗi đội |
 |---|---|
 | Máy tính + máy chiếu (loa nếu có) | 1 bảng con hoặc bảng phụ A3, bút lông |
-| Tệp `tro-choi-on-tap.html` | 1 bộ thẻ **ĐÚNG/SAI** (2 màu) |
+| Tệp trò chơi của tiết (`tiet-1.html` / `tiet-2.html` / `tiet-3.html`) | 1 bộ thẻ **ĐÚNG/SAI** (2 màu) |
 | Phiếu bài tập về nhà (mục cuối) | 1 thẻ **★ Ngôi sao hy vọng** |
 | Quà nhỏ hoặc điểm cộng cho đội thắng | Máy tính cầm tay |
 
@@ -35,6 +40,7 @@
 ---
 
 ## TIẾT 1 — BÀI TẬP: MÔ HÌNH ĐỘNG HỌC PHÂN TỬ, ĐỊNH LUẬT BOYLE, ĐỊNH LUẬT CHARLES
+*Trò chơi: `tiet-1.html` — Thử thách Boyle–Charles*
 
 ### I. Mục tiêu
 **1. Kiến thức:** củng cố mô hình động học phân tử chất khí; định luật Boyle (pV = hằng số); định luật Charles (V/T = hằng số); đồ thị đẳng nhiệt, đẳng áp.
@@ -63,6 +69,7 @@
 ---
 
 ## TIẾT 2 — BÀI TẬP: PHƯƠNG TRÌNH TRẠNG THÁI, ÁP SUẤT VÀ ĐỘNG NĂNG PHÂN TỬ KHÍ
+*Trò chơi: `tiet-2.html` — Rung chuông Clapeyron*
 
 ### I. Mục tiêu
 **1. Kiến thức:** phương trình trạng thái p₁V₁/T₁ = p₂V₂/T₂; phương trình Clapeyron pV = nRT; p = ⅓μm·v̄²; E_đ = 3/2·kT; v_rms = √(3RT/M).
@@ -91,6 +98,7 @@
 ---
 
 ## TIẾT 3 — ÔN TẬP CHƯƠNG 2: KHÍ LÍ TƯỞNG
+*Trò chơi: `tiet-3.html` — Đại chiến Khí lí tưởng*
 
 ### I. Mục tiêu
 **1. Kiến thức:** hệ thống hóa toàn chương: mô hình động học phân tử, ba đẳng quá trình, phương trình trạng thái, Clapeyron, áp suất và động năng phân tử.
@@ -149,7 +157,7 @@
 **Điều đội em còn lúng túng:** ………………………………………
 
 ## PHỤ LỤC 3 — CHỈNH SỬA CÂU HỎI
-Toàn bộ ngân hàng câu hỏi nằm ở đầu phần `<script>` trong `tro-choi-on-tap.html`, trong hai khối `LESSONS` (tiến trình tiết học) và `GAMES` (câu hỏi từng trò). Mở tệp bằng trình soạn thảo văn bản (Notepad, VS Code), sửa câu hỏi, đáp án theo cùng định dạng rồi lưu lại. Ví dụ một câu trắc nghiệm:
+Câu hỏi của mỗi tiết nằm ở đầu phần `<script>` trong tệp của tiết đó (`tiet-1.html`, `tiet-2.html`, `tiet-3.html`), trong hai khối `LESSONS` (tiến trình tiết học) và `GAMES` (câu hỏi từng trò). Mở tệp bằng trình soạn thảo văn bản (Notepad, VS Code), sửa câu hỏi, đáp án theo cùng định dạng rồi lưu lại. Ví dụ một câu trắc nghiệm:
 
 ```js
 { q: 'Nội dung câu hỏi', opts: ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'], a: 2, why: 'Giải thích (a = 2 nghĩa là đáp án C)' }

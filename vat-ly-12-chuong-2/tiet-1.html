@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Đấu trường Khí lí tưởng</title>
+<title>Thử thách Boyle–Charles</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -262,7 +262,7 @@ sub, sup { font-size: .68em; }
         <line x1="22" y1="22" x2="31" y2="12" stroke="#ecf3fb" stroke-width="3" stroke-linecap="round"/>
         <circle cx="22" cy="22" r="3.5" fill="#52d3ea"/>
       </svg>
-      <div><h1>Đấu trường Khí lí tưởng</h1><small>Vật lí 12 · Chương 2 · Bài tập &amp; ôn tập theo nhóm</small></div>
+      <div><h1>Thử thách Boyle–Charles</h1><small>Vật lí 12 · Chương 2 Khí lí tưởng · Tiết 1 · Bài tập: mô hình động học, Boyle, Charles</small></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Chọn tiết học"></nav>
     <div class="tools">
@@ -315,56 +315,6 @@ const LESSONS = {
       { min: 5, game: 'end', note: 'Xếp hạng, trao danh hiệu, giao bài về nhà.' }
     ]
   },
-  2: {
-    tab: 'Tiết 2',
-    kind: 'Tiết bài tập',
-    title: 'Phương trình trạng thái · Áp suất và động năng phân tử khí',
-    range: 'Bài 11 – Bài 13',
-    goals: [
-      'Vận dụng phương trình trạng thái và phương trình Clapeyron pV = nRT.',
-      'Vận dụng công thức áp suất theo mô hình động học phân tử.',
-      'Tính động năng tịnh tiến trung bình và tốc độ căn quân phương của phân tử khí.',
-      'Liên hệ hiện tượng thực tế: lốp xe, nồi áp suất, bóng bàn móp.'
-    ],
-    formulas: [
-      ['Trạng thái', 'p<sub>1</sub>V<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>V<sub>2</sub>/T<sub>2</sub>'],
-      ['Clapeyron', 'pV = nRT, R = 8,31 J/(mol·K)'],
-      ['Áp suất', 'p = ⅓ μ m <span class="ov">v²</span>'],
-      ['Động năng', 'E<sub>đ</sub> = 3/2 kT, k = 1,38·10<sup>−23</sup> J/K'],
-      ['Tốc độ', 'v<sub>rms</sub> = √(3RT/M)']
-    ],
-    plan: [
-      { min: 15, game: 'rcv2', note: 'Mỗi đội có bảng con, 20 giây/câu, dùng ★ Ngôi sao hy vọng.' },
-      { min: 10, game: 'mg2', note: 'Mở mảnh ghép tìm tên nhà khoa học.' },
-      { min: 15, game: 'tt2', note: 'Chạy tiếp sức: mỗi thành viên làm một bước.' },
-      { min: 5, game: 'end', note: 'Xếp hạng, nhận xét, giao bài về nhà.' }
-    ]
-  },
-  3: {
-    tab: 'Tiết 3',
-    kind: 'Tiết ôn tập chương',
-    title: 'Tổng ôn Chương 2 — Khí lí tưởng',
-    range: 'Bài 8 – Bài 13',
-    goals: [
-      'Hệ thống hóa kiến thức toàn chương bằng sơ đồ tư duy và ô chữ.',
-      'Củng cố các đẳng quá trình, phương trình trạng thái, mô hình động học.',
-      'Phát triển năng lực giải quyết vấn đề, giải thích hiện tượng thực tế.',
-      'Tự đánh giá mức độ nắm kiến thức trước bài kiểm tra.'
-    ],
-    formulas: [
-      ['Đẳng nhiệt', 'pV = hằng số'],
-      ['Đẳng áp', 'V/T = hằng số'],
-      ['Đẳng tích', 'p/T = hằng số'],
-      ['Clapeyron', 'pV = nRT'],
-      ['Động năng', 'E<sub>đ</sub> = 3/2 kT']
-    ],
-    plan: [
-      { min: 12, game: 'ochu', note: 'Giải ô chữ hàng ngang, tìm từ khóa hàng dọc.' },
-      { min: 15, game: 'hopqua', note: 'Các đội lần lượt mở hộp: câu hỏi hoặc may mắn.' },
-      { min: 13, game: 'rcv3', note: 'Rung chuông vàng tổng hợp toàn chương.' },
-      { min: 5, game: 'end', note: 'Vinh danh đội vô địch chương.' }
-    ]
-  }
 };
 
 const GAMES = {
@@ -421,121 +371,17 @@ const GAMES = {
     ]
   },
 
-  /* ---------- Tiết 2 ---------- */
-  rcv2: {
-    type: 'mcq', title: 'Rung chuông vàng', value: 10, time: 20,
-    desc: 'Mỗi đội ghi đáp án A/B/C/D lên bảng con, giơ khi hết giờ. Đội chọn ★ Ngôi sao hy vọng: đúng ×2, sai −10.',
-    items: [
-      { q: 'Phương trình trạng thái của một lượng khí lí tưởng xác định là', opts: ['pV = hằng số', 'pT/V = hằng số', 'pV/T = hằng số', 'VT/p = hằng số'], a: 2, why: 'Kết hợp ba định luật Boyle, Charles và đẳng tích.' },
-      { q: 'Giá trị của hằng số khí R là', opts: ['8,31 J/(mol·K)', '1,38·10<sup>−23</sup> J/K', '6,02·10<sup>23</sup> mol<sup>−1</sup>', '0,082 J/(mol·K)'], a: 0, why: 'R = 8,31 J/(mol·K) (= 0,082 atm·L/(mol·K)).' },
-      { q: 'Hằng số Boltzmann k liên hệ với R và N<sub>A</sub> theo hệ thức', opts: ['k = R·N<sub>A</sub>', 'k = R/N<sub>A</sub>', 'k = N<sub>A</sub>/R', 'k = R + N<sub>A</sub>'], a: 1, why: 'k = 8,31 / 6,02·10<sup>23</sup> ≈ 1,38·10<sup>−23</sup> J/K.' },
-      { q: 'Động năng tịnh tiến trung bình của một phân tử khí lí tưởng là', opts: ['E<sub>đ</sub> = ½ kT', 'E<sub>đ</sub> = kT', 'E<sub>đ</sub> = 3/2 kT', 'E<sub>đ</sub> = 3/2 RT'], a: 2, why: 'E<sub>đ</sub> = 3/2 kT, chỉ phụ thuộc nhiệt độ tuyệt đối.' },
-      { q: 'Nhiệt độ tuyệt đối của khí tăng 4 lần thì tốc độ căn quân phương của phân tử', opts: ['tăng 4 lần', 'tăng 2 lần', 'tăng 16 lần', 'không đổi'], a: 1, why: 'v<sub>rms</sub> = √(3RT/M) tỉ lệ với √T → √4 = 2.' },
-      { q: 'Ở cùng nhiệt độ, động năng tịnh tiến trung bình của phân tử H<sub>2</sub> so với phân tử O<sub>2</sub> thì', opts: ['lớn hơn 16 lần', 'lớn hơn 4 lần', 'nhỏ hơn', 'bằng nhau'], a: 3, why: 'E<sub>đ</sub> = 3/2 kT không phụ thuộc loại khí. (Nhưng v<sub>rms</sub> của H<sub>2</sub> lớn hơn 4 lần.)' },
-      { q: 'Theo mô hình động học phân tử, áp suất chất khí lên thành bình là do', opts: ['trọng lượng của các phân tử khí', 'các phân tử khí va chạm với thành bình', 'lực hút giữa các phân tử khí', 'thành bình nóng lên'], a: 1, why: 'Mỗi va chạm truyền động lượng cho thành bình → lực → áp suất.' },
-      { q: 'Biểu thức áp suất khí theo mô hình động học phân tử (μ: mật độ phân tử, m: khối lượng phân tử) là', opts: ['p = ⅓ μ m <span class="ov">v²</span>', 'p = ½ μ m <span class="ov">v²</span>', 'p = μ m <span class="ov">v²</span>', 'p = ⅔ μ m <span class="ov">v²</span>'], a: 0, why: 'p = ⅓ μ m <span class="ov">v²</span> = ⅔ μ E<sub>đ</sub>.' },
-      { q: 'Khí trong bình kín được nung từ 27 °C lên 327 °C. Áp suất khí', opts: ['tăng 12 lần', 'tăng 2 lần', 'tăng 1,5 lần', 'giảm 2 lần'], a: 1, why: 'Đẳng tích: p<sub>2</sub>/p<sub>1</sub> = T<sub>2</sub>/T<sub>1</sub> = 600/300 = 2.' },
-      { q: 'Động năng tịnh tiến trung bình của phân tử khí ở 27 °C xấp xỉ', opts: ['5,6·10<sup>−22</sup> J', '4,14·10<sup>−21</sup> J', '6,21·10<sup>−21</sup> J', '3,74·10<sup>3</sup> J'], a: 2, why: 'E<sub>đ</sub> = 1,5·1,38·10<sup>−23</sup>·300 ≈ 6,21·10<sup>−21</sup> J.' }
-    ]
-  },
-  mg2: {
-    type: 'mg', title: 'Mảnh ghép bí ẩn', value: 10, time: 30,
-    desc: 'Mở mảnh ghép để lộ bức hình về chuyển động của phân tử khí và đoán tên nhà khoa học.',
-    pic: 'molecules', keyword: 'BOLTZMANN', hint: 'Nhà vật lí người Áo (9 chữ cái); hằng số mang tên ông có giá trị 1,38·10⁻²³ J/K.',
-    tiles: [
-      { q: 'Đơn vị của hằng số R trong phương trình pV = nRT là gì?', a: 'J/(mol·K).' },
-      { q: 'E<sub>đ</sub> = 3/2 kT. Nhiệt độ tuyệt đối tăng 3 lần thì E<sub>đ</sub> thay đổi thế nào?', a: 'Tăng 3 lần.' },
-      { q: 'Phương trình pV/T = hằng số chỉ đúng khi đại lượng nào của khí không đổi?', a: 'Khối lượng (lượng) khí không đổi.' },
-      { q: 'Trong quá trình đẳng tích, áp suất p quan hệ thế nào với nhiệt độ tuyệt đối T?', a: 'p tỉ lệ thuận với T (p/T = hằng số).' },
-      { q: 'Tính tích nRT với n = 1 mol, T = 300 K, R = 8,31 J/(mol·K).', a: 'nRT = 2493 J ≈ 2,49 kJ.' },
-      { q: 'Trong công thức p = ⅓ μ m <span class="ov">v²</span>, μ là đại lượng gì?', a: 'Mật độ phân tử: số phân tử trong một đơn vị thể tích (m<sup>−3</sup>).' }
-    ]
-  },
-  tt2: {
-    type: 'calc', title: 'Tiếp sức tính toán', value: 20, time: 150,
-    desc: 'Mỗi thành viên viết một bước rồi chuyển bút cho bạn. Đội xong đúng đầu tiên được ★ (+40).',
-    items: [
-      { q: 'Một lượng khí ở trạng thái 1: p<sub>1</sub> = 1 atm, V<sub>1</sub> = 12 lít, t<sub>1</sub> = 27 °C. Nén khí đến trạng thái 2: p<sub>2</sub> = 3 atm, V<sub>2</sub> = 5 lít. Tính nhiệt độ t<sub>2</sub>.',
-        hint: 'p<sub>1</sub>V<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>V<sub>2</sub>/T<sub>2</sub>.',
-        ans: 'T<sub>2</sub> = 375 K → t<sub>2</sub> = 102 °C',
-        steps: ['T<sub>1</sub> = 300 K', 'T<sub>2</sub> = p<sub>2</sub>V<sub>2</sub>T<sub>1</sub>/(p<sub>1</sub>V<sub>1</sub>) = 3·5·300/(1·12)', 'T<sub>2</sub> = 375 K → t<sub>2</sub> = 102 °C'] },
-      { q: 'Một bình dung tích 8,31 lít chứa khí oxi ở 27 °C, áp suất 3·10<sup>5</sup> Pa. Tính số mol và khối lượng khí trong bình (M<sub>O₂</sub> = 32 g/mol).',
-        hint: 'Đổi V sang m³ rồi dùng n = pV/(RT).',
-        ans: 'n = 1 mol; m = 32 g',
-        steps: ['V = 8,31·10<sup>−3</sup> m³; T = 300 K', 'n = pV/(RT) = 3·10<sup>5</sup>·8,31·10<sup>−3</sup>/(8,31·300) = 1 mol', 'm = nM = 32 g'] },
-      { q: 'Lốp xe được bơm đến 2,5 atm lúc 27 °C. Trưa nắng, khí trong lốp nóng tới 57 °C. Coi thể tích lốp không đổi, tính áp suất khí trong lốp.',
-        hint: 'Đẳng tích: p<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>/T<sub>2</sub>.',
-        ans: 'p<sub>2</sub> = 2,75 atm',
-        steps: ['T<sub>1</sub> = 300 K; T<sub>2</sub> = 330 K', 'p<sub>2</sub> = p<sub>1</sub>T<sub>2</sub>/T<sub>1</sub> = 2,5·330/300', 'p<sub>2</sub> = 2,75 atm'] },
-      { q: 'Tính tốc độ căn quân phương của phân tử N<sub>2</sub> ở 27 °C (M = 28 g/mol, R = 8,31 J/(mol·K)).',
-        hint: 'v<sub>rms</sub> = √(3RT/M), nhớ đổi M sang kg/mol.',
-        ans: 'v<sub>rms</sub> ≈ 517 m/s',
-        steps: ['M = 0,028 kg/mol; T = 300 K', 'v<sub>rms</sub> = √(3·8,31·300/0,028) = √267 107', 'v<sub>rms</sub> ≈ 517 m/s'] },
-      { q: 'Không khí trong phòng có áp suất 1,0·10<sup>5</sup> Pa, nhiệt độ 27 °C. Tính mật độ phân tử khí (số phân tử trong 1 m³).',
-        hint: 'p = ⅔ μ E<sub>đ</sub> = μkT → μ = p/(kT).',
-        ans: 'μ ≈ 2,42·10<sup>25</sup> m<sup>−3</sup>',
-        steps: ['p = μkT', 'μ = p/(kT) = 10<sup>5</sup>/(1,38·10<sup>−23</sup>·300)', 'μ ≈ 2,42·10<sup>25</sup> phân tử/m³'] }
-    ]
-  },
-
-  /* ---------- Tiết 3 ---------- */
-  ochu: {
-    type: 'ochu', title: 'Ô chữ Khí lí tưởng', value: 10, time: 20, keyBonus: 40,
-    desc: '6 hàng ngang, từ khóa hàng dọc gồm 6 chữ cái. Đoán đúng từ khóa khi còn nhiều hàng chưa mở được thưởng cao.',
-    keyword: 'ÁP SUẤT', keyLetters: 'APSUAT', hint: 'Đại lượng có đơn vị là Pa (pascal).',
-    rows: [
-      { q: 'Hằng số N<sub>A</sub> ≈ 6,02·10<sup>23</sup> mol<sup>−1</sup> mang tên nhà khoa học nào? (8 chữ cái)', word: 'AVOGADRO', k: 0 },
-      { q: 'Quá trình biến đổi trạng thái của khí mà áp suất được giữ không đổi là quá trình … (6 chữ cái, viết liền)', word: 'DANGAP', k: 5 },
-      { q: 'Nhà vật lí người Pháp tìm ra định luật V/T = hằng số khi p không đổi. (7 chữ cái)', word: 'CHARLES', k: 6 },
-      { q: 'Khí lí …: các phân tử coi như chất điểm, chỉ tương tác khi va chạm. (5 chữ cái)', word: 'TUONG', k: 1 },
-      { q: 'Áp suất chất khí lên thành bình là do sự … của các phân tử khí với thành bình. (6 chữ cái, viết liền)', word: 'VACHAM', k: 1 },
-      { q: 'Đại lượng có đơn vị là kelvin (K). (7 chữ cái, viết liền)', word: 'NHIETDO', k: 4 }
-    ]
-  },
-  hopqua: {
-    type: 'hop', title: 'Hộp quà bí mật', value: 20, time: 30,
-    desc: '12 hộp quà: 8 hộp câu hỏi, 4 hộp sự kiện may mắn. Các đội lần lượt chọn hộp. Trả lời sai, đội khác được giành quyền.',
-    boxes: [
-      { kind: 'q', q: 'Viết phương trình Clapeyron và nêu tên, đơn vị từng đại lượng.', a: 'pV = nRT; p (Pa), V (m³), n (mol), R = 8,31 J/(mol·K), T (K).' },
-      { kind: 'q', q: 'Đun nóng khí trong nồi áp suất đã đậy kín là quá trình gì? Áp suất thay đổi ra sao?', a: 'Quá trình đẳng tích; T tăng nên p tăng.' },
-      { kind: 'q', q: 'Khí có V = 2 lít, p = 1 atm. Nén đẳng nhiệt đến 4 atm. Thể tích mới bằng bao nhiêu?', a: 'V<sub>2</sub> = 2·1/4 = 0,5 lít.' },
-      { kind: 'q', q: 'Nêu 3 đặc điểm của mô hình khí lí tưởng.', a: 'Phân tử coi như chất điểm; chuyển động hỗn loạn không ngừng; chỉ tương tác khi va chạm (va chạm đàn hồi).' },
-      { kind: 'q', q: 'Quả bóng bàn bị móp (chưa thủng), thả vào nước nóng thì phồng trở lại. Giải thích.', a: 'Khí trong bóng nóng lên, phân tử chuyển động nhanh hơn, va chạm mạnh hơn → áp suất tăng, đẩy vỏ bóng phồng ra.' },
-      { kind: 'q', q: 'Tính động năng tịnh tiến trung bình của phân tử khí ở 0 °C (k = 1,38·10<sup>−23</sup> J/K).', a: 'E<sub>đ</sub> = 1,5·1,38·10<sup>−23</sup>·273 ≈ 5,65·10<sup>−21</sup> J.' },
-      { kind: 'q', q: 'Trong hệ tọa độ (V, T), đường đẳng áp có dạng gì?', a: 'Đường thẳng mà đường kéo dài đi qua gốc tọa độ O.' },
-      { kind: 'q', q: 'Mang gói bim bim từ đồng bằng lên đỉnh núi cao, gói căng phồng. Vì sao?', a: 'Áp suất khí quyển bên ngoài giảm; khí trong gói giãn nở (pV ≈ hằng số) nên gói căng lên.' },
-      { kind: 'ev', icon: '🎁', text: '+20 điểm may mắn!', effect: 'plus20' },
-      { kind: 'ev', icon: '⏭️', text: 'Mất lượt! Nhường lượt cho đội tiếp theo.', effect: 'skip' },
-      { kind: 'ev', icon: '🤝', text: 'Tặng 10 điểm của đội mình cho đội đang có điểm thấp nhất.', effect: 'gift10' },
-      { kind: 'ev', icon: '⚡', text: 'Lấy 10 điểm từ đội đang dẫn đầu!', effect: 'steal10' }
-    ]
-  },
-  rcv3: {
-    type: 'mcq', title: 'Rung chuông vàng tổng hợp', value: 10, time: 20,
-    desc: 'Câu hỏi bao quát toàn chương. Đội chọn ★ Ngôi sao hy vọng: đúng ×2, sai −10.',
-    items: [
-      { q: 'Đặc điểm nào sau đây <b>không</b> phải của khí lí tưởng?', opts: ['Phân tử được coi là chất điểm', 'Va chạm giữa các phân tử là đàn hồi', 'Các phân tử hút nhau mạnh khi ở xa', 'Phân tử chuyển động hỗn loạn không ngừng'], a: 2, why: 'Khí lí tưởng bỏ qua tương tác khi các phân tử không va chạm.' },
-      { q: 'Trong quá trình đẳng nhiệt, áp suất tăng 1,5 lần thì thể tích', opts: ['tăng 1,5 lần', 'giảm 1,5 lần', 'giảm 2,25 lần', 'không đổi'], a: 1, why: 'pV = hằng số.' },
-      { q: 'Hệ thức nào sau đây đúng với định luật Charles?', opts: ['p<sub>1</sub>V<sub>1</sub> = p<sub>2</sub>V<sub>2</sub>', 'V<sub>1</sub>/T<sub>1</sub> = V<sub>2</sub>/T<sub>2</sub>', 'p<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>/T<sub>2</sub>', 'V<sub>1</sub>T<sub>1</sub> = V<sub>2</sub>T<sub>2</sub>'], a: 1, why: 'Đẳng áp: V tỉ lệ thuận với T.' },
-      { q: 'Khí đang ở 27 °C. Muốn nhiệt độ tuyệt đối tăng gấp đôi thì phải nung đến', opts: ['54 °C', '300 °C', '327 °C', '600 °C'], a: 2, why: 'T = 2·300 = 600 K → t = 327 °C.' },
-      { q: 'Trong hệ tọa độ (p, T), đường đẳng tích là', opts: ['đường hypebol', 'đường thẳng song song trục p', 'đường thẳng kéo dài đi qua gốc tọa độ', 'đường thẳng song song trục T'], a: 2, why: 'p = aT: đường thẳng qua O.' },
-      { q: 'Tốc độ căn quân phương của phân tử khí tỉ lệ thuận với', opts: ['T', '√T', 'T²', '1/T'], a: 1, why: 'v<sub>rms</sub> = √(3RT/M).' },
-      { q: 'Ở cùng nhiệt độ, tỉ số tốc độ căn quân phương của phân tử H<sub>2</sub> và O<sub>2</sub> là', opts: ['16', '4', '1/4', '1'], a: 1, why: '√(M<sub>O₂</sub>/M<sub>H₂</sub>) = √(32/2) = 4.' },
-      { q: '2 mol khí lí tưởng ở 300 K chiếm thể tích 24,9 lít. Áp suất khí xấp xỉ', opts: ['2·10<sup>3</sup> Pa', '2·10<sup>5</sup> Pa', '10<sup>5</sup> Pa', '4·10<sup>5</sup> Pa'], a: 1, why: 'p = nRT/V = 2·8,31·300/0,0249 ≈ 2·10<sup>5</sup> Pa.' },
-      { q: 'Khi nhiệt độ tăng, áp suất khí trong bình kín tăng vì', opts: ['số phân tử khí tăng', 'phân tử khí nở to ra', 'phân tử chuyển động nhanh hơn, va chạm thành bình mạnh và nhiều hơn', 'lực hút giữa các phân tử giảm'], a: 2, why: 'Giải thích theo mô hình động học phân tử.' },
-      { q: 'Ở điều kiện tiêu chuẩn (0 °C, 1 atm), 1 mol khí bất kì chiếm thể tích xấp xỉ', opts: ['22,4 lít', '24,8 lít', '2,24 lít', '1 lít'], a: 0, why: 'V = RT/p ≈ 22,4 lít.' }
-    ]
-  },
   end: { type: 'end', title: 'Tổng kết & trao danh hiệu', desc: 'Xếp hạng các đội, trao danh hiệu.' }
 };
 
 /* =====================================================================
    TRẠNG THÁI
    ===================================================================== */
-const STORE_KEY = 'dau-truong-khi-li-tuong-v1';
+const TIET = 1;
+const STORE_KEY = 'khi-li-tuong-tiet-1-v1';
 const defaultState = () => ({
   teams: TEAM_NAMES.slice(0, 4).map((name, i) => ({ name, color: TEAM_COLORS[i], score: 0 })),
-  tiet: 1, view: 'lesson', game: null, sound: true, done: {}
+  tiet: TIET, view: 'lesson', game: null, sound: true, done: {}
 });
 let S = load() || defaultState();
 let G = null; // trạng thái của trò chơi đang mở
@@ -635,7 +481,7 @@ function addScore(i, d, rerender = true) {
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 function renderTabs() {
-  const tabs = [1, 2, 3].map(n => `<button class="tab" data-action="tiet" data-n="${n}" aria-current="${S.view !== 'teams' && S.tiet === n}">${LESSONS[n].tab}</button>`);
+  const tabs = [TIET].map(n => `<button class="tab" data-action="tiet" data-n="${n}" aria-current="${S.view !== 'teams' && S.tiet === n}">${LESSONS[n].tab}</button>`);
   tabs.push(`<button class="tab" data-action="teams" aria-current="${S.view === 'teams'}">Đội chơi</button>`);
   $('#tabs').innerHTML = tabs.join('');
 }
@@ -1061,6 +907,7 @@ function confetti() {
 /* Khởi động */
 function boot(data) {
   if (data && data.S) { S = data.S; G = data.G || null; }
+  S.tiet = TIET;
   if (S.view === 'game' && !G) S.view = 'lesson';
   render();
 }

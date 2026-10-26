@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rung chuông Clapeyron</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: phòng thí nghiệm trên máy chiếu — sân khấu trò chơi bên trái, cột "áp kế" điểm số các đội bên phải; nền có các phân tử khí bay hỗn loạn. */
+:root {
+  --ink: #0a1624;
+  --panel: #10233a;
+  --panel-2: #173253;
+  --line: #28486e;
+  --text: #ecf3fb;
+  --muted: #93abc6;
+  --gauge: #5eead4;
+  --gauge-ink: #032622;
+  --mol: #52d3ea;
+  --ok: #4ade80;
+  --bad: #ff6262;
+  --font-display: "Baloo 2", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+#gas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .5; }
+.app {
+  position: relative; z-index: 1;
+  min-height: 100%;
+  display: flex; flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 20px;
+  gap: 14px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--gauge); outline-offset: 2px; }
+sub, sup { font-size: .68em; }
+.ov { text-decoration: overline; }
+
+/* ---------- Thanh trên ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.brand svg { flex: none; }
+.brand h1 { margin: 0; font-family: var(--font-display); font-size: clamp(1.3rem, 2.6vw, 1.9rem); line-height: 1; letter-spacing: .01em; }
+.brand small { display: block; color: var(--muted); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin-top: 4px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.tab { border: 0; background: none; padding: 7px 14px; border-radius: 999px; font-weight: 600; color: var(--muted); }
+.tab[aria-current="true"] { background: var(--gauge); color: var(--gauge-ink); }
+.tools { display: flex; gap: 6px; }
+.icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 7px 11px; font-weight: 600; font-size: .9rem; }
+.icon-btn:hover { border-color: var(--mol); }
+
+/* ---------- Khung chính ---------- */
+.main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 16px; align-items: start; }
+.stage { min-width: 0; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 20px; padding: clamp(16px, 2.4vw, 30px); min-height: 520px; display: flex; flex-direction: column; gap: 18px; }
+
+/* ---------- Bảng điểm ---------- */
+.board { position: sticky; top: env(safe-area-inset-top, 0px); display: flex; flex-direction: column; gap: 10px; }
+.board h2 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; display: flex; justify-content: space-between; align-items: baseline; }
+.board h2 span { font-family: var(--font-body); font-size: .75rem; color: var(--muted); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.team { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; transition: transform .25s; }
+.team.bump { transform: scale(1.04); }
+.team .nm { font-weight: 700; min-width: 0; overflow-wrap: anywhere; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.team .sc { font-family: var(--font-display); font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--c); text-align: right; }
+.team .bar { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+.team .bar i { display: block; height: 100%; background: var(--c); border-radius: inherit; transition: width .5s; }
+.team .adj { grid-column: 1 / -1; display: flex; gap: 4px; margin-top: 4px; }
+.team .adj button { flex: 1; border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 2px 0; font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.team .adj button:hover { border-color: var(--c); }
+.pill { font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; background: var(--gauge); color: var(--gauge-ink); }
+.turn-pill { background: var(--mol); color: var(--ink); }
+
+/* ---------- Trang tiết học ---------- */
+.eyebrow { color: var(--gauge); font-weight: 700; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; }
+.h-lesson { margin: 4px 0 0; font-family: var(--font-display); font-size: clamp(1.7rem, 3.6vw, 2.7rem); line-height: 1.1; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 68ch; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 22px; }
+.sec-t { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 8px; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.step { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; gap: 12px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.step .min { font-family: var(--font-display); font-size: 1.5rem; color: var(--mol); line-height: 1; text-align: center; }
+.step .min small { display: block; font-family: var(--font-body); font-size: .68rem; color: var(--muted); letter-spacing: .08em; }
+.step b { display: block; font-size: 1.02rem; }
+.step p { margin: 2px 0 0; color: var(--muted); font-size: .88rem; }
+.go { border: 0; background: var(--gauge); color: var(--gauge-ink); font-weight: 700; border-radius: 10px; padding: 9px 16px; white-space: nowrap; }
+.go:hover { filter: brightness(1.08); }
+.go.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.go.ok { background: var(--ok); color: #06210f; }
+.go.cyan { background: var(--mol); color: var(--ink); }
+.go:disabled { opacity: .45; cursor: default; }
+.card { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+.card ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.card + .card { margin-top: 12px; }
+.formula { font-variant-numeric: tabular-nums; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: .95rem; }
+.formula dt { color: var(--muted); }
+.formula dd { margin: 0; font-weight: 600; }
+
+/* ---------- Trò chơi chung ---------- */
+.g-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.g-head h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.4rem, 2.8vw, 2rem); line-height: 1.1; margin-right: auto; }
+.g-head .count { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.dot { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); font-size: .8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dot.cur { background: var(--gauge); color: var(--gauge-ink); border-color: var(--gauge); }
+.dot.done { background: color-mix(in srgb, var(--mol) 30%, var(--panel-2)); border-color: var(--mol); }
+.q { font-size: clamp(1.3rem, 2.6vw, 2.05rem); font-weight: 600; line-height: 1.35; margin: 0; text-wrap: pretty; }
+.q-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.opt { display: flex; gap: 12px; align-items: center; background: var(--panel-2); border: 2px solid var(--line); border-radius: var(--r); padding: 14px 16px; font-size: clamp(1.05rem, 1.9vw, 1.4rem); font-weight: 600; text-align: left; transition: border-color .2s, background .2s, opacity .2s; }
+.opt .k { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--ink); color: var(--gauge); font-family: var(--font-display); font-size: 1.3rem; }
+.opt.right { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 20%, var(--panel-2)); }
+.opt.right .k { background: var(--ok); color: #06210f; }
+.opt.dim { opacity: .4; }
+.tf { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tf .opt { justify-content: center; font-family: var(--font-display); font-size: clamp(1.6rem, 3.4vw, 2.6rem); padding: 18px; }
+.tf .opt.wrong { border-color: var(--bad); }
+.why { background: color-mix(in srgb, var(--mol) 12%, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--mol) 50%, var(--line)); border-radius: var(--r); padding: 12px 16px; font-size: 1.08rem; animation: rise .35s ease; }
+.why b { color: var(--mol); }
+.why ol { margin: 6px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.ans-big { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.3rem); color: var(--gauge); line-height: 1.2; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: auto; padding-top: 6px; }
+.ctrl .sp { flex: 1; }
+.kbd { color: var(--muted); font-size: .78rem; }
+.kbd kbd { font-family: inherit; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+
+/* đồng hồ */
+.timer { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ring { position: relative; width: 104px; height: 104px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .bg { fill: none; stroke: var(--panel-2); stroke-width: 9; }
+.ring .fg { fill: none; stroke: var(--gauge); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset .9s linear, stroke .3s; }
+.ring.low .fg { stroke: var(--bad); }
+.ring .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 2.2rem; font-variant-numeric: tabular-nums; }
+.ring.low .num { color: var(--bad); animation: pulse 1s infinite; }
+.timer button { border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 3px 12px; font-size: .85rem; font-weight: 600; }
+
+/* chấm điểm */
+.award { border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.award-l { font-size: .85rem; color: var(--muted); }
+.award-l b { color: var(--text); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { border: 2px solid var(--c); background: transparent; border-radius: 999px; padding: 6px 14px; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.chip .st { font-size: .8rem; font-variant-numeric: tabular-nums; }
+.chip.s1 { background: color-mix(in srgb, var(--c) 30%, transparent); }
+.chip.s2 { background: var(--c); color: var(--ink); }
+.chip.s3 { background: color-mix(in srgb, var(--bad) 35%, transparent); border-style: dashed; }
+
+/* mảnh ghép */
+.mg-wrap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.mg { position: relative; aspect-ratio: 3 / 2; max-width: 100%; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); background: #f4f8fc; }
+.mg svg.pic { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mg .grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.tile { border: 2px solid var(--ink); background: linear-gradient(145deg, var(--panel-2), var(--panel)); font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.6rem); color: var(--gauge); transition: opacity .6s, transform .6s; }
+.tile:hover { background: linear-gradient(145deg, #1d3f69, var(--panel-2)); }
+.tile.open { opacity: 0; transform: rotateY(90deg); pointer-events: none; }
+.tile.miss { color: var(--bad); }
+.tile.miss::after { content: " ✗"; font-size: .5em; }
+.kw { display: flex; flex-wrap: wrap; gap: 6px; }
+.kw span { min-width: 38px; height: 46px; border-radius: 8px; display: grid; place-items: center; background: var(--ink); border: 1px solid var(--line); font-family: var(--font-display); font-size: 1.5rem; color: var(--gauge); padding: 0 6px; }
+.kw span.gap { background: none; border: 0; min-width: 12px; }
+
+/* ô chữ */
+.oc-scroll { overflow-x: auto; padding-bottom: 4px; }
+.oc { display: grid; gap: 6px; width: max-content; }
+.oc-row { display: flex; gap: 4px; align-items: center; }
+.oc-num { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 0; background: var(--gauge); color: var(--gauge-ink); font-family: var(--font-display); font-size: 1.2rem; margin-right: 8px; }
+.oc-num.done { background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
+.cell { width: 40px; height: 40px; border-radius: 6px; display: grid; place-items: center; font-family: var(--font-display); font-size: 1.4rem; background: var(--ink); border: 1px solid var(--line); }
+.cell.blank { background: none; border-color: transparent; }
+.cell.key { border: 2px solid var(--gauge); background: color-mix(in srgb, var(--gauge) 14%, var(--ink)); }
+.cell.shown { animation: flip .4s ease both; }
+.cell.key.shown { background: var(--gauge); color: var(--gauge-ink); }
+
+/* hộp quà */
+.boxes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.box { aspect-ratio: 4 / 3; max-width: 100%; border-radius: var(--r); border: 2px solid var(--line); background: var(--panel-2); font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.8rem); color: var(--gauge); position: relative; display: grid; place-items: center; transition: transform .2s; }
+.box:hover:not(:disabled) { transform: translateY(-3px) rotate(-1deg); border-color: var(--gauge); }
+.box::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 12px; transform: translateX(-50%); background: color-mix(in srgb, var(--gauge) 30%, transparent); }
+.box span { position: relative; }
+.box:disabled { opacity: .3; cursor: default; }
+.box:disabled::before { display: none; }
+.event { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px; }
+.event .big { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.4rem); color: var(--gauge); line-height: 1.1; }
+
+/* tổng kết */
+.podium { display: flex; justify-content: center; align-items: flex-end; gap: clamp(8px, 2vw, 22px); padding-top: 20px; }
+.pod { flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.pod .blk { width: 100%; border-radius: 12px 12px 0 0; background: var(--c); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 12px; font-family: var(--font-display); }
+.pod .blk .rank { font-size: 2.6rem; line-height: 1; }
+.pod .nm { font-weight: 700; font-size: 1.1rem; overflow-wrap: anywhere; }
+.pod .ttl { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pod .sc { font-family: var(--font-display); font-size: 1.8rem; color: var(--c); line-height: 1; font-variant-numeric: tabular-nums; }
+.rest { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.rest .chip { cursor: default; }
+
+/* thiết lập đội */
+.setup { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.setup label { display: flex; flex-direction: column; gap: 6px; font-size: .82rem; color: var(--muted); font-weight: 600; background: var(--panel-2); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; padding: 10px 12px; }
+.setup input { font: inherit; font-size: 1.05rem; color: var(--text); background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { width: 44px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); font-weight: 700; font-size: 1.05rem; }
+.seg button[aria-pressed="true"] { background: var(--gauge); color: var(--gauge-ink); border-color: var(--gauge); }
+
+/* lớp phủ */
+.overlay { position: fixed; inset: 0; z-index: 30; background: color-mix(in srgb, var(--ink) 80%, transparent); display: grid; place-items: center; padding: 16px; }
+.picker { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 24px; width: min(520px, 100%); display: flex; flex-direction: column; gap: 14px; text-align: center; }
+.picker .list { display: flex; flex-direction: column; gap: 8px; }
+.picker .it { border: 2px solid var(--line); border-radius: 12px; padding: 10px; font-weight: 700; font-size: 1.2rem; transition: all .1s; }
+.picker .it.hl { border-color: var(--c); background: var(--c); color: var(--ink); transform: scale(1.04); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; background: var(--text); color: var(--ink); padding: 10px 18px; border-radius: 12px; font-weight: 700; box-shadow: 0 10px 30px #0008; animation: rise .3s ease; max-width: calc(100% - 32px); text-align: center; }
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
+
+@keyframes rise { from { opacity: 0; transform: translate(var(--tx, 0), 10px); } to { opacity: 1; transform: translate(var(--tx, 0), 0); } }
+.toast { --tx: -50%; }
+@keyframes pulse { 50% { transform: scale(1.12); } }
+@keyframes flip { from { transform: rotateX(90deg); } to { transform: rotateX(0); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+@media (max-width: 980px) {
+  .main { grid-template-columns: 1fr; }
+  .board { position: static; order: -1; }
+  .board .teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .cols, .mg-wrap { grid-template-columns: 1fr; }
+}
+@media (min-width: 981px) { .board .teams { display: flex; flex-direction: column; gap: 10px; } }
+@media (max-width: 640px) {
+  .opts, .tf { grid-template-columns: 1fr; }
+  .boxes { grid-template-columns: repeat(3, 1fr); }
+  .q-row { grid-template-columns: 1fr; }
+  .step { grid-template-columns: 48px minmax(0,1fr); }
+  .step .go { grid-column: 1 / -1; }
+  .stage { min-height: 0; }
+  .cell, .oc-num { width: 30px; height: 30px; font-size: 1rem; }
+  .oc-num { margin-right: 4px; }
+}
+</style>
+</head>
+<body>
+<canvas id="gas" aria-hidden="true"></canvas>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+        <circle cx="22" cy="22" r="20" fill="none" stroke="#28486e" stroke-width="3"/>
+        <path d="M8 30 A16 16 0 1 1 36 30" fill="none" stroke="#5eead4" stroke-width="3" stroke-linecap="round"/>
+        <line x1="22" y1="22" x2="31" y2="12" stroke="#ecf3fb" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="22" cy="22" r="3.5" fill="#52d3ea"/>
+      </svg>
+      <div><h1>Rung chuông Clapeyron</h1><small>Vật lí 12 · Chương 2 Khí lí tưởng · Tiết 2 · Bài tập: phương trình trạng thái, động năng phân tử</small></div>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Chọn tiết học"></nav>
+    <div class="tools">
+      <button class="icon-btn" data-action="picker" title="Chọn ngẫu nhiên một đội">🎲 Chọn đội</button>
+      <button class="icon-btn" data-action="sound" id="soundBtn" title="Bật/tắt âm thanh">🔊</button>
+      <button class="icon-btn" data-action="fullscreen" title="Toàn màn hình">⛶</button>
+    </div>
+  </header>
+  <div class="main">
+    <section class="stage" id="stage" aria-live="polite"></section>
+    <aside class="board" aria-label="Bảng điểm">
+      <h2>Bảng điểm <span>áp kế thi đua</span></h2>
+      <div class="teams" id="teams"></div>
+    </aside>
+  </div>
+</div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div id="layer"></div>
+
+<script>
+/* =====================================================================
+   NGÂN HÀNG CÂU HỎI — thầy cô có thể sửa trực tiếp các mục dưới đây.
+   Chương 2: Khí lí tưởng (Vật lí 12 – CT GDPT 2018)
+   ===================================================================== */
+const TEAM_COLORS = ['#ff7a66', '#4cb8ff', '#ffcf4a', '#5fe08f', '#c79bff', '#ff8fd6'];
+const TEAM_NAMES = ['Đội Boyle', 'Đội Charles', 'Đội Avogadro', 'Đội Kelvin', 'Đội Boltzmann', 'Đội Clapeyron'];
+
+const LESSONS = {
+  2: {
+    tab: 'Tiết 2',
+    kind: 'Tiết bài tập',
+    title: 'Phương trình trạng thái · Áp suất và động năng phân tử khí',
+    range: 'Bài 11 – Bài 13',
+    goals: [
+      'Vận dụng phương trình trạng thái và phương trình Clapeyron pV = nRT.',
+      'Vận dụng công thức áp suất theo mô hình động học phân tử.',
+      'Tính động năng tịnh tiến trung bình và tốc độ căn quân phương của phân tử khí.',
+      'Liên hệ hiện tượng thực tế: lốp xe, nồi áp suất, bóng bàn móp.'
+    ],
+    formulas: [
+      ['Trạng thái', 'p<sub>1</sub>V<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>V<sub>2</sub>/T<sub>2</sub>'],
+      ['Clapeyron', 'pV = nRT, R = 8,31 J/(mol·K)'],
+      ['Áp suất', 'p = ⅓ μ m <span class="ov">v²</span>'],
+      ['Động năng', 'E<sub>đ</sub> = 3/2 kT, k = 1,38·10<sup>−23</sup> J/K'],
+      ['Tốc độ', 'v<sub>rms</sub> = √(3RT/M)']
+    ],
+    plan: [
+      { min: 15, game: 'rcv2', note: 'Mỗi đội có bảng con, 20 giây/câu, dùng ★ Ngôi sao hy vọng.' },
+      { min: 10, game: 'mg2', note: 'Mở mảnh ghép tìm tên nhà khoa học.' },
+      { min: 15, game: 'tt2', note: 'Chạy tiếp sức: mỗi thành viên làm một bước.' },
+      { min: 5, game: 'end', note: 'Xếp hạng, nhận xét, giao bài về nhà.' }
+    ]
+  },
+};
+
+const GAMES = {
+  /* ---------- Tiết 2 ---------- */
+  rcv2: {
+    type: 'mcq', title: 'Rung chuông vàng', value: 10, time: 20,
+    desc: 'Mỗi đội ghi đáp án A/B/C/D lên bảng con, giơ khi hết giờ. Đội chọn ★ Ngôi sao hy vọng: đúng ×2, sai −10.',
+    items: [
+      { q: 'Phương trình trạng thái của một lượng khí lí tưởng xác định là', opts: ['pV = hằng số', 'pT/V = hằng số', 'pV/T = hằng số', 'VT/p = hằng số'], a: 2, why: 'Kết hợp ba định luật Boyle, Charles và đẳng tích.' },
+      { q: 'Giá trị của hằng số khí R là', opts: ['8,31 J/(mol·K)', '1,38·10<sup>−23</sup> J/K', '6,02·10<sup>23</sup> mol<sup>−1</sup>', '0,082 J/(mol·K)'], a: 0, why: 'R = 8,31 J/(mol·K) (= 0,082 atm·L/(mol·K)).' },
+      { q: 'Hằng số Boltzmann k liên hệ với R và N<sub>A</sub> theo hệ thức', opts: ['k = R·N<sub>A</sub>', 'k = R/N<sub>A</sub>', 'k = N<sub>A</sub>/R', 'k = R + N<sub>A</sub>'], a: 1, why: 'k = 8,31 / 6,02·10<sup>23</sup> ≈ 1,38·10<sup>−23</sup> J/K.' },
+      { q: 'Động năng tịnh tiến trung bình của một phân tử khí lí tưởng là', opts: ['E<sub>đ</sub> = ½ kT', 'E<sub>đ</sub> = kT', 'E<sub>đ</sub> = 3/2 kT', 'E<sub>đ</sub> = 3/2 RT'], a: 2, why: 'E<sub>đ</sub> = 3/2 kT, chỉ phụ thuộc nhiệt độ tuyệt đối.' },
+      { q: 'Nhiệt độ tuyệt đối của khí tăng 4 lần thì tốc độ căn quân phương của phân tử', opts: ['tăng 4 lần', 'tăng 2 lần', 'tăng 16 lần', 'không đổi'], a: 1, why: 'v<sub>rms</sub> = √(3RT/M) tỉ lệ với √T → √4 = 2.' },
+      { q: 'Ở cùng nhiệt độ, động năng tịnh tiến trung bình của phân tử H<sub>2</sub> so với phân tử O<sub>2</sub> thì', opts: ['lớn hơn 16 lần', 'lớn hơn 4 lần', 'nhỏ hơn', 'bằng nhau'], a: 3, why: 'E<sub>đ</sub> = 3/2 kT không phụ thuộc loại khí. (Nhưng v<sub>rms</sub> của H<sub>2</sub> lớn hơn 4 lần.)' },
+      { q: 'Theo mô hình động học phân tử, áp suất chất khí lên thành bình là do', opts: ['trọng lượng của các phân tử khí', 'các phân tử khí va chạm với thành bình', 'lực hút giữa các phân tử khí', 'thành bình nóng lên'], a: 1, why: 'Mỗi va chạm truyền động lượng cho thành bình → lực → áp suất.' },
+      { q: 'Biểu thức áp suất khí theo mô hình động học phân tử (μ: mật độ phân tử, m: khối lượng phân tử) là', opts: ['p = ⅓ μ m <span class="ov">v²</span>', 'p = ½ μ m <span class="ov">v²</span>', 'p = μ m <span class="ov">v²</span>', 'p = ⅔ μ m <span class="ov">v²</span>'], a: 0, why: 'p = ⅓ μ m <span class="ov">v²</span> = ⅔ μ E<sub>đ</sub>.' },
+      { q: 'Khí trong bình kín được nung từ 27 °C lên 327 °C. Áp suất khí', opts: ['tăng 12 lần', 'tăng 2 lần', 'tăng 1,5 lần', 'giảm 2 lần'], a: 1, why: 'Đẳng tích: p<sub>2</sub>/p<sub>1</sub> = T<sub>2</sub>/T<sub>1</sub> = 600/300 = 2.' },
+      { q: 'Động năng tịnh tiến trung bình của phân tử khí ở 27 °C xấp xỉ', opts: ['5,6·10<sup>−22</sup> J', '4,14·10<sup>−21</sup> J', '6,21·10<sup>−21</sup> J', '3,74·10<sup>3</sup> J'], a: 2, why: 'E<sub>đ</sub> = 1,5·1,38·10<sup>−23</sup>·300 ≈ 6,21·10<sup>−21</sup> J.' }
+    ]
+  },
+  mg2: {
+    type: 'mg', title: 'Mảnh ghép bí ẩn', value: 10, time: 30,
+    desc: 'Mở mảnh ghép để lộ bức hình về chuyển động của phân tử khí và đoán tên nhà khoa học.',
+    pic: 'molecules', keyword: 'BOLTZMANN', hint: 'Nhà vật lí người Áo (9 chữ cái); hằng số mang tên ông có giá trị 1,38·10⁻²³ J/K.',
+    tiles: [
+      { q: 'Đơn vị của hằng số R trong phương trình pV = nRT là gì?', a: 'J/(mol·K).' },
+      { q: 'E<sub>đ</sub> = 3/2 kT. Nhiệt độ tuyệt đối tăng 3 lần thì E<sub>đ</sub> thay đổi thế nào?', a: 'Tăng 3 lần.' },
+      { q: 'Phương trình pV/T = hằng số chỉ đúng khi đại lượng nào của khí không đổi?', a: 'Khối lượng (lượng) khí không đổi.' },
+      { q: 'Trong quá trình đẳng tích, áp suất p quan hệ thế nào với nhiệt độ tuyệt đối T?', a: 'p tỉ lệ thuận với T (p/T = hằng số).' },
+      { q: 'Tính tích nRT với n = 1 mol, T = 300 K, R = 8,31 J/(mol·K).', a: 'nRT = 2493 J ≈ 2,49 kJ.' },
+      { q: 'Trong công thức p = ⅓ μ m <span class="ov">v²</span>, μ là đại lượng gì?', a: 'Mật độ phân tử: số phân tử trong một đơn vị thể tích (m<sup>−3</sup>).' }
+    ]
+  },
+  tt2: {
+    type: 'calc', title: 'Tiếp sức tính toán', value: 20, time: 150,
+    desc: 'Mỗi thành viên viết một bước rồi chuyển bút cho bạn. Đội xong đúng đầu tiên được ★ (+40).',
+    items: [
+      { q: 'Một lượng khí ở trạng thái 1: p<sub>1</sub> = 1 atm, V<sub>1</sub> = 12 lít, t<sub>1</sub> = 27 °C. Nén khí đến trạng thái 2: p<sub>2</sub> = 3 atm, V<sub>2</sub> = 5 lít. Tính nhiệt độ t<sub>2</sub>.',
+        hint: 'p<sub>1</sub>V<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>V<sub>2</sub>/T<sub>2</sub>.',
+        ans: 'T<sub>2</sub> = 375 K → t<sub>2</sub> = 102 °C',
+        steps: ['T<sub>1</sub> = 300 K', 'T<sub>2</sub> = p<sub>2</sub>V<sub>2</sub>T<sub>1</sub>/(p<sub>1</sub>V<sub>1</sub>) = 3·5·300/(1·12)', 'T<sub>2</sub> = 375 K → t<sub>2</sub> = 102 °C'] },
+      { q: 'Một bình dung tích 8,31 lít chứa khí oxi ở 27 °C, áp suất 3·10<sup>5</sup> Pa. Tính số mol và khối lượng khí trong bình (M<sub>O₂</sub> = 32 g/mol).',
+        hint: 'Đổi V sang m³ rồi dùng n = pV/(RT).',
+        ans: 'n = 1 mol; m = 32 g',
+        steps: ['V = 8,31·10<sup>−3</sup> m³; T = 300 K', 'n = pV/(RT) = 3·10<sup>5</sup>·8,31·10<sup>−3</sup>/(8,31·300) = 1 mol', 'm = nM = 32 g'] },
+      { q: 'Lốp xe được bơm đến 2,5 atm lúc 27 °C. Trưa nắng, khí trong lốp nóng tới 57 °C. Coi thể tích lốp không đổi, tính áp suất khí trong lốp.',
+        hint: 'Đẳng tích: p<sub>1</sub>/T<sub>1</sub> = p<sub>2</sub>/T<sub>2</sub>.',
+        ans: 'p<sub>2</sub> = 2,75 atm',
+        steps: ['T<sub>1</sub> = 300 K; T<sub>2</sub> = 330 K', 'p<sub>2</sub> = p<sub>1</sub>T<sub>2</sub>/T<sub>1</sub> = 2,5·330/300', 'p<sub>2</sub> = 2,75 atm'] },
+      { q: 'Tính tốc độ căn quân phương của phân tử N<sub>2</sub> ở 27 °C (M = 28 g/mol, R = 8,31 J/(mol·K)).',
+        hint: 'v<sub>rms</sub> = √(3RT/M), nhớ đổi M sang kg/mol.',
+        ans: 'v<sub>rms</sub> ≈ 517 m/s',
+        steps: ['M = 0,028 kg/mol; T = 300 K', 'v<sub>rms</sub> = √(3·8,31·300/0,028) = √267 107', 'v<sub>rms</sub> ≈ 517 m/s'] },
+      { q: 'Không khí trong phòng có áp suất 1,0·10<sup>5</sup> Pa, nhiệt độ 27 °C. Tính mật độ phân tử khí (số phân tử trong 1 m³).',
+        hint: 'p = ⅔ μ E<sub>đ</sub> = μkT → μ = p/(kT).',
+        ans: 'μ ≈ 2,42·10<sup>25</sup> m<sup>−3</sup>',
+        steps: ['p = μkT', 'μ = p/(kT) = 10<sup>5</sup>/(1,38·10<sup>−23</sup>·300)', 'μ ≈ 2,42·10<sup>25</sup> phân tử/m³'] }
+    ]
+  },
+
+  end: { type: 'end', title: 'Tổng kết & trao danh hiệu', desc: 'Xếp hạng các đội, trao danh hiệu.' }
+};
+
+/* =====================================================================
+   TRẠNG THÁI
+   ===================================================================== */
+const TIET = 2;
+const STORE_KEY = 'khi-li-tuong-tiet-2-v1';
+const defaultState = () => ({
+  teams: TEAM_NAMES.slice(0, 4).map((name, i) => ({ name, color: TEAM_COLORS[i], score: 0 })),
+  tiet: TIET, view: 'lesson', game: null, sound: true, done: {}
+});
+let S = load() || defaultState();
+let G = null; // trạng thái của trò chơi đang mở
+let resetArm = null;
+
+function load() { try { const raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+window.claude?.hot?.snapshot?.(() => ({ S, G }));
+
+const $ = (s, r = document) => r.querySelector(s);
+
+/* =====================================================================
+   ÂM THANH (Web Audio, không cần tệp)
+   ===================================================================== */
+let AC = null;
+function tone(freq, dur = .15, type = 'sine', vol = .18, delay = 0) {
+  if (!S.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+const sfx = {
+  tick: () => tone(880, .07, 'square', .08),
+  ok: () => { tone(660, .12); tone(880, .12, 'sine', .18, .1); tone(1320, .25, 'sine', .18, .2); },
+  bad: () => { tone(220, .3, 'sawtooth', .12); tone(160, .4, 'sawtooth', .12, .15); },
+  end: () => { tone(300, .5, 'square', .12); },
+  fanfare: () => [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, .22, 'triangle', .2, i * .13)),
+  open: () => { tone(500, .08, 'triangle'); tone(750, .12, 'triangle', .18, .07); }
+};
+
+/* =====================================================================
+   ĐỒNG HỒ ĐẾM NGƯỢC
+   ===================================================================== */
+const T = { total: 0, left: 0, iv: null };
+function timerHTML(sec) {
+  const total = T.total || sec, left = T.total ? T.left : sec;
+  const C = 2 * Math.PI * 42, off = C * (1 - left / total);
+  return `<div class="timer"><div class="ring ${T.total && left <= 5 ? 'low' : ''}" id="ring">
+    <svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" id="ringfg" cx="50" cy="50" r="42" stroke-dasharray="${C}" stroke-dashoffset="${off}"/></svg>
+    <div class="num" id="ringnum">${left}</div></div>
+    <button data-action="timer" data-sec="${sec}">${T.iv ? '⏸ Dừng' : (T.total && T.left > 0 && T.left < T.total ? '▶ Tiếp' : '▶ Bấm giờ')}</button></div>`;
+}
+function paintTimer() {
+  const ring = $('#ring'); if (!ring) return;
+  const C = 2 * Math.PI * 42;
+  $('#ringfg').setAttribute('stroke-dashoffset', C * (1 - T.left / T.total));
+  $('#ringnum').textContent = T.left;
+  ring.classList.toggle('low', T.left <= 5);
+}
+function toggleTimer(sec, btn) {
+  if (T.iv) { clearInterval(T.iv); T.iv = null; if (btn) btn.textContent = '▶ Tiếp'; return; }
+  if (!T.total || T.left <= 0) { T.total = sec; T.left = sec; }
+  if (btn) btn.textContent = '⏸ Dừng';
+  paintTimer();
+  T.iv = setInterval(() => {
+    T.left--; paintTimer();
+    if (T.left > 0 && T.left <= 5) sfx.tick();
+    if (T.left <= 0) { clearInterval(T.iv); T.iv = null; sfx.end(); const b = $('[data-action="timer"]'); if (b) b.textContent = '↺ Bấm lại'; }
+  }, 1000);
+}
+function resetTimer() { if (T.iv) clearInterval(T.iv); T.iv = null; T.total = 0; T.left = 0; }
+
+/* =====================================================================
+   CHẤM ĐIỂM THEO ĐỘI
+   Mỗi lần bấm vào tên đội: — → ✓ đúng → ★ đúng (×2) → ★ sai (−) → —
+   ===================================================================== */
+const AW_LABEL = v => ['', `✓ +${v}`, `★ +${2 * v}`, `★ −${v}`];
+const AW_DELTA = v => [0, v, 2 * v, -v];
+function awardHTML(v, label = 'Chấm điểm') {
+  if (!G.award || G.award.length !== S.teams.length) G.award = S.teams.map(() => 0);
+  return `<div class="award"><div class="award-l"><b>${label}:</b> bấm tên đội để chọn ✓ đúng (+${v}) · ★ Ngôi sao hy vọng đúng (+${2 * v}) · ★ sai (−${v})</div>
+    <div class="chips">${S.teams.map((t, i) => `<button class="chip s${G.award[i]}" style="--c:${t.color}" data-action="cycle" data-i="${i}">${esc(t.name)}<span class="st">${AW_LABEL(v)[G.award[i]]}</span></button>`).join('')}
+    <button class="go ok" data-action="apply" data-v="${v}">Cộng điểm</button></div></div>`;
+}
+function applyAward(v) {
+  const d = AW_DELTA(v), parts = [];
+  G.award.forEach((s, i) => { if (s) { addScore(i, d[s], false); parts.push(`${S.teams[i].name} ${d[s] > 0 ? '+' : ''}${d[s]}`); } });
+  const anyOk = G.award.some(s => s === 1 || s === 2);
+  G.award = S.teams.map(() => 0);
+  if (parts.length) { toast(parts.join(' · ')); anyOk ? sfx.ok() : sfx.bad(); }
+  else toast('Chưa chọn đội nào.');
+  save(); renderBoard(); return anyOk;
+}
+function addScore(i, d, rerender = true) {
+  S.teams[i].score += d; save();
+  if (rerender) renderBoard();
+  requestAnimationFrame(() => { const el = $(`#team-${i}`); if (el) { el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 260); } });
+}
+
+/* =====================================================================
+   VẼ GIAO DIỆN
+   ===================================================================== */
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function renderTabs() {
+  const tabs = [TIET].map(n => `<button class="tab" data-action="tiet" data-n="${n}" aria-current="${S.view !== 'teams' && S.tiet === n}">${LESSONS[n].tab}</button>`);
+  tabs.push(`<button class="tab" data-action="teams" aria-current="${S.view === 'teams'}">Đội chơi</button>`);
+  $('#tabs').innerHTML = tabs.join('');
+}
+
+function renderBoard() {
+  const max = Math.max(10, ...S.teams.map(t => t.score));
+  const top = Math.max(...S.teams.map(t => t.score));
+  const lead = S.teams.filter(t => t.score === top).length === 1 && top > 0 ? top : null;
+  const turn = G && G.type === 'hop' ? G.turn : -1;
+  $('#teams').innerHTML = S.teams.map((t, i) => `
+    <div class="team" id="team-${i}" style="--c:${t.color}">
+      <div class="nm">${esc(t.name)}${t.score === lead ? '<span class="pill">Dẫn đầu</span>' : ''}${i === turn ? '<span class="pill turn-pill">Đến lượt</span>' : ''}</div>
+      <div class="sc">${t.score}</div>
+      <div class="bar"><i style="width:${Math.max(0, t.score) / max * 100}%"></i></div>
+      <div class="adj"><button data-action="adj" data-i="${i}" data-d="-5" aria-label="Trừ 5 điểm ${esc(t.name)}">−5</button><button data-action="adj" data-i="${i}" data-d="5" aria-label="Cộng 5 điểm ${esc(t.name)}">+5</button><button data-action="adj" data-i="${i}" data-d="10" aria-label="Cộng 10 điểm ${esc(t.name)}">+10</button></div>
+    </div>`).join('');
+}
+
+function render() {
+  renderTabs(); renderBoard();
+  const st = $('#stage');
+  if (S.view === 'teams') st.innerHTML = viewTeams();
+  else if (S.view === 'game' && G) st.innerHTML = viewGame();
+  else st.innerHTML = viewLesson();
+  $('#soundBtn').textContent = S.sound ? '🔊' : '🔇';
+}
+
+function viewLesson() {
+  const L = LESSONS[S.tiet];
+  const steps = L.plan.map((p, idx) => {
+    const g = GAMES[p.game];
+    const done = S.done[S.tiet + ':' + p.game];
+    return `<li class="step"><div class="min">${p.min}<small>PHÚT</small></div>
+      <div><b>${g.title}${done ? ' ✓' : ''}</b><p>${p.note}</p></div>
+      <button class="go ${done ? 'ghost' : ''}" data-action="start" data-g="${p.game}">${done ? 'Chơi lại' : 'Bắt đầu'}</button></li>`;
+  }).join('');
+  return `<div><div class="eyebrow">${L.kind} · ${L.range} · 45 phút</div>
+      <h2 class="h-lesson">${L.title}</h2>
+      <p class="sub">Lớp chia thành ${S.teams.length} đội. Giáo viên điều khiển trên máy chiếu, chấm điểm bằng cách bấm tên đội; bảng điểm cập nhật ngay bên cạnh.</p></div>
+    <div class="cols">
+      <div><h3 class="sec-t">Tiến trình tiết học</h3><ol class="steps">${steps}</ol></div>
+      <div>
+        <div class="card"><h3 class="sec-t">Mục tiêu</h3><ul>${L.goals.map(g => `<li>${g}</li>`).join('')}</ul></div>
+        <div class="card"><h3 class="sec-t">Công thức trọng tâm</h3><dl class="formula">${L.formulas.map(f => `<dt>${f[0]}</dt><dd>${f[1]}</dd>`).join('')}</dl></div>
+      </div>
+    </div>`;
+}
+
+function viewTeams() {
+  const n = S.teams.length;
+  return `<div><div class="eyebrow">Thiết lập</div><h2 class="h-lesson">Đội chơi</h2>
+      <p class="sub">Chọn số đội (nên 4–6 đội, mỗi đội 6–8 học sinh) và đặt tên đội. Điểm được lưu trên máy này, dùng chung cho cả 3 tiết.</p></div>
+    <div><h3 class="sec-t">Số đội</h3><div class="seg">${[2, 3, 4, 5, 6].map(k => `<button data-action="count" data-n="${k}" aria-pressed="${k === n}">${k}</button>`).join('')}</div></div>
+    <div class="setup">${S.teams.map((t, i) => `<label style="--c:${t.color}" for="team-name-${i}">Đội ${i + 1}<input id="team-name-${i}" data-i="${i}" value="${esc(t.name)}" maxlength="24"></label>`).join('')}</div>
+    <div class="ctrl"><button class="go" data-action="tiet" data-n="${S.tiet}">Vào ${LESSONS[S.tiet].tab}</button><span class="sp"></span>
+      <button class="go ghost" data-action="reset">${resetArm === 'score' ? 'Bấm lần nữa để đưa điểm về 0' : 'Đặt lại điểm về 0'}</button></div>`;
+}
+
+/* ---------- Trò chơi ---------- */
+function startGame(id) {
+  resetTimer();
+  const def = GAMES[id];
+  G = { id, type: def.type, i: 0, phase: 'ask', award: S.teams.map(() => 0) };
+  if (def.type === 'mg') { G.tiles = def.tiles.map(() => 0); G.cur = -1; G.kwShown = false; }
+  if (def.type === 'ochu') { G.solved = def.rows.map(() => false); G.cur = -1; G.kwShown = false; }
+  if (def.type === 'hop') { G.order = shuffle(def.boxes.map((_, k) => k)); G.opened = []; G.cur = -1; G.turn = 0; }
+  if (def.type === 'end') { setTimeout(() => { confetti(); sfx.fanfare(); }, 300); }
+  S.view = 'game'; S.done[S.tiet + ':' + id] = true; save(); render();
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function head(def, extra = '') {
+  return `<div class="g-head"><h2>${def.title}</h2>${extra}<button class="go ghost" data-action="back">← Về tiết học</button></div>`;
+}
+function dotsHTML(n, cur) {
+  return `<div class="dots">${Array.from({ length: n }, (_, k) => `<button class="dot ${k === cur ? 'cur' : (G.seen && G.seen[k] ? 'done' : '')}" data-action="goto" data-k="${k}" aria-label="Câu ${k + 1}">${k + 1}</button>`).join('')}</div>`;
+}
+const keysHint = `<span class="kbd"><kbd>Space</kbd> bấm giờ · <kbd>Enter</kbd> đáp án · <kbd>→</kbd> câu sau</span>`;
+
+function viewGame() {
+  const def = GAMES[G.id];
+  G.seen = G.seen || {};
+  switch (def.type) {
+    case 'ds': return viewDS(def);
+    case 'mcq': return viewMCQ(def);
+    case 'calc': return viewCalc(def);
+    case 'mg': return viewMG(def);
+    case 'ochu': return viewOchu(def);
+    case 'hop': return viewHop(def);
+    case 'end': return viewEnd(def);
+  }
+}
+
+function viewDS(def) {
+  const it = def.items[G.i], rev = G.phase === 'reveal';
+  return `${head(def, `<span class="count">Câu ${G.i + 1}/${def.items.length}</span>`)}${dotsHTML(def.items.length, G.i)}
+    <div class="q-row"><p class="q">${it.q}</p>${timerHTML(def.time)}</div>
+    <div class="tf">
+      <div class="opt ${rev ? (it.a ? 'right' : 'dim') : ''}">ĐÚNG</div>
+      <div class="opt ${rev ? (!it.a ? 'right' : 'dim') : ''}">SAI</div>
+    </div>
+    ${rev ? `<div class="why"><b>${it.a ? 'Đúng' : 'Sai'}.</b> ${it.why}</div>${awardHTML(def.value)}` : ''}
+    <div class="ctrl">${navBtns(def.items.length, rev)}<span class="sp"></span>${keysHint}</div>`;
+}
+function viewMCQ(def) {
+  const it = def.items[G.i], rev = G.phase === 'reveal';
+  return `${head(def, `<span class="count">Câu ${G.i + 1}/${def.items.length}</span>`)}${dotsHTML(def.items.length, G.i)}
+    <div class="q-row"><p class="q">${it.q}</p>${timerHTML(def.time)}</div>
+    <div class="opts">${it.opts.map((o, k) => `<div class="opt ${rev ? (k === it.a ? 'right' : 'dim') : ''}"><span class="k">${'ABCD'[k]}</span><span>${o}</span></div>`).join('')}</div>
+    ${rev ? `<div class="why"><b>Đáp án ${'ABCD'[it.a]}.</b> ${it.why}</div>${awardHTML(def.value)}` : ''}
+    <div class="ctrl">${navBtns(def.items.length, rev)}<span class="sp"></span>${keysHint}</div>`;
+}
+function viewCalc(def) {
+  const it = def.items[G.i], rev = G.phase === 'reveal';
+  return `${head(def, `<span class="count">Bài ${G.i + 1}/${def.items.length}</span>`)}${dotsHTML(def.items.length, G.i)}
+    <div class="q-row"><p class="q" style="font-size:clamp(1.15rem,2.2vw,1.65rem)">${it.q}</p>${timerHTML(def.time)}</div>
+    ${G.hint || rev ? `<div class="why"><b>Gợi ý:</b> ${it.hint}</div>` : ''}
+    ${rev ? `<div class="why"><div class="ans-big">${it.ans}</div><ol>${it.steps.map(s => `<li>${s}</li>`).join('')}</ol></div>${awardHTML(def.value)}` : ''}
+    <div class="ctrl">${!rev && !G.hint ? '<button class="go ghost" data-action="hint">💡 Gợi ý</button>' : ''}${navBtns(def.items.length, rev, 'Xem lời giải')}<span class="sp"></span>${keysHint}</div>`;
+}
+function navBtns(n, rev, revLabel = 'Xem đáp án') {
+  return `<button class="go ghost" data-action="prev" ${G.i === 0 ? 'disabled' : ''}>← Câu trước</button>
+    ${rev ? '' : `<button class="go cyan" data-action="reveal">${revLabel}</button>`}
+    <button class="go" data-action="next">${G.i === n - 1 ? 'Hoàn thành ✓' : 'Câu sau →'}</button>`;
+}
+
+/* Mảnh ghép */
+function viewMG(def) {
+  const opened = G.tiles.filter(x => x === 1).length;
+  const bonus = 10 * (6 - opened) + 20;
+  const pic = PICS[def.pic]();
+  const grid = def.tiles.map((t, k) => `<button class="tile ${G.tiles[k] === 1 || G.kwShown ? 'open' : ''} ${G.tiles[k] === 2 ? 'miss' : ''}" data-action="tile" data-k="${k}" aria-label="Mảnh ${k + 1}">${k + 1}</button>`).join('');
+  let side;
+  if (G.cur >= 0) {
+    const t = def.tiles[G.cur], rev = G.phase === 'reveal';
+    side = `<div class="eyebrow">Mảnh ghép số ${G.cur + 1}</div><p class="q" style="font-size:clamp(1.15rem,2vw,1.5rem)">${t.q}</p>
+      ${timerHTML(def.time)}
+      ${rev ? `<div class="why"><b>Đáp án:</b> ${t.a}</div>${awardHTML(def.value)}
+        <div class="ctrl"><button class="go ok" data-action="tileDone" data-r="1">Mở mảnh ghép</button><button class="go ghost" data-action="tileDone" data-r="2">Không ai đúng · giữ kín</button></div>`
+        : `<div class="ctrl"><button class="go cyan" data-action="reveal">Xem đáp án</button><button class="go ghost" data-action="tileDone" data-r="0">Đóng</button></div>`}`;
+  } else if (G.kwPhase) {
+    side = `<div class="eyebrow">Đoán từ khóa · thưởng ${bonus} điểm</div><p class="sub" style="margin:0">${def.hint}</p>
+      ${G.kwShown ? `<div class="kw">${kwBoxes(def.keyword)}</div>` : '<button class="go cyan" data-action="kwShow">Mở từ khóa</button>'}
+      ${awardHTML(bonus, 'Thưởng từ khóa')}
+      <div class="ctrl"><button class="go ghost" data-action="kwClose">Quay lại mảnh ghép</button></div>`;
+  } else {
+    side = `<p class="sub" style="margin:0">${def.desc}</p>
+      <div class="card"><b>Gợi ý từ khóa:</b> ${def.hint}<br><span class="kbd">Đã mở ${opened}/6 mảnh · thưởng hiện tại: ${bonus} điểm</span></div>
+      <div class="kw">${kwBoxes(def.keyword, !G.kwShown)}</div>
+      <div class="ctrl"><button class="go" data-action="kwOpen">🔔 Có đội xin đoán từ khóa</button></div>`;
+  }
+  return `${head(def)}<div class="mg-wrap"><div class="mg">${pic}<div class="grid">${grid}</div></div><div style="display:flex;flex-direction:column;gap:14px;min-width:0">${side}</div></div>`;
+}
+function kwBoxes(word, hide = false) {
+  return [...word].map(ch => ch === ' ' ? '<span class="gap"></span>' : `<span>${hide ? '' : ch}</span>`).join('');
+}
+
+/* Ô chữ */
+function viewOchu(def) {
+  const rows = def.rows, maxK = Math.max(...rows.map(r => r.k));
+  const width = Math.max(...rows.map(r => maxK - r.k + r.word.length));
+  const solvedN = G.solved.filter(Boolean).length;
+  const bonus = def.keyBonus + 10 * (rows.length - solvedN);
+  const grid = rows.map((r, ri) => {
+    const off = maxK - r.k; let cells = '';
+    for (let c = 0; c < width; c++) {
+      const li = c - off;
+      if (li < 0 || li >= r.word.length) { cells += '<span class="cell blank"></span>'; continue; }
+      const show = G.solved[ri] || G.allShown;
+      cells += `<span class="cell ${li === r.k ? 'key' : ''} ${show ? 'shown' : ''}">${show ? r.word[li] : ''}</span>`;
+    }
+    return `<div class="oc-row"><button class="oc-num ${G.solved[ri] ? 'done' : ''}" data-action="row" data-k="${ri}" aria-label="Hàng ngang ${ri + 1}">${ri + 1}</button>${cells}</div>`;
+  }).join('');
+  let side;
+  if (G.cur >= 0) {
+    const r = rows[G.cur], rev = G.phase === 'reveal';
+    side = `<div class="q-row"><div><div class="eyebrow">Hàng ngang số ${G.cur + 1} · ${r.word.length} chữ cái</div><p class="q" style="font-size:clamp(1.15rem,2.2vw,1.6rem)">${r.q}</p></div>${timerHTML(def.time)}</div>
+      ${rev ? `<div class="why"><b>Đáp án:</b> <span class="ans-big">${r.word}</span></div>${awardHTML(def.value)}` : ''}
+      <div class="ctrl">${rev ? '' : '<button class="go cyan" data-action="reveal">Mở hàng ngang</button>'}<button class="go ghost" data-action="rowClose">Về ô chữ</button></div>`;
+  } else if (G.kwPhase) {
+    side = `<div class="eyebrow">Từ khóa hàng dọc · thưởng ${bonus} điểm</div><p class="sub" style="margin:0">Gợi ý: ${def.hint}</p>
+      ${G.kwShown ? `<div class="kw">${kwBoxes(def.keyword)}</div>` : '<button class="go cyan" data-action="kwShow">Mở từ khóa</button>'}
+      ${awardHTML(bonus, 'Thưởng từ khóa')}
+      <div class="ctrl"><button class="go ghost" data-action="kwClose">Về ô chữ</button></div>`;
+  } else {
+    side = `<p class="sub" style="margin:0">${def.desc} Ô viền vàng là chữ cái của từ khóa. Đã mở ${solvedN}/${rows.length} hàng · thưởng từ khóa hiện tại: ${bonus} điểm.</p>
+      <div class="ctrl"><button class="go" data-action="kwOpen">🔔 Có đội xin đoán từ khóa</button><button class="go ghost" data-action="allShow">Hiện toàn bộ ô chữ</button></div>`;
+  }
+  return `${head(def)}<div class="oc-scroll"><div class="oc">${grid}</div></div>${side}`;
+}
+
+/* Hộp quà */
+function viewHop(def) {
+  const team = S.teams[G.turn];
+  let body;
+  if (G.cur >= 0) {
+    const b = def.boxes[G.order[G.cur]], rev = G.phase === 'reveal';
+    if (b.kind === 'ev') {
+      body = `<div class="event card"><div class="eyebrow">Hộp số ${G.cur + 1} · Sự kiện</div><div style="font-size:3rem" aria-hidden="true">${b.icon}</div>
+        <div class="big">${b.text}</div><p class="sub" style="margin:0">Áp dụng cho <b style="color:${team.color}">${esc(team.name)}</b></p>
+        <div class="ctrl" style="margin:0">${G.applied ? '' : '<button class="go" data-action="evApply">Áp dụng</button>'}<button class="go ghost" data-action="hopNext">Chuyển lượt →</button></div></div>`;
+    } else {
+      body = `<div class="eyebrow">Hộp số ${G.cur + 1} · Câu hỏi dành cho <span style="color:${team.color}">${esc(team.name)}</span></div>
+        <div class="q-row"><p class="q" style="font-size:clamp(1.15rem,2.3vw,1.7rem)">${b.q}</p>${timerHTML(def.time)}</div>
+        ${rev ? `<div class="why"><b>Đáp án:</b> ${b.a}</div>${awardHTML(def.value, 'Chấm điểm (đội khác có thể giành quyền nếu đội chính trả lời sai)')}` : ''}
+        <div class="ctrl">${rev ? '' : '<button class="go cyan" data-action="reveal">Xem đáp án</button>'}<button class="go" data-action="hopNext">Chuyển lượt →</button></div>`;
+    }
+  } else {
+    body = `<p class="sub" style="margin:0">${def.desc}</p>
+      <div class="card">Đến lượt: <b style="color:${team.color}">${esc(team.name)}</b> chọn một hộp quà.</div>
+      <div class="boxes">${G.order.map((_, k) => `<button class="box" data-action="box" data-k="${k}" ${G.opened.includes(k) ? 'disabled' : ''} aria-label="Hộp quà ${k + 1}"><span>${k + 1}</span></button>`).join('')}</div>`;
+  }
+  return `${head(def, `<span class="count">Đã mở ${G.opened.length}/${def.boxes.length}</span>`)}${body}`;
+}
+
+/* Tổng kết */
+function viewEnd(def) {
+  const ranked = S.teams.map((t, i) => ({ ...t, i })).sort((a, b) => b.score - a.score);
+  const titles = ['Nhà vô địch Khí lí tưởng', 'Á quân', 'Hạng ba'];
+  const heights = [190, 140, 105];
+  const podOrder = ranked.length >= 3 ? [1, 0, 2] : [0, 1];
+  const pods = podOrder.filter(k => ranked[k]).map(k => {
+    const t = ranked[k];
+    return `<div class="pod" style="--c:${t.color}"><div class="ttl">${titles[k]}</div><div class="nm">${esc(t.name)}</div><div class="sc">${t.score}</div>
+      <div class="blk" style="height:${heights[k]}px"><span class="rank">${k + 1}</span></div></div>`;
+  }).join('');
+  const rest = ranked.slice(3).map((t, k) => `<span class="chip" style="--c:${t.color}">${k + 4}. ${esc(t.name)} <span class="st">${t.score} điểm</span></span>`).join('');
+  return `${head(def)}<p class="sub" style="margin:0">Tổng điểm sau ${LESSONS[S.tiet].tab.toLowerCase()}. Giáo viên nhận xét tinh thần hợp tác, ghi nhận cá nhân xuất sắc và giao bài tập về nhà.</p>
+    <div class="podium">${pods}</div>${rest ? `<div class="rest">${rest}</div>` : ''}
+    <div class="ctrl"><button class="go" data-action="confetti">🎉 Bắn pháo hoa</button><span class="sp"></span>
+      <button class="go ghost" data-action="reset">${resetArm === 'score' ? 'Bấm lần nữa để đưa điểm về 0' : 'Đặt lại điểm cho tiết sau'}</button></div>`;
+}
+
+/* =====================================================================
+   HÌNH ẢNH ẨN SAU MẢNH GHÉP (SVG)
+   ===================================================================== */
+const PICS = {
+  isotherm() {
+    const curve = (k) => { let d = ''; for (let V = 1.1; V <= 9.6; V += .1) { const x = 70 + V * 52, y = 340 - (k / V) * 26; if (y < 30) continue; d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); } return d; };
+    return `<svg class="pic" viewBox="0 0 600 400" aria-label="Đồ thị đường đẳng nhiệt p theo V"><rect width="600" height="400" fill="#f4f8fc"/>
+      <g stroke="#d5e1ee" stroke-width="1">${[1,2,3,4,5,6,7,8,9].map(v => `<line x1="${70 + v * 52}" y1="30" x2="${70 + v * 52}" y2="340"/>`).join('')}${[1,2,3,4,5,6,7,8,9,10,11].map(p => `<line x1="70" y1="${340 - p * 26}" x2="580" y2="${340 - p * 26}"/>`).join('')}</g>
+      <line x1="70" y1="340" x2="585" y2="340" stroke="#0a1624" stroke-width="3"/><line x1="70" y1="345" x2="70" y2="22" stroke="#0a1624" stroke-width="3"/>
+      <path d="M585 340 l-12 -6 v12z M70 18 l-6 12 h12z" fill="#0a1624"/>
+      <text x="44" y="38" font-size="26" font-style="italic" fill="#0a1624" font-family="serif">p</text><text x="560" y="372" font-size="26" font-style="italic" fill="#0a1624" font-family="serif">V</text><text x="52" y="366" font-size="20" fill="#0a1624" font-family="serif">O</text>
+      <path d="${curve(9)}" fill="none" stroke="#1f6fd1" stroke-width="5"/><path d="${curve(18)}" fill="none" stroke="#e8590c" stroke-width="5"/>
+      <text x="520" y="292" font-size="22" fill="#1f6fd1" font-family="serif" font-style="italic">T₁</text><text x="520" y="250" font-size="22" fill="#e8590c" font-family="serif" font-style="italic">T₂ &gt; T₁</text>
+      <circle cx="${70 + 2 * 52}" cy="${340 - 4.5 * 26}" r="8" fill="#0a1624"/><circle cx="${70 + 6 * 52}" cy="${340 - 1.5 * 26}" r="8" fill="#0a1624"/>
+      <text x="${70 + 2 * 52 + 12}" y="${340 - 4.5 * 26 - 10}" font-size="18" fill="#0a1624" font-family="serif">(1)</text><text x="${70 + 6 * 52 + 12}" y="${340 - 1.5 * 26 - 12}" font-size="18" fill="#0a1624" font-family="serif">(2)</text>
+      <text x="300" y="80" font-size="28" fill="#0a1624" font-family="serif" font-style="italic">pV = const</text></svg>`;
+  },
+  molecules() {
+    let r = 7; const seed = n => { r = (r * 9301 + 49297) % 233280; return r / 233280 * n; };
+    let mols = '';
+    for (let k = 0; k < 26; k++) {
+      const x = 80 + seed(300), y = 70 + seed(250), a = seed(Math.PI * 2), L = 22 + seed(26);
+      const x2 = x + Math.cos(a) * L, y2 = y + Math.sin(a) * L;
+      mols += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#e8590c" stroke-width="2.5" marker-end="url(#ah)"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="#1f6fd1"/>`;
+    }
+    return `<svg class="pic" viewBox="0 0 600 400" aria-label="Các phân tử khí chuyển động hỗn loạn trong bình"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#e8590c"/></marker></defs>
+      <rect width="600" height="400" fill="#f4f8fc"/><rect x="50" y="40" width="370" height="320" rx="10" fill="#ffffff" stroke="#0a1624" stroke-width="5"/>${mols}
+      <text x="440" y="120" font-size="30" fill="#0a1624" font-family="serif" font-style="italic">E</text><text x="458" y="128" font-size="18" fill="#0a1624" font-family="serif">đ</text>
+      <text x="474" y="120" font-size="30" fill="#0a1624" font-family="serif"> = </text>
+      <text x="440" y="180" font-size="30" fill="#0a1624" font-family="serif">3/2 · <tspan font-style="italic" fill="#e8590c">k</tspan>T</text>
+      <text x="440" y="250" font-size="22" fill="#1f6fd1" font-family="serif"><tspan font-style="italic">k</tspan> = 1,38·10⁻²³ J/K</text>
+      <text x="440" y="300" font-size="20" fill="#0a1624" font-family="serif">nhà vật lí người Áo</text></svg>`;
+  }
+};
+
+/* =====================================================================
+   SỰ KIỆN
+   ===================================================================== */
+function nextQ(dir) {
+  const def = GAMES[G.id]; const n = (def.items || []).length;
+  if (!n) return;
+  G.seen[G.i] = true;
+  if (dir > 0 && G.i === n - 1) { toast('Hoàn thành phần chơi!'); sfx.fanfare(); confetti(); resetTimer(); G = null; S.view = 'lesson'; render(); return; }
+  G.i = Math.max(0, Math.min(n - 1, G.i + dir)); G.phase = 'ask'; G.hint = false; G.award = S.teams.map(() => 0);
+  resetTimer(); render();
+}
+function reveal() {
+  G.phase = 'reveal'; if (T.iv) { clearInterval(T.iv); T.iv = null; }
+  if (G.type === 'ochu' && G.cur >= 0) G.solved[G.cur] = true;
+  sfx.open(); render();
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-action]'); if (!b) return;
+  const a = b.dataset.action, def = G && GAMES[G.id];
+  switch (a) {
+    case 'tiet': S.tiet = +b.dataset.n; S.view = 'lesson'; G = null; resetTimer(); resetArm = null; save(); render(); break;
+    case 'teams': S.view = 'teams'; G = null; resetTimer(); save(); render(); break;
+    case 'start': startGame(b.dataset.g); break;
+    case 'back': G = null; resetTimer(); S.view = 'lesson'; save(); render(); break;
+    case 'sound': S.sound = !S.sound; save(); render(); if (S.sound) sfx.open(); break;
+    case 'fullscreen': try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => toast('Trình duyệt không cho phép toàn màn hình.')); } catch (err) { toast('Trình duyệt không cho phép toàn màn hình.'); } break;
+    case 'picker': openPicker(); break;
+    case 'adj': addScore(+b.dataset.i, +b.dataset.d); +b.dataset.d > 0 ? sfx.ok() : sfx.bad(); break;
+    case 'count': setCount(+b.dataset.n); break;
+    case 'reset':
+      if (resetArm === 'score') { S.teams.forEach(t => t.score = 0); resetArm = null; save(); toast('Đã đưa điểm các đội về 0.'); }
+      else { resetArm = 'score'; setTimeout(() => { if (resetArm) { resetArm = null; render(); } }, 4000); }
+      render(); break;
+    case 'timer': toggleTimer(+b.dataset.sec, b); break;
+    case 'cycle': G.award[+b.dataset.i] = (G.award[+b.dataset.i] + 1) % 4; render(); break;
+    case 'apply': applyAward(+b.dataset.v); render(); break;
+    case 'reveal': reveal(); break;
+    case 'hint': G.hint = true; render(); break;
+    case 'next': nextQ(1); break;
+    case 'prev': nextQ(-1); break;
+    case 'goto': G.seen[G.i] = true; G.i = +b.dataset.k; G.phase = 'ask'; G.hint = false; resetTimer(); render(); break;
+    /* mảnh ghép */
+    case 'tile': G.cur = +b.dataset.k; G.phase = 'ask'; G.kwPhase = false; resetTimer(); render(); break;
+    case 'tileDone': { const r = +b.dataset.r; if (r) G.tiles[G.cur] = r; if (r === 1) sfx.open(); G.cur = -1; resetTimer(); render();
+      if (def.type === 'mg' && G.tiles.every(x => x === 1)) toast('Đã mở hết mảnh ghép! Mời các đội đoán từ khóa.'); break; }
+    case 'kwOpen': G.kwPhase = true; G.cur = -1; resetTimer(); render(); break;
+    case 'kwClose': G.kwPhase = false; render(); break;
+    case 'kwShow': G.kwShown = true; if (def.type === 'ochu') G.allShown = true; sfx.fanfare(); confetti(); render(); break;
+    /* ô chữ */
+    case 'row': G.cur = +b.dataset.k; G.phase = G.solved[G.cur] ? 'reveal' : 'ask'; G.kwPhase = false; resetTimer(); render(); break;
+    case 'rowClose': if (G.phase === 'reveal') G.solved[G.cur] = true; G.cur = -1; resetTimer(); render(); break;
+    case 'allShow': G.allShown = true; G.solved = G.solved.map(() => true); render(); break;
+    /* hộp quà */
+    case 'box': G.cur = +b.dataset.k; G.opened.push(G.cur); G.phase = 'ask'; G.applied = false; resetTimer(); sfx.open(); render(); break;
+    case 'evApply': applyEvent(def.boxes[G.order[G.cur]].effect); break;
+    case 'hopNext': G.cur = -1; G.turn = (G.turn + 1) % S.teams.length; resetTimer();
+      if (G.opened.length === def.boxes.length) toast('Đã mở hết hộp quà!'); render(); break;
+    case 'confetti': confetti(); sfx.fanfare(); break;
+  }
+});
+
+document.addEventListener('input', e => {
+  const inp = e.target.closest('.setup input'); if (!inp) return;
+  S.teams[+inp.dataset.i].name = inp.value || `Đội ${+inp.dataset.i + 1}`; save(); renderBoard();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea') || S.view !== 'game' || !G) return;
+  const def = GAMES[G.id];
+  if (e.key === ' ') { const b = $('[data-action="timer"]'); if (b) { e.preventDefault(); toggleTimer(+b.dataset.sec, b); } }
+  else if (e.key === 'Enter' && $('[data-action="reveal"]')) { e.preventDefault(); reveal(); }
+  else if (e.key === 'ArrowRight' && def.items) nextQ(1);
+  else if (e.key === 'ArrowLeft' && def.items) nextQ(-1);
+});
+
+function applyEvent(effect) {
+  const me = G.turn, others = S.teams.map((t, i) => i).filter(i => i !== me);
+  if (effect === 'plus20') { addScore(me, 20); toast(`${S.teams[me].name} +20`); sfx.ok(); }
+  if (effect === 'skip') { toast(`${S.teams[me].name} mất lượt`); sfx.bad(); }
+  if (effect === 'gift10') {
+    const low = others.reduce((m, i) => S.teams[i].score < S.teams[m].score ? i : m, others[0]);
+    addScore(me, -10); addScore(low, 10); toast(`${S.teams[me].name} tặng 10 điểm cho ${S.teams[low].name}`); sfx.open();
+  }
+  if (effect === 'steal10') {
+    const hi = others.reduce((m, i) => S.teams[i].score > S.teams[m].score ? i : m, others[0]);
+    addScore(hi, -10); addScore(me, 10); toast(`${S.teams[me].name} lấy 10 điểm từ ${S.teams[hi].name}`); sfx.ok();
+  }
+  G.applied = true; render();
+}
+
+function setCount(n) {
+  while (S.teams.length < n) { const i = S.teams.length; S.teams.push({ name: TEAM_NAMES[i], color: TEAM_COLORS[i], score: 0 }); }
+  S.teams.length = n; save(); render();
+}
+
+/* Chọn đội ngẫu nhiên */
+function openPicker() {
+  const layer = $('#layer');
+  layer.innerHTML = `<div class="overlay" data-action="closePicker"><div class="picker" role="dialog" aria-label="Chọn đội ngẫu nhiên">
+    <div class="eyebrow">Vòng quay may mắn</div><div class="list">${S.teams.map((t, i) => `<div class="it" id="pk-${i}" style="--c:${t.color}">${esc(t.name)}</div>`).join('')}</div>
+    <button class="go" id="pkClose">Đóng</button></div></div>`;
+  $('#pkClose').onclick = () => layer.innerHTML = '';
+  layer.querySelector('.overlay').addEventListener('click', ev => { if (ev.target.classList.contains('overlay')) layer.innerHTML = ''; });
+  const n = S.teams.length, target = Math.floor(Math.random() * n), steps = n * 3 + target;
+  let k = 0, delay = 60;
+  const spin = () => {
+    document.querySelectorAll('.picker .it').forEach(el => el.classList.remove('hl'));
+    const el = $(`#pk-${k % n}`); if (!el) return; el.classList.add('hl'); sfx.tick();
+    if (k >= steps) { sfx.ok(); return; }
+    k++; delay *= 1.12; setTimeout(spin, delay);
+  };
+  spin();
+}
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+/* =====================================================================
+   HIỆU ỨNG: phân tử khí nền + pháo giấy
+   ===================================================================== */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+(function gas() {
+  const c = $('#gas'), x = c.getContext('2d'); let W, H, P = [];
+  const size = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+  size(); addEventListener('resize', size);
+  for (let i = 0; i < 46; i++) P.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * 1.4, vy: (Math.random() - .5) * 1.4, r: 2 + Math.random() * 3 });
+  const draw = () => {
+    x.clearRect(0, 0, W, H);
+    for (const p of P) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < p.r || p.x > W - p.r) p.vx *= -1;
+      if (p.y < p.r || p.y > H - p.r) p.vy *= -1;
+      x.beginPath(); x.arc(p.x, p.y, p.r, 0, 7); x.fillStyle = '#52d3ea33'; x.fill();
+    }
+    if (!reduce) requestAnimationFrame(draw);
+  };
+  draw();
+})();
+function confetti() {
+  if (reduce) return;
+  const c = $('#confetti'), x = c.getContext('2d'); c.width = innerWidth; c.height = innerHeight;
+  const cols = [...S.teams.map(t => t.color), '#ffb22e', '#52d3ea'];
+  const P = Array.from({ length: 160 }, () => ({ x: innerWidth / 2 + (Math.random() - .5) * 200, y: innerHeight * .35, vx: (Math.random() - .5) * 16, vy: -Math.random() * 14 - 4, s: 5 + Math.random() * 6, a: Math.random() * 6, c: cols[Math.floor(Math.random() * cols.length)] }));
+  let f = 0;
+  (function step() {
+    x.clearRect(0, 0, c.width, c.height);
+    for (const p of P) { p.x += p.vx; p.y += p.vy; p.vy += .4; p.vx *= .99; p.a += .2; x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); x.restore(); }
+    if (++f < 150) requestAnimationFrame(step); else x.clearRect(0, 0, c.width, c.height);
+  })();
+}
+
+/* Khởi động */
+function boot(data) {
+  if (data && data.S) { S = data.S; G = data.G || null; }
+  S.tiet = TIET;
+  if (S.view === 'game' && !G) S.view = 'lesson';
+  render();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>
