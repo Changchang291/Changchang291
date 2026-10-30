@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vòng quay kiểm tra bài cũ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: bảng đen lớp học trên máy chiếu — vòng quay phấn màu ở giữa, cột "sổ điểm miệng" và danh sách lớp bên phải; điện thoại xếp thành một cột. */
+:root {
+  --board: #1f3a32;
+  --board-2: #18302a;
+  --panel: #152a24;
+  --line: #3b5d51;
+  --chalk: #f2f0e6;
+  --muted: #a7bdb3;
+  --yellow: #f4d35e;
+  --yellow-ink: #2b2300;
+  --wood: #9a6a3e;
+  --wood-dark: #6e4724;
+  --absent: #f2a07b;
+  --seg-ink: #1b2a25;
+  --font-display: "Baloo 2", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(255,255,255,.05), transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(255,255,255,.04), transparent 50%),
+    var(--board);
+  color: var(--chalk);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 20px;
+  gap: 14px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 2px dashed var(--line);
+  padding-bottom: 10px;
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.4rem, 2.6vw, 2rem);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+h1 small {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: .85rem;
+  color: var(--muted);
+  letter-spacing: .02em;
+}
+.stats { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: .9rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pill b { color: var(--chalk); }
+.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 12px;
+  color: var(--chalk);
+}
+.ghost:hover { border-color: var(--muted); }
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.live {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.3rem, 3vw, 2.1rem);
+  min-height: 1.4em;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--yellow);
+}
+.live.idle { color: var(--muted); font-weight: 600; }
+.wheel-wrap {
+  position: relative;
+  width: min(100%, calc(100dvh - 230px));
+  min-width: min(100%, 280px);
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+#wheel { width: 100%; height: 100%; display: block; cursor: pointer; touch-action: manipulation; }
+.controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.spin {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  background: var(--yellow);
+  color: var(--yellow-ink);
+  border: 0;
+  border-radius: 16px;
+  padding: 8px 40px 6px;
+  box-shadow: 0 5px 0 #b8962a;
+  transition: transform .08s, box-shadow .08s;
+}
+.spin:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 #b8962a; }
+.spin:disabled { opacity: .5; cursor: default; }
+.hint { color: var(--muted); font-size: .88rem; }
+kbd {
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 0 6px;
+  font-family: inherit;
+  font-size: .82rem;
+}
+
+/* Side panel */
+aside {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-height: calc(100dvh - 120px);
+}
+@media (max-width: 900px) { aside { max-height: none; } }
+.tabs { display: flex; border-bottom: 1px solid var(--line); }
+.tabs button {
+  flex: 1;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 8px 8px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tabs button[aria-selected="true"] { color: var(--chalk); border-bottom-color: var(--yellow); }
+.tab { padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.check { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--muted); }
+.check input { accent-color: var(--yellow); width: 18px; height: 18px; }
+
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.log li {
+  display: grid;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--board-2);
+}
+.log .no { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .85rem; }
+.log .who { min-width: 0; }
+.log .who b { display: block; overflow-wrap: anywhere; font-weight: 600; }
+.log .who span { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.log input {
+  width: 4.2em;
+  background: var(--board);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.log .tag {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--absent);
+  border: 1px solid var(--absent);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.log .del { background: none; border: 0; color: var(--muted); font-size: 1.1rem; padding: 2px 6px; border-radius: 6px; }
+.log .del:hover { color: var(--chalk); background: var(--board); }
+.empty { color: var(--muted); font-size: .92rem; margin: 0; }
+
+textarea {
+  width: 100%;
+  min-height: 300px;
+  resize: vertical;
+  background: var(--board-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  line-height: 1.55;
+}
+.note {
+  font-size: .88rem;
+  color: var(--yellow);
+  border: 1px dashed var(--yellow);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 0;
+}
+.small { font-size: .85rem; color: var(--muted); margin: 0; }
+
+/* Result card */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 18, 15, .72);
+  display: grid;
+  place-items: center;
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px));
+  z-index: 20;
+}
+.card {
+  width: min(640px, 100%);
+  background: var(--board);
+  border: 10px solid var(--wood);
+  outline: 2px solid var(--wood-dark);
+  border-radius: 18px;
+  padding: 28px 24px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: pop .35s cubic-bezier(.2, 1.4, .4, 1);
+}
+@keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+.card .eyebrow { color: var(--muted); letter-spacing: .12em; text-transform: uppercase; font-size: .85rem; font-weight: 600; }
+.card .name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  line-height: 1.1;
+  color: var(--yellow);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.card .sub { color: var(--chalk); font-size: 1.05rem; margin-bottom: 12px; }
+.card .row { justify-content: center; }
+.btn {
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: var(--board-2);
+}
+.btn.primary { background: var(--yellow); color: var(--yellow-ink); border-color: var(--yellow); }
+.btn.warn { color: var(--absent); border-color: var(--absent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
+  .spin { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Vòng quay kiểm tra bài cũ<small>Quay ngẫu nhiên, gọi một em lên bảng</small></h1>
+    <div class="stats">
+      <span class="pill">Sĩ số <b id="stTotal">0</b></span>
+      <span class="pill">Đã gọi <b id="stCalled">0</b></span>
+      <span class="pill">Còn trên vòng <b id="stLeft">0</b></span>
+      <button class="ghost" id="soundBtn" type="button" aria-pressed="true">Âm thanh: bật</button>
+      <button class="ghost" id="fsBtn" type="button">Toàn màn hình</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Vòng quay">
+      <div class="live idle" id="live" aria-live="polite">Bấm Quay để gọi tên</div>
+      <div class="wheel-wrap"><canvas id="wheel" aria-label="Vòng quay tên học sinh" role="img"></canvas></div>
+      <div class="controls">
+        <button class="spin" id="spinBtn" type="button">Quay</button>
+        <span class="hint">hoặc nhấn <kbd>Space</kbd> / bấm vào vòng quay</span>
+      </div>
+    </section>
+
+    <aside>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tabLogBtn" aria-selected="true" aria-controls="tabLog">Sổ điểm miệng</button>
+        <button type="button" role="tab" id="tabListBtn" aria-selected="false" aria-controls="tabList">Danh sách lớp</button>
+      </div>
+
+      <div class="tab" id="tabLog" role="tabpanel" aria-labelledby="tabLogBtn">
+        <label class="check"><input type="checkbox" id="removeCalled" checked> Bỏ em đã gọi ra khỏi vòng quay</label>
+        <ol class="log" id="log"></ol>
+        <p class="empty" id="logEmpty">Chưa gọi em nào. Kết quả mỗi lượt quay sẽ ghi vào đây, thầy cô nhập điểm miệng ngay bên cạnh tên.</p>
+        <div class="row">
+          <button class="ghost" id="copyBtn" type="button">Chép sổ điểm</button>
+          <button class="ghost" id="resetBtn" type="button">Làm mới lượt gọi</button>
+        </div>
+        <p class="small" id="copyMsg" hidden></p>
+      </div>
+
+      <div class="tab" id="tabList" role="tabpanel" aria-labelledby="tabListBtn" hidden>
+        <p class="note" id="sampleNote">Đây là danh sách mẫu. Thầy cô dán danh sách lớp mình vào ô dưới, mỗi dòng một tên (có thể dán thẳng cột họ tên từ Excel).</p>
+        <label class="small" for="names">Mỗi dòng một học sinh. Số thứ tự đầu dòng sẽ được bỏ qua.</label>
+        <textarea id="names" spellcheck="false"></textarea>
+        <div class="row">
+          <button class="ghost" id="sampleBtn" type="button">Dùng lại danh sách mẫu</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="resName">
+    <div class="eyebrow">Mời em</div>
+    <div class="name" id="resName"></div>
+    <div class="sub">lên bảng kiểm tra bài cũ</div>
+    <div class="row">
+      <button class="btn primary" id="acceptBtn" type="button">Lên bảng</button>
+      <button class="btn warn" id="absentBtn" type="button">Vắng, quay lại</button>
+      <button class="btn" id="skipBtn" type="button">Bỏ qua</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const SAMPLE = [
+    "Nguyễn Hoàng An", "Trần Minh Anh", "Lê Ngọc Bích", "Phạm Gia Bảo", "Hoàng Thu Cúc",
+    "Vũ Đức Duy", "Đặng Thùy Dung", "Bùi Quang Đạt", "Đỗ Hương Giang", "Hồ Minh Hải",
+    "Ngô Thanh Hằng", "Dương Văn Hiếu", "Lý Khánh Huyền", "Phan Tuấn Khang", "Trịnh Bảo Khánh",
+    "Mai Phương Linh", "Đinh Hoàng Long", "Tạ Ngọc Mai", "Lương Đức Minh", "Châu Hải Nam",
+    "Cao Thảo Nguyên", "Lâm Bảo Ngọc", "Hà Trọng Nhân", "Kiều Yến Nhi", "Tô Gia Phúc",
+    "Quách Minh Quân", "Văn Thanh Tâm", "Triệu Hữu Thắng", "Đoàn Thu Trang", "Võ Nhật Vy"
+  ].join("\n");
+  const COLORS = ["#f4d35e", "#8fd3c7", "#f2a07b", "#b9a7e8", "#9cc9f0", "#e9a3c0", "#c4dc8a"];
+  const KEY = "vong-quay-kiem-tra-bai-cu-v1";
+  const TAU = Math.PI * 2;
+  const POINTER = Math.PI * 1.5; // kim chỉ ở đỉnh vòng quay
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("wheel"), ctx = canvas.getContext("2d");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let state = { names: SAMPLE, history: [], removeCalled: true, sound: true };
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved && typeof saved.names === "string") state = Object.assign(state, saved);
+  } catch (e) {}
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  let students = [], pool = [], rot = 0, spinning = false, picked = null;
+
+  function parseNames(text) {
+    return text.split(/\r?\n/)
+      .map((s) => s.replace(/^\s*\d+\s*[.)\-:]?\s+/, "").replace(/\t.*$/, "").trim())
+      .filter(Boolean);
+  }
+
+  // Bớt đi mỗi tên đã gọi một lần, để lớp có hai em trùng tên vẫn đúng.
+  function rebuildPool() {
+    students = parseNames(state.names);
+    pool = students.slice();
+    if (state.removeCalled) {
+      for (const h of state.history) {
+        const i = pool.indexOf(h.name);
+        if (i !== -1) pool.splice(i, 1);
+      }
+    }
+    $("stTotal").textContent = students.length;
+    $("stCalled").textContent = state.history.length;
+    $("stLeft").textContent = pool.length;
+    $("spinBtn").disabled = pool.length === 0;
+    $("sampleNote").hidden = state.names !== SAMPLE;
+    if (!spinning) setLive();
+    draw();
+  }
+
+  function setLive(text) {
+    const live = $("live");
+    if (text) { live.textContent = text; live.classList.remove("idle"); return; }
+    live.classList.add("idle");
+    if (students.length === 0) live.textContent = "Chưa có tên nào. Mở thẻ Danh sách lớp để nhập.";
+    else if (pool.length === 0) live.textContent = "Đã gọi hết lớp. Bấm Làm mới lượt gọi để quay lại từ đầu.";
+    else live.textContent = "Bấm Quay để gọi tên";
+  }
+
+  // ---------- Vẽ vòng quay ----------
+  function resize() {
+    const box = canvas.parentElement.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const size = Math.max(200, Math.round(box.width * dpr));
+    if (canvas.width !== size) { canvas.width = size; canvas.height = size; }
+    draw();
+  }
+
+  function mod(a, m) { return ((a % m) + m) % m; }
+  function indexAt(r, n) { return Math.floor(mod(POINTER - r, TAU) / (TAU / n)) % n; }
+
+  function segColor(i, n) {
+    if (n > 1 && i === n - 1 && (n - 1) % COLORS.length === 0) return COLORS[2];
+    return COLORS[i % COLORS.length];
+  }
+
+  function fitLabel(name, maxW) {
+    const words = name.split(/\s+/);
+    const tries = [name];
+    if (words.length > 2) tries.push(words.slice(-2).join(" "));
+    if (words.length > 1) tries.push(words[words.length - 1]);
+    for (const t of tries) if (ctx.measureText(t).width <= maxW) return t;
+    let t = tries[tries.length - 1];
+    while (t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+    return t + "…";
+  }
+
+  function draw() {
+    const S = canvas.width, c = S / 2;
+    const R = c - S * 0.06;
+    ctx.clearRect(0, 0, S, S);
+    ctx.save();
+    ctx.translate(c, c);
+
+    // Viền gỗ
+    ctx.beginPath(); ctx.arc(0, 0, R + S * 0.025, 0, TAU);
+    ctx.fillStyle = "#9a6a3e"; ctx.fill();
+    ctx.lineWidth = S * 0.006; ctx.strokeStyle = "#6e4724"; ctx.stroke();
+
+    const n = pool.length;
+    if (n === 0) {
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU);
+      ctx.fillStyle = "#18302a"; ctx.fill();
+      ctx.fillStyle = "#a7bdb3";
+      ctx.font = `600 ${Math.round(S * 0.045)}px "Be Vietnam Pro", system-ui, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("Vòng quay trống", 0, 0);
+      ctx.restore();
+      drawPointer(S, c, R);
+      return;
+    }
+
+    const seg = TAU / n;
+    for (let i = 0; i < n; i++) {
+      const a0 = rot + i * seg;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a0 + seg); ctx.closePath();
+      ctx.fillStyle = segColor(i, n); ctx.fill();
+      if (n > 1) { ctx.lineWidth = Math.max(1, S * 0.003); ctx.strokeStyle = "#1f3a32"; ctx.stroke(); }
+    }
+
+    const fontPx = Math.max(10, Math.min(S * 0.042, seg * R * 0.5));
+    ctx.font = `700 ${Math.round(fontPx)}px "Be Vietnam Pro", system-ui, sans-serif`;
+    ctx.fillStyle = "#1b2a25";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    const maxW = R * 0.7;
+    for (let i = 0; i < n; i++) {
+      ctx.save();
+      ctx.rotate(rot + (i + 0.5) * seg);
+      ctx.fillText(fitLabel(pool[i], maxW), R - S * 0.025, 0);
+      ctx.restore();
+    }
+
+    // Trục giữa
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.16, 0, TAU);
+    ctx.fillStyle = "#1f3a32"; ctx.fill();
+    ctx.lineWidth = S * 0.008; ctx.strokeStyle = "#f2f0e6"; ctx.stroke();
+    ctx.fillStyle = "#f2f0e6";
+    ctx.font = `800 ${Math.round(R * 0.085)}px "Baloo 2", system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("QUAY", 0, R * 0.01);
+    ctx.restore();
+    drawPointer(S, c, R);
+  }
+
+  function drawPointer(S, c, R) {
+    const w = S * 0.045, top = c - R - S * 0.05, tip = c - R + S * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(c - w, top); ctx.lineTo(c + w, top); ctx.lineTo(c, tip); ctx.closePath();
+    ctx.fillStyle = "#f2f0e6"; ctx.fill();
+    ctx.lineWidth = S * 0.006; ctx.strokeStyle = "#1f3a32"; ctx.stroke();
+  }
+
+  // ---------- Âm thanh ----------
+  let audio = null;
+  function ensureAudio() {
+    if (!state.sound) return;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === "suspended") audio.resume();
+    } catch (e) { audio = null; }
+  }
+  function beep(freq, dur, type, vol) {
+    if (!state.sound || !audio) return;
+    const t = audio.currentTime;
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(audio.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  const tick = () => beep(1400, 0.03, "square", 0.05);
+  function chime() {
+    beep(660, 0.25, "triangle", 0.18);
+    setTimeout(() => beep(990, 0.4, "triangle", 0.18), 140);
+  }
+
+  // ---------- Quay ----------
+  function randInt(n) {
+    try {
+      const a = new Uint32Array(1);
+      crypto.getRandomValues(a);
+      return a[0] % n;
+    } catch (e) { return Math.floor(Math.random() * n); }
+  }
+
+  function spin() {
+    if (spinning || pool.length === 0 || !$("overlay").hidden) return;
+    ensureAudio();
+    spinning = true;
+    $("spinBtn").disabled = true;
+    const n = pool.length, seg = TAU / n;
+    const target = randInt(n);
+    const within = 0.15 + Math.random() * 0.7;
+    const want = mod(POINTER - (target + within) * seg, TAU);
+    const turns = reduceMotion ? 1 : 5 + randInt(3);
+    const start = rot;
+    const end = rot + mod(want - mod(rot, TAU), TAU) + turns * TAU;
+    const dur = reduceMotion ? 1200 : 5000 + Math.random() * 1500;
+    let last = indexAt(rot, n), t0 = null;
+
+    function frame(now) {
+      if (t0 === null) t0 = now;
+      const t = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - t, 4);
+      rot = start + (end - start) * e;
+      const idx = indexAt(rot, n);
+      if (idx !== last) { last = idx; tick(); setLive(pool[idx]); }
+      draw();
+      if (t < 1) requestAnimationFrame(frame);
+      else finish(pool[indexAt(rot, n)]);
+    }
+    setLive(pool[last]);
+    requestAnimationFrame(frame);
+  }
+
+  function finish(name) {
+    rot = mod(rot, TAU);
+    spinning = false;
+    picked = name;
+    chime();
+    setLive(name);
+    $("resName").textContent = name;
+    $("overlay").hidden = false;
+    $("acceptBtn").focus();
+  }
+
+  function closeResult() {
+    $("overlay").hidden = true;
+    picked = null;
+    rebuildPool();
+    $("spinBtn").focus();
+  }
+
+  function record(status) {
+    const d = new Date();
+    state.history.push({
+      name: picked,
+      status,
+      score: "",
+      time: d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+      date: d.toLocaleDateString("vi-VN")
+    });
+    save();
+    renderLog();
+  }
+
+  $("acceptBtn").addEventListener("click", () => { record("len-bang"); closeResult(); });
+  $("absentBtn").addEventListener("click", () => { record("vang"); closeResult(); setTimeout(spin, 300); });
+  $("skipBtn").addEventListener("click", closeResult);
+  $("spinBtn").addEventListener("click", spin);
+  canvas.addEventListener("click", spin);
+
+  document.addEventListener("keydown", (e) => {
+    if (!$("overlay").hidden) {
+      if (e.key === "Escape") closeResult();
+      return;
+    }
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "textarea" || tag === "input" || tag === "button") return;
+    if (e.code === "Space" || e.key === "Enter") { e.preventDefault(); spin(); }
+  });
+
+  // ---------- Sổ điểm ----------
+  function renderLog() {
+    const ol = $("log");
+    ol.textContent = "";
+    state.history.forEach((h, i) => {
+      const li = document.createElement("li");
+      const no = document.createElement("span");
+      no.className = "no"; no.textContent = i + 1;
+      const who = document.createElement("div");
+      who.className = "who";
+      const b = document.createElement("b"); b.textContent = h.name;
+      const sp = document.createElement("span"); sp.textContent = h.time;
+      who.append(b, sp);
+      let mid;
+      if (h.status === "vang") {
+        mid = document.createElement("span");
+        mid.className = "tag"; mid.textContent = "Vắng";
+      } else {
+        mid = document.createElement("input");
+        mid.type = "number"; mid.min = "0"; mid.max = "10"; mid.step = "0.25";
+        mid.placeholder = "Điểm"; mid.value = h.score;
+        mid.id = "score-" + i;
+        mid.setAttribute("aria-label", "Điểm miệng của " + h.name);
+        mid.addEventListener("input", () => { h.score = mid.value; save(); });
+      }
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "×";
+      del.setAttribute("aria-label", "Xóa lượt gọi " + h.name);
+      del.addEventListener("click", () => { state.history.splice(i, 1); save(); renderLog(); rebuildPool(); });
+      li.append(no, who, mid, del);
+      ol.appendChild(li);
+    });
+    $("logEmpty").hidden = state.history.length > 0;
+  }
+
+  $("copyBtn").addEventListener("click", () => {
+    const lines = ["STT\tHọ và tên\tGiờ\tĐiểm miệng"].concat(state.history.map((h, i) =>
+      [i + 1, h.name, h.time, h.status === "vang" ? "Vắng" : String(h.score).replace(".", ",")].join("\t")));
+    const text = lines.join("\n");
+    const msg = $("copyMsg");
+    const show = (t) => { msg.textContent = t; msg.hidden = false; setTimeout(() => { msg.hidden = true; }, 3000); };
+    try {
+      navigator.clipboard.writeText(text).then(
+        () => show("Đã chép. Dán vào Excel hoặc sổ điểm điện tử."),
+        () => show("Trình duyệt chặn chép tự động. Hãy nhập điểm trực tiếp từ danh sách trên.")
+      );
+    } catch (e) { show("Trình duyệt chặn chép tự động. Hãy nhập điểm trực tiếp từ danh sách trên."); }
+  });
+
+  let resetArmed = null;
+  $("resetBtn").addEventListener("click", () => {
+    const btn = $("resetBtn");
+    if (!resetArmed) {
+      btn.textContent = "Bấm lần nữa để xóa sổ";
+      resetArmed = setTimeout(() => { resetArmed = null; btn.textContent = "Làm mới lượt gọi"; }, 3000);
+      return;
+    }
+    clearTimeout(resetArmed); resetArmed = null;
+    btn.textContent = "Làm mới lượt gọi";
+    state.history = [];
+    save(); renderLog(); rebuildPool();
+  });
+
+  $("removeCalled").checked = state.removeCalled;
+  $("removeCalled").addEventListener("change", (e) => { state.removeCalled = e.target.checked; save(); rebuildPool(); });
+
+  // ---------- Danh sách lớp ----------
+  const ta = $("names");
+  ta.value = state.names;
+  ta.addEventListener("input", () => { state.names = ta.value; save(); if (!spinning) rebuildPool(); });
+  $("sampleBtn").addEventListener("click", () => { ta.value = state.names = SAMPLE; save(); rebuildPool(); });
+
+  function selectTab(which) {
+    const log = which === "log";
+    $("tabLog").hidden = !log; $("tabList").hidden = log;
+    $("tabLogBtn").setAttribute("aria-selected", String(log));
+    $("tabListBtn").setAttribute("aria-selected", String(!log));
+  }
+  $("tabLogBtn").addEventListener("click", () => selectTab("log"));
+  $("tabListBtn").addEventListener("click", () => selectTab("list"));
+
+  // ---------- Tiện ích ----------
+  function renderSound() {
+    $("soundBtn").textContent = "Âm thanh: " + (state.sound ? "bật" : "tắt");
+    $("soundBtn").setAttribute("aria-pressed", String(state.sound));
+  }
+  $("soundBtn").addEventListener("click", () => { state.sound = !state.sound; save(); renderSound(); ensureAudio(); });
+  $("fsBtn").addEventListener("click", () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); }
+    } catch (e) {}
+  });
+
+  renderSound();
+  renderLog();
+  rebuildPool();
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas.parentElement);
+  window.addEventListener("resize", resize);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+  resize();
+})();
+</script>
+</body>
+</html>
