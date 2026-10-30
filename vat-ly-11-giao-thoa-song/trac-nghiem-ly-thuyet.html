@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ôn luyện Giao thoa sóng</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: "chậu sóng" — dải đầu trang là mô phỏng vân giao thoa của hai nguồn S1, S2; bên dưới là thẻ câu hỏi + cột bảng điều khiển (tiến độ, điểm), cuối trang là bảng công thức. */
+:root {
+  --bg: #eaf3f4;
+  --surface: #ffffff;
+  --surface-2: #f3f8f9;
+  --line: #cfe0e3;
+  --ink: #0d2a33;
+  --muted: #557079;
+  --accent: #0a7c86;
+  --accent-ink: #ffffff;
+  --crest: #d9681a;
+  --ok: #1d8a4e;
+  --ok-bg: #e2f5ea;
+  --bad: #c93c3c;
+  --bad-bg: #fbe7e7;
+  --wave-rgb: 10, 124, 134;
+  --hero-bg: #dceef0;
+  --font-display: "Lexend", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #08171c; --surface: #0f252c; --surface-2: #133039; --line: #21444e;
+    --ink: #e3f1f3; --muted: #8fb0b7; --accent: #3cc6cf; --accent-ink: #04262a;
+    --crest: #f39a4a; --ok: #4fd18b; --ok-bg: #12352a; --bad: #ff7b7b; --bad-bg: #3a1a1d;
+    --wave-rgb: 60, 198, 207; --hero-bg: #0b2026;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #08171c; --surface: #0f252c; --surface-2: #133039; --line: #21444e;
+  --ink: #e3f1f3; --muted: #8fb0b7; --accent: #3cc6cf; --accent-ink: #04262a;
+  --crest: #f39a4a; --ok: #4fd18b; --ok-bg: #12352a; --bad: #ff7b7b; --bad-bg: #3a1a1d;
+  --wave-rgb: 60, 198, 207; --hero-bg: #0b2026;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--crest); outline-offset: 2px; }
+sub, sup { font-size: .7em; line-height: 0; }
+i.v { font-family: "Times New Roman", Georgia, serif; font-size: 1.08em; }
+.fr { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: .92em; margin: 0 .1em; line-height: 1.15; }
+.fr > span { padding: 0 .2em; }
+.fr > span:first-child { border-bottom: 1.2px solid currentColor; }
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- Hero ---------- */
+.hero { position: relative; background: var(--hero-bg); border-bottom: 1px solid var(--line); overflow: hidden; }
+#tank { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero .wrap { position: relative; padding-block: 28px 30px; display: grid; gap: 10px; }
+.team {
+  justify-self: start; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 14px 5px 6px; font-weight: 700; font-size: .9rem; letter-spacing: .02em;
+}
+.team b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-family: var(--font-display); font-size: .8rem; }
+.hero h1 { margin: 4px 0 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.8rem, 4.6vw, 3rem); line-height: 1.1; text-wrap: balance; max-width: 18ch; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero p { margin: 0; color: var(--muted); max-width: 60ch; font-weight: 500; }
+.hero p strong { color: var(--ink); }
+
+/* ---------- Settings bar ---------- */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; padding-block: 18px 6px; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+select {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 10px; min-width: 0; max-width: 100%;
+}
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.btn {
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  border-radius: 10px; padding: 9px 16px; font-weight: 700;
+}
+.btn.ghost { background: var(--surface); color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- Main grid ---------- */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; padding-block: 12px 28px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.qcard { padding: 22px clamp(16px, 3vw, 28px) 22px; display: grid; gap: 16px; min-width: 0; }
+.qmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.qnum { font-family: var(--font-display); color: var(--ink); font-size: 1rem; }
+.tag { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: .78rem; }
+.tag.ext { color: var(--crest); border-color: color-mix(in srgb, var(--crest) 45%, var(--line)); }
+.timer { margin-left: auto; font-variant-numeric: tabular-nums; font-family: var(--font-display); color: var(--ink); }
+.timer.low { color: var(--bad); }
+.stem { margin: 0; font-size: 1.12rem; font-weight: 600; line-height: 1.6; }
+.opts { display: grid; gap: 10px; }
+.opt {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left;
+  background: var(--surface-2); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px 10px 10px;
+  transition: border-color .15s, background .15s;
+}
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt .k { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); font-family: var(--font-display); font-weight: 600; background: var(--surface); }
+.opt.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.opt.sel .k { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.opt.right { border-color: var(--ok); background: var(--ok-bg); }
+.opt.right .k { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+.opt.wrong .k { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+.opt:disabled { cursor: default; }
+.explain { border-left: 4px solid var(--accent); background: var(--surface-2); border-radius: 0 10px 10px 0; padding: 10px 14px; font-size: .96rem; }
+.explain strong { display: block; margin-bottom: 2px; }
+.explain.ok strong { color: var(--ok); }
+.explain.bad strong { color: var(--bad); }
+.nav { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.hint { font-size: .8rem; color: var(--muted); }
+
+/* ---------- Side panel ---------- */
+.side { display: grid; gap: 16px; }
+.panel { padding: 16px; display: grid; gap: 12px; }
+.panel h2 { margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
+.score { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-display); }
+.score .big { font-size: 2.4rem; font-weight: 700; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.score .of { color: var(--muted); font-weight: 600; }
+.meter { height: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: .78rem; color: var(--muted); text-align: center; }
+.stats b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stats .g b { color: var(--ok); } .stats .r b { color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+.grid button {
+  aspect-ratio: 1; max-width: 100%; border: 1.5px solid var(--line); background: var(--surface-2); border-radius: 9px;
+  font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; padding: 0;
+}
+.grid button.ans { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); }
+.grid button.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.grid button.no { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.grid button.cur { outline: 2.5px solid var(--crest); outline-offset: 1px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .74rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid var(--line); }
+.legend .l-ok::before { background: var(--ok-bg); border-color: var(--ok); }
+.legend .l-no::before { background: var(--bad-bg); border-color: var(--bad); }
+.legend .l-ans::before { border-color: var(--accent); }
+
+/* ---------- Result ---------- */
+.result { padding: 22px clamp(16px, 3vw, 28px); display: grid; gap: 16px; }
+.result h2 { margin: 0; font-family: var(--font-display); font-size: 1.5rem; }
+.result .verdict { color: var(--muted); margin: 0; }
+.topics { display: grid; gap: 8px; }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) 120px 48px; gap: 10px; align-items: center; font-size: .92rem; }
+.trow .meter i { background: var(--ok); }
+.trow span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- Formula sheet ---------- */
+.sheet { padding-block: 8px 32px; }
+.sheet h2 { font-family: var(--font-display); font-size: 1.35rem; margin: 0 0 4px; }
+.sheet > p { margin: 0 0 14px; color: var(--muted); }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.fbox { padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.fbox h3 { margin: 0; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.fbox ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.fbox li { display: grid; gap: 2px; }
+.fbox li span { font-size: .86rem; color: var(--muted); }
+.fbox li div { font-size: 1.05rem; }
+footer { border-top: 1px solid var(--line); }
+footer .wrap { padding-block: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .88rem; }
+footer strong { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="tank" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <span class="team"><b>KA</b>Team Vật lý Kỳ Anh</span>
+    <h1>Trắc nghiệm lý thuyết <em>Giao thoa sóng</em></h1>
+    <p><strong>Vật lí 11 – Kết nối tri thức, Bài 12.</strong> Ôn điều kiện giao thoa, công thức cực đại – cực tiểu, biên độ, khoảng cách và số vân, thí nghiệm Y-âng. Câu gắn nhãn "Mở rộng" là kiến thức nâng cao ngoài SGK.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="bar">
+      <div class="field">
+        <label for="mode">Chế độ</label>
+        <div class="seg" id="mode" role="group" aria-label="Chế độ">
+          <button type="button" data-mode="practice" aria-pressed="true">Luyện tập</button>
+          <button type="button" data-mode="exam" aria-pressed="false">Kiểm tra</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="topic">Chủ đề</label>
+        <select id="topic"></select>
+      </div>
+      <div class="field">
+        <label for="count">Số câu</label>
+        <select id="count">
+          <option value="10">10 câu</option>
+          <option value="20" selected>20 câu</option>
+          <option value="0">Tất cả</option>
+        </select>
+      </div>
+      <button type="button" class="btn" id="newQuiz">Làm đề mới</button>
+    </div>
+
+    <div class="main">
+      <section class="card qcard" id="qcard" aria-live="polite"></section>
+      <section class="card result" id="result" hidden></section>
+
+      <aside class="side">
+        <div class="card panel">
+          <h2>Kết quả</h2>
+          <div class="score"><span class="big" id="sc">0</span><span class="of">/ 10 điểm</span></div>
+          <div class="meter"><i id="prog"></i></div>
+          <div class="stats">
+            <div><b id="stDone">0/0</b>đã làm</div>
+            <div class="g"><b id="stOk">0</b>đúng</div>
+            <div class="r"><b id="stNo">0</b>sai</div>
+          </div>
+        </div>
+        <div class="card panel">
+          <h2>Danh sách câu</h2>
+          <div class="grid" id="grid"></div>
+          <div class="legend"><span class="l-ans">Đã chọn</span><span class="l-ok">Đúng</span><span class="l-no">Sai</span></div>
+          <button type="button" class="btn" id="submit" hidden>Nộp bài</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <section class="wrap sheet" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">Bảng công thức cần nhớ</h2>
+    <p>Kí hiệu: <i class="v">d</i><sub>1</sub>, <i class="v">d</i><sub>2</sub> là khoảng cách từ điểm M đến hai nguồn S<sub>1</sub>, S<sub>2</sub>; <i class="v">λ</i> là bước sóng; <i class="v">k</i> = 0, ±1, ±2, …</p>
+    <div class="fgrid" id="sheet"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Biên soạn: <strong>Team Vật lý Kỳ Anh</strong></span>
+    <span>Phím tắt: A–D hoặc 1–4 để chọn, ← → để chuyển câu</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // ---------- Kí hiệu ----------
+  const v = s => `<i class="v">${s}</i>`;
+  const fr = (a, b) => `<span class="fr"><span>${a}</span><span>${b}</span></span>`;
+  const d1 = v('d') + '<sub>1</sub>', d2 = v('d') + '<sub>2</sub>';
+  const L = v('λ'), K = v('k'), A = v('A');
+  const S12 = 'S<sub>1</sub>S<sub>2</sub>';
+  const H = fr('1', '2');
+  const dd = `${d2} − ${d1}`;
+  const iD = v('i'), Dd = v('D'), a_ = v('a'), x = v('x');
+
+  // ---------- Ngân hàng câu hỏi ----------
+  // t: chủ đề, ext: kiến thức mở rộng, a: chỉ số đáp án đúng trong o
+  const T = {
+    dk: 'Điều kiện & hiện tượng',
+    cd: 'Cực đại – cực tiểu',
+    bd: 'Biên độ & phương trình',
+    kc: 'Khoảng cách & số vân',
+    np: 'Hai nguồn ngược pha',
+    ya: 'Giao thoa ánh sáng (Y-âng)'
+  };
+  const Q = [
+    { t: 'dk', q: 'Hai nguồn sóng kết hợp là hai nguồn dao động',
+      o: ['cùng phương, cùng tần số và có hiệu số pha không đổi theo thời gian.', 'cùng biên độ và cùng tần số.', 'cùng biên độ, hiệu số pha thay đổi theo thời gian.', 'cùng phương truyền sóng và cùng biên độ.'], a: 0,
+      e: 'Hai nguồn kết hợp: cùng phương dao động, cùng tần số và hiệu số pha không đổi theo thời gian. Biên độ không bắt buộc bằng nhau.' },
+    { t: 'dk', q: 'Hiện tượng giao thoa sóng là',
+      o: ['sự tổng hợp của hai sóng kết hợp, tạo nên những vị trí biên độ luôn cực đại và những vị trí biên độ luôn cực tiểu.', 'sự gặp nhau của hai sóng bất kì trong không gian.', 'sự đổi phương truyền của sóng khi gặp vật cản.', 'sự phản xạ của sóng khi gặp mặt phân cách hai môi trường.'], a: 0,
+      e: 'Giao thoa là sự tổng hợp của hai sóng kết hợp; trong vùng gặp nhau có những điểm dao động mạnh (cực đại) xen kẽ những điểm dao động yếu hoặc đứng yên (cực tiểu).' },
+    { t: 'dk', q: 'Điều kiện để hai sóng gặp nhau tạo được hệ vân giao thoa ổn định là hai sóng phải xuất phát từ',
+      o: ['hai nguồn kết hợp.', 'hai nguồn có cùng biên độ.', 'hai nguồn đặt gần nhau.', 'hai nguồn có cùng vận tốc truyền sóng.'], a: 0,
+      e: 'Chỉ hai sóng kết hợp mới cho hệ vân giao thoa ổn định (vị trí cực đại, cực tiểu không đổi theo thời gian).' },
+    { t: 'dk', q: 'Hiện tượng giao thoa là hiện tượng đặc trưng của',
+      o: ['sóng.', 'chuyển động thẳng đều.', 'dao động tắt dần.', 'chuyển động của hạt.'], a: 0,
+      e: 'Giao thoa là bằng chứng khẳng định một quá trình có tính chất sóng.' },
+    { t: 'dk', q: `Trên mặt nước, hệ vân giao thoa của hai nguồn kết hợp S<sub>1</sub>, S<sub>2</sub> có dạng`,
+      o: [`các đường hypebol nhận S<sub>1</sub>, S<sub>2</sub> làm tiêu điểm (và đường trung trực của ${S12}).`, `các đường tròn đồng tâm S<sub>1</sub>.`, `các đường thẳng song song với ${S12}.`, `các đường elip nhận S<sub>1</sub>, S<sub>2</sub> làm tiêu điểm.`], a: 0,
+      e: `Tập hợp điểm có ${dd} = hằng số là một nhánh hypebol nhận S<sub>1</sub>, S<sub>2</sub> làm tiêu điểm; khi hiệu bằng 0 ta được đường trung trực.` },
+    { t: 'dk', q: `Bước sóng ${L} liên hệ với tốc độ truyền sóng ${v('v')}, tần số ${v('f')} và chu kì ${v('T')} theo công thức`,
+      o: [`${L} = ${fr(v('v'), v('f'))} = ${v('v')}${v('T')}`, `${L} = ${v('v')}${v('f')} = ${fr(v('v'), v('T'))}`, `${L} = ${fr(v('f'), v('v'))}`, `${L} = ${fr(v('T'), v('v'))}`], a: 0,
+      e: `Bước sóng là quãng đường sóng truyền trong một chu kì: ${L} = ${v('v')}${v('T')} = ${fr(v('v'), v('f'))}.` },
+
+    { t: 'cd', q: `Hai nguồn kết hợp dao động cùng pha. Điểm M dao động với biên độ cực đại khi`,
+      o: [`${dd} = ${K}${L}`, `${dd} = (${K} + ${H})${L}`, `${dd} = ${K}${fr(L, '4')}`, `${d2} + ${d1} = ${K}${L}`], a: 0,
+      e: `Hai sóng tới M cùng pha khi hiệu đường đi bằng số nguyên lần bước sóng: ${dd} = ${K}${L}.` },
+    { t: 'cd', q: `Hai nguồn kết hợp dao động cùng pha. Điểm M dao động với biên độ cực tiểu khi`,
+      o: [`${dd} = (${K} + ${H})${L}`, `${dd} = ${K}${L}`, `${dd} = 2${K}${L}`, `${d2} + ${d1} = (${K} + ${H})${L}`], a: 0,
+      e: `Hai sóng tới M ngược pha khi hiệu đường đi bằng số bán nguyên lần bước sóng: ${dd} = (${K} + ${H})${L}.` },
+    { t: 'cd', q: `Hai nguồn kết hợp cùng pha. Đường trung trực của đoạn ${S12} là`,
+      o: [`đường cực đại ứng với ${K} = 0.`, `đường cực tiểu ứng với ${K} = 0.`, 'đường cực đại bậc 1.', 'không phải cực đại cũng không phải cực tiểu.'], a: 0,
+      e: `Mọi điểm trên trung trực có ${d1} = ${d2} ⇒ ${dd} = 0 = 0·${L} ⇒ cực đại bậc 0.` },
+    { t: 'cd', q: `Hai nguồn kết hợp cùng pha. Trung điểm O của đoạn ${S12} dao động`,
+      o: ['với biên độ cực đại.', 'với biên độ cực tiểu.', 'với biên độ bằng biên độ một nguồn.', 'ngược pha với hai nguồn trong mọi trường hợp.'], a: 0,
+      e: 'O nằm trên trung trực nên hiệu đường đi bằng 0 ⇒ O là cực đại.' },
+    { t: 'cd', q: `Hai nguồn kết hợp cùng pha. Điểm M nằm trên vân cực đại bậc 2 (tính từ trung trực) có`,
+      o: [`|${dd}| = 2${L}`, `|${dd}| = 1,5${L}`, `|${dd}| = ${L}`, `|${dd}| = 2,5${L}`], a: 0,
+      e: `Cực đại bậc ${K} ứng với |${dd}| = |${K}|${L}; bậc 2 ⇒ 2${L}.` },
+    { t: 'cd', q: `Hai nguồn kết hợp cùng pha. Vân cực tiểu gần đường trung trực nhất ứng với hiệu đường đi`,
+      o: [`${dd} = ±${fr(L, '2')}`, `${dd} = ±${L}`, `${dd} = ±${fr(L, '4')}`, `${dd} = 0`], a: 0,
+      e: `Cực tiểu: ${dd} = (${K} + ${H})${L}; với ${K} = 0 hoặc ${K} = −1 ta được ±${fr(L, '2')}.` },
+    { t: 'cd', q: `Hai nguồn kết hợp cùng pha, cùng biên độ. Phần tử nước tại điểm cực tiểu giao thoa`,
+      o: ['đứng yên.', 'dao động với biên độ gấp đôi biên độ mỗi nguồn.', 'dao động với biên độ bằng biên độ mỗi nguồn.', 'dao động cùng pha với nguồn.'], a: 0,
+      e: 'Tại cực tiểu hai sóng tới ngược pha, biên độ tổng hợp |A − A| = 0 nên phần tử nước đứng yên.' },
+    { t: 'cd', ext: true, q: `Độ lệch pha giữa hai sóng (từ hai nguồn cùng pha) truyền tới điểm M là`,
+      o: [`Δφ = ${fr('2π(' + dd + ')', L)}`, `Δφ = ${fr('π(' + dd + ')', L)}`, `Δφ = ${fr('2π(' + d2 + ' + ' + d1 + ')', L)}`, `Δφ = ${fr('2π' + L, dd)}`], a: 0,
+      e: `Mỗi quãng đường ${L} tương ứng độ lệch pha 2π, nên Δφ = 2π(${dd})/${L}. Cực đại khi Δφ = 2${K}π, cực tiểu khi Δφ = (2${K} + 1)π.` },
+    { t: 'cd', ext: true, q: `Hai nguồn kết hợp lệch pha nhau Δφ<sub>0</sub> = φ<sub>2</sub> − φ<sub>1</sub>. Vị trí cực đại giao thoa thỏa mãn`,
+      o: [`${dd} = (${K} + ${fr('Δφ<sub>0</sub>', '2π')})${L}`, `${dd} = (${K} + ${fr('Δφ<sub>0</sub>', 'π')})${L}`, `${dd} = ${K}${L} + Δφ<sub>0</sub>`, `${dd} = (${K} + ${H})${L}`], a: 0,
+      e: `Hai sóng tới M lệch pha Δφ<sub>0</sub> − 2π(${dd})/${L}; cho bằng 2${K}π ⇒ ${dd} = (${K} + Δφ<sub>0</sub>/2π)${L} (đã đổi dấu ${K}).` },
+
+    { t: 'bd', ext: true, q: `Hai nguồn S<sub>1</sub>, S<sub>2</sub> cùng phương trình ${v('u')} = ${A}cos(ω${v('t')}). Biên độ dao động tổng hợp tại M là`,
+      o: [`${A}<sub>M</sub> = 2${A}|cos${fr('π(' + dd + ')', L)}|`, `${A}<sub>M</sub> = 2${A}|cos${fr('2π(' + dd + ')', L)}|`, `${A}<sub>M</sub> = 2${A}|sin${fr('π(' + dd + ')', L)}|`, `${A}<sub>M</sub> = ${A}|cos${fr('π(' + d2 + ' + ' + d1 + ')', L)}|`], a: 0,
+      e: `Cộng hai dao động ${A}cos(ω${v('t')} − 2π${d1}/${L}) và ${A}cos(ω${v('t')} − 2π${d2}/${L}) ta được biên độ 2${A}|cos(π(${dd})/${L})|.` },
+    { t: 'bd', ext: true, q: `Hai nguồn cùng phương trình ${v('u')} = ${A}cos(ω${v('t')}). Phương trình dao động tổng hợp tại M là`,
+      o: [`${v('u')}<sub>M</sub> = 2${A}cos${fr('π(' + dd + ')', L)}·cos(ω${v('t')} − ${fr('π(' + d1 + ' + ' + d2 + ')', L)})`,
+          `${v('u')}<sub>M</sub> = 2${A}cos${fr('π(' + d1 + ' + ' + d2 + ')', L)}·cos(ω${v('t')} − ${fr('π(' + dd + ')', L)})`,
+          `${v('u')}<sub>M</sub> = ${A}cos${fr('π(' + dd + ')', L)}·cos(ω${v('t')} − ${fr('2π(' + d1 + ' + ' + d2 + ')', L)})`,
+          `${v('u')}<sub>M</sub> = 2${A}cos(ω${v('t')} − ${fr('π(' + dd + ')', L)})`], a: 0,
+      e: 'Dùng công thức cos a + cos b = 2cos((a − b)/2)·cos((a + b)/2): thừa số chứa hiệu đường đi quyết định biên độ, thừa số chứa tổng đường đi quyết định pha.' },
+    { t: 'bd', q: `Hai nguồn kết hợp cùng pha có biên độ ${A}<sub>1</sub> ≠ ${A}<sub>2</sub>. Biên độ tại điểm cực đại và cực tiểu lần lượt là`,
+      o: [`${A}<sub>1</sub> + ${A}<sub>2</sub> và |${A}<sub>1</sub> − ${A}<sub>2</sub>|`, `|${A}<sub>1</sub> − ${A}<sub>2</sub>| và ${A}<sub>1</sub> + ${A}<sub>2</sub>`, `2${A}<sub>1</sub> và 0`, `${A}<sub>1</sub> + ${A}<sub>2</sub> và 0`], a: 0,
+      e: 'Tại cực đại hai dao động cùng pha ⇒ biên độ cộng; tại cực tiểu ngược pha ⇒ biên độ trừ, chỉ bằng 0 khi hai biên độ bằng nhau.' },
+    { t: 'bd', ext: true, q: `Hai nguồn cùng pha, cùng biên độ. Điểm M trên trung trực của ${S12}, cách mỗi nguồn một đoạn ${v('d')}, dao động cùng pha với nguồn khi`,
+      o: [`${v('d')} = ${K}${L}`, `${v('d')} = (${K} + ${H})${L}`, `${v('d')} = ${K}${fr(L, '2')}`, `${v('d')} = (2${K} + 1)${fr(L, '4')}`], a: 0,
+      e: `Trên trung trực ${d1} = ${d2} = ${v('d')} ⇒ ${v('u')}<sub>M</sub> = 2${A}cos(ω${v('t')} − 2π${v('d')}/${L}). Cùng pha với nguồn khi 2π${v('d')}/${L} = 2${K}π ⇒ ${v('d')} = ${K}${L}.` },
+    { t: 'bd', ext: true, q: `Hai nguồn cùng pha, cùng biên độ. Điểm M trên trung trực của ${S12}, cách mỗi nguồn một đoạn ${v('d')}, dao động ngược pha với nguồn khi`,
+      o: [`${v('d')} = (${K} + ${H})${L}`, `${v('d')} = ${K}${L}`, `${v('d')} = 2${K}${L}`, `${v('d')} = ${K}${fr(L, '4')}`], a: 0,
+      e: `Ngược pha khi 2π${v('d')}/${L} = (2${K} + 1)π ⇒ ${v('d')} = (${K} + ${H})${L}.` },
+
+    { t: 'kc', q: `Trên đoạn thẳng ${S12}, khoảng cách giữa hai cực đại (hoặc hai cực tiểu) liên tiếp bằng`,
+      o: [fr(L, '2'), L, fr(L, '4'), '2' + L], a: 0,
+      e: `Trên ${S12}, các cực đại và cực tiểu xen kẽ, cách đều nhau như nút và bụng sóng dừng: hai cực đại liên tiếp cách nhau ${fr(L, '2')}.` },
+    { t: 'kc', q: `Trên đoạn thẳng ${S12}, khoảng cách giữa một cực đại và một cực tiểu liền kề bằng`,
+      o: [fr(L, '4'), fr(L, '2'), L, fr('3' + L, '4')], a: 0,
+      e: `Cực tiểu nằm chính giữa hai cực đại liên tiếp, nên cách cực đại ${fr(L, '2')} : 2 = ${fr(L, '4')}.` },
+    { t: 'kc', ext: true, q: `Hai nguồn cùng pha cách nhau ${S12} = ${v('l')}. Số điểm cực đại trên đoạn ${S12} (không tính hai nguồn) là số giá trị nguyên của ${K} thỏa mãn`,
+      o: [`−${fr(v('l'), L)} < ${K} < ${fr(v('l'), L)}`, `−${fr(v('l'), L)} − ${H} < ${K} < ${fr(v('l'), L)} − ${H}`, `−${fr('2' + v('l'), L)} < ${K} < ${fr('2' + v('l'), L)}`, `0 < ${K} < ${fr(v('l'), L)}`], a: 0,
+      e: `Điểm M trên ${S12} có −${v('l')} < ${dd} < ${v('l')}; thay ${dd} = ${K}${L} ⇒ −${v('l')}/${L} < ${K} < ${v('l')}/${L}.` },
+    { t: 'kc', ext: true, q: `Hai nguồn cùng pha cách nhau ${S12} = ${v('l')}. Số điểm cực tiểu trên đoạn ${S12} là số giá trị nguyên của ${K} thỏa mãn`,
+      o: [`−${fr(v('l'), L)} − ${H} < ${K} < ${fr(v('l'), L)} − ${H}`, `−${fr(v('l'), L)} < ${K} < ${fr(v('l'), L)}`, `−${fr(v('l'), L)} + ${H} < ${K} < ${fr(v('l'), L)} + ${H}`, `−${fr(v('l'), '2' + L)} < ${K} < ${fr(v('l'), '2' + L)}`], a: 0,
+      e: `Thay ${dd} = (${K} + ${H})${L} vào −${v('l')} < ${dd} < ${v('l')} ⇒ −${v('l')}/${L} − ${H} < ${K} < ${v('l')}/${L} − ${H}.` },
+
+    { t: 'np', ext: true, q: `Hai nguồn kết hợp dao động ngược pha. Điểm M dao động với biên độ cực đại khi`,
+      o: [`${dd} = (${K} + ${H})${L}`, `${dd} = ${K}${L}`, `${dd} = 2${K}${L}`, `${dd} = ${K}${fr(L, '4')}`], a: 0,
+      e: `Hai nguồn đã lệch nhau π, nên hiệu đường đi phải bù thêm nửa bước sóng: ${dd} = (${K} + ${H})${L}.` },
+    { t: 'np', ext: true, q: `Hai nguồn kết hợp dao động ngược pha. Điểm M dao động với biên độ cực tiểu khi`,
+      o: [`${dd} = ${K}${L}`, `${dd} = (${K} + ${H})${L}`, `${dd} = (2${K} + 1)${L}`, `${d2} + ${d1} = ${K}${L}`], a: 0,
+      e: `Với hai nguồn ngược pha, điều kiện cực đại và cực tiểu đổi chỗ cho nhau so với hai nguồn cùng pha: cực tiểu khi ${dd} = ${K}${L}.` },
+    { t: 'np', ext: true, q: `Hai nguồn kết hợp ngược pha, cùng biên độ. Các điểm nằm trên đường trung trực của ${S12}`,
+      o: ['đứng yên (cực tiểu).', 'dao động với biên độ cực đại.', 'dao động với biên độ bằng một nửa biên độ cực đại.', 'dao động cùng pha với nguồn S<sub>1</sub>.'], a: 0,
+      e: `Trên trung trực ${dd} = 0 = 0·${L}, đúng điều kiện cực tiểu của hai nguồn ngược pha.` },
+
+    { t: 'ya', q: `Trong thí nghiệm Y-âng, gọi ${a_} là khoảng cách hai khe, ${Dd} là khoảng cách từ hai khe đến màn, ${L} là bước sóng. Khoảng vân ${iD} được tính bằng`,
+      o: [`${iD} = ${fr(L + Dd, a_)}`, `${iD} = ${fr(L + a_, Dd)}`, `${iD} = ${fr(a_ + Dd, L)}`, `${iD} = ${fr(Dd, L + a_)}`], a: 0,
+      e: `Khoảng vân là khoảng cách giữa hai vân sáng (hoặc hai vân tối) liên tiếp: ${iD} = ${L}${Dd}/${a_}.` },
+    { t: 'ya', q: `Trong thí nghiệm Y-âng, vị trí vân sáng trên màn (tính từ vân trung tâm) là`,
+      o: [`${x} = ${K}${fr(L + Dd, a_)}`, `${x} = (${K} + ${H})${fr(L + Dd, a_)}`, `${x} = ${K}${fr(L + a_, Dd)}`, `${x} = 2${K}${fr(L + Dd, a_)}`], a: 0,
+      e: `Vân sáng ứng với hiệu đường đi ${K}${L}, nằm tại ${x} = ${K}${iD} = ${K}${L}${Dd}/${a_}.` },
+    { t: 'ya', q: `Trong thí nghiệm Y-âng, vị trí vân tối trên màn là`,
+      o: [`${x} = (${K} + ${H})${fr(L + Dd, a_)}`, `${x} = ${K}${fr(L + Dd, a_)}`, `${x} = (${K} + ${H})${fr(L + a_, Dd)}`, `${x} = ${K}${fr(L + Dd, '2' + a_)}`], a: 0,
+      e: `Vân tối ứng với hiệu đường đi (${K} + ${H})${L}, nằm tại ${x} = (${K} + ${H})${iD}.` },
+    { t: 'ya', q: `Trong thí nghiệm Y-âng, khoảng cách giữa một vân sáng và một vân tối liền kề bằng`,
+      o: [fr(iD, '2'), iD, '2' + iD, fr(iD, '4')], a: 0,
+      e: `Vân tối nằm chính giữa hai vân sáng liên tiếp nên cách vân sáng ${fr(iD, '2')}.` },
+    { t: 'ya', q: 'Trong thí nghiệm Y-âng, tại vị trí vân trung tâm (x = 0) trên màn quan sát được',
+      o: ['vân sáng.', 'vân tối.', 'vân sáng hoặc tối tùy bước sóng.', 'không có vân.'], a: 0,
+      e: 'Tại vân trung tâm hiệu đường đi từ hai khe bằng 0 ⇒ luôn là vân sáng (bậc 0).' },
+    { t: 'ya', q: 'Thí nghiệm giao thoa ánh sáng của Y-âng là bằng chứng thực nghiệm chứng tỏ',
+      o: ['ánh sáng có tính chất sóng.', 'ánh sáng là dòng hạt phôtôn.', 'ánh sáng truyền thẳng.', 'ánh sáng không bị khúc xạ.'], a: 0,
+      e: 'Chỉ sóng mới giao thoa được, nên hệ vân sáng – tối chứng tỏ ánh sáng có tính chất sóng.' },
+    { t: 'ya', q: `Trong thí nghiệm Y-âng, nếu tăng khoảng cách ${Dd} từ hai khe đến màn và giữ nguyên các đại lượng khác thì khoảng vân`,
+      o: ['tăng.', 'giảm.', 'không đổi.', 'lúc đầu tăng sau đó giảm.'], a: 0,
+      e: `${iD} = ${L}${Dd}/${a_} tỉ lệ thuận với ${Dd} nên khoảng vân tăng.` }
+  ];
+
+  // ---------- Bảng công thức ----------
+  const SHEET = [
+    { h: 'Hai nguồn cùng pha', items: [
+      ['Cực đại (biên độ 2A)', `${dd} = ${K}${L}`],
+      ['Cực tiểu (đứng yên)', `${dd} = (${K} + ${H})${L}`],
+      ['Trung trực của S₁S₂', 'Cực đại bậc 0'] ] },
+    { h: 'Hai nguồn ngược pha (mở rộng)', items: [
+      ['Cực đại', `${dd} = (${K} + ${H})${L}`],
+      ['Cực tiểu', `${dd} = ${K}${L}`],
+      ['Trung trực của S₁S₂', 'Cực tiểu'] ] },
+    { h: 'Biên độ và phương trình (mở rộng)', items: [
+      ['Biên độ tại M (cùng pha)', `${A}<sub>M</sub> = 2${A}|cos${fr('π(' + dd + ')', L)}|`],
+      ['Phương trình tại M', `${v('u')}<sub>M</sub> = 2${A}cos${fr('π(' + dd + ')', L)}cos(ω${v('t')} − ${fr('π(' + d1 + ' + ' + d2 + ')', L)})`],
+      ['Hai biên độ khác nhau', `${A}<sub>max</sub> = ${A}<sub>1</sub> + ${A}<sub>2</sub>; ${A}<sub>min</sub> = |${A}<sub>1</sub> − ${A}<sub>2</sub>|`] ] },
+    { h: 'Trên đoạn S₁S₂ = l', items: [
+      ['Hai cực đại (cực tiểu) liên tiếp', fr(L, '2')],
+      ['Cực đại – cực tiểu liền kề', fr(L, '4')],
+      ['Số cực đại (cùng pha)', `−${fr(v('l'), L)} < ${K} < ${fr(v('l'), L)}`] ] },
+    { h: 'Giao thoa ánh sáng – Y-âng', items: [
+      ['Khoảng vân', `${iD} = ${fr(L + Dd, a_)}`],
+      ['Vân sáng', `${x} = ${K}${iD}`],
+      ['Vân tối', `${x} = (${K} + ${H})${iD}`] ] },
+    { h: 'Đại lượng sóng', items: [
+      ['Bước sóng', `${L} = ${v('v')}${v('T')} = ${fr(v('v'), v('f'))}`],
+      ['Điều kiện giao thoa', 'Hai nguồn kết hợp: cùng phương, cùng tần số, hiệu số pha không đổi'] ] }
+  ];
+  document.getElementById('sheet').innerHTML = SHEET.map(b =>
+    `<div class="card fbox"><h3>${b.h}</h3><ul>${b.items.map(([l, f]) => `<li><span>${l}</span><div>${f}</div></li>`).join('')}</ul></div>`).join('');
+
+  // ---------- Trạng thái ----------
+  const $ = id => document.getElementById(id);
+  const topicSel = $('topic');
+  topicSel.innerHTML = `<option value="all">Tất cả chủ đề (${Q.length})</option>` +
+    Object.entries(T).map(([k, n]) => `<option value="${k}">${n} (${Q.filter(q => q.t === k).length})</option>`).join('') +
+    `<option value="core">Chỉ kiến thức SGK (${Q.filter(q => !q.ext).length})</option>`;
+
+  let mode = 'practice';
+  let S = null;
+  let tick = null;
+
+  const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  function build(ids) {
+    clearInterval(tick);
+    S = {
+      items: ids.map(qi => ({ qi, perm: shuffle([0, 1, 2, 3]), pick: null })),
+      cur: 0, submitted: false, mode,
+      limit: mode === 'exam' ? ids.length * 45 : 0, start: Date.now()
+    };
+    $('result').hidden = true; $('qcard').hidden = false;
+    $('submit').hidden = mode !== 'exam';
+    if (mode === 'exam') tick = setInterval(() => { renderTimer(); if (left() <= 0) submit(); }, 500);
+    render();
+  }
+  function newQuiz() {
+    const tp = topicSel.value;
+    let pool = Q.map((q, i) => i).filter(i => tp === 'all' || (tp === 'core' ? !Q[i].ext : Q[i].t === tp));
+    const n = +$('count').value;
+    pool = shuffle(pool);
+    if (n) pool = pool.slice(0, n);
+    build(pool);
+  }
+  const left = () => Math.max(0, S.limit - Math.floor((Date.now() - S.start) / 1000));
+  const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const isRight = it => it.pick !== null && it.perm[it.pick] === Q[it.qi].a;
+  const revealed = it => S.submitted || (S.mode === 'practice' && it.pick !== null);
+
+  function renderTimer() {
+    const el = $('timer'); if (!el) return;
+    const s = left(); el.textContent = '⏱ ' + fmt(s); el.classList.toggle('low', s <= 60);
+  }
+
+  function render() {
+    const it = S.items[S.cur], q = Q[it.qi], show = revealed(it);
+    const letters = 'ABCD';
+    let html = `<div class="qmeta"><span class="qnum">Câu ${S.cur + 1}/${S.items.length}</span><span class="tag">${T[q.t]}</span>${q.ext ? '<span class="tag ext">Mở rộng</span>' : ''}${S.mode === 'exam' && !S.submitted ? '<span class="timer" id="timer"></span>' : ''}</div>
+      <p class="stem">${q.q}</p><div class="opts" role="group" aria-label="Các phương án">`;
+    it.perm.forEach((oi, di) => {
+      let cls = 'opt';
+      if (show) { if (oi === q.a) cls += ' right'; else if (di === it.pick) cls += ' wrong'; }
+      else if (di === it.pick) cls += ' sel';
+      html += `<button type="button" class="${cls}" data-i="${di}" ${show ? 'disabled' : ''}><span class="k">${letters[di]}</span><span>${q.o[oi]}</span></button>`;
+    });
+    html += '</div>';
+    if (show) {
+      const ok = isRight(it);
+      const head = it.pick === null ? 'Chưa trả lời' : ok ? 'Chính xác!' : `Chưa đúng – đáp án ${letters[it.perm.indexOf(q.a)]}`;
+      html += `<div class="explain ${ok ? 'ok' : 'bad'}"><strong>${head}</strong>${q.e}</div>`;
+    }
+    const last = S.cur === S.items.length - 1;
+    html += `<div class="nav"><button type="button" class="btn ghost" id="prev" ${S.cur === 0 ? 'disabled' : ''}>← Câu trước</button>
+      <span class="hint">${S.mode === 'practice' ? 'Chọn để xem đáp án ngay' : S.submitted ? 'Đang xem lại bài' : 'Có thể đổi đáp án trước khi nộp'}</span>
+      ${last && !S.submitted && S.mode === 'exam' ? '<button type="button" class="btn" id="fin">Nộp bài</button>'
+        : last && S.mode === 'practice' && S.items.every(i => i.pick !== null) ? '<button type="button" class="btn" id="fin">Xem kết quả</button>'
+        : `<button type="button" class="btn" id="next" ${last ? 'disabled' : ''}>Câu sau →</button>`}</div>`;
+    $('qcard').innerHTML = html;
+    $('qcard').querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => choose(+b.dataset.i)));
+    $('prev').onclick = () => go(S.cur - 1);
+    if ($('next')) $('next').onclick = () => go(S.cur + 1);
+    if ($('fin')) $('fin').onclick = () => S.mode === 'exam' ? submit() : showResult();
+    renderTimer();
+    renderSide();
+  }
+
+  function renderSide() {
+    const n = S.items.length;
+    const done = S.items.filter(i => i.pick !== null).length;
+    const graded = S.submitted || S.mode === 'practice';
+    const ok = graded ? S.items.filter(isRight).length : 0;
+    const no = graded ? S.items.filter(i => i.pick !== null && !isRight(i)).length : 0;
+    $('sc').textContent = graded ? (Math.round(ok / n * 100) / 10).toString().replace('.', ',') : '–';
+    $('prog').style.width = (done / n * 100) + '%';
+    $('stDone').textContent = `${done}/${n}`;
+    $('stOk').textContent = graded ? ok : '–';
+    $('stNo').textContent = graded ? no : '–';
+    $('grid').innerHTML = S.items.map((it, i) => {
+      let c = '';
+      if (revealed(it) && it.pick !== null) c = isRight(it) ? 'ok' : 'no';
+      else if (revealed(it)) c = 'no';
+      else if (it.pick !== null) c = 'ans';
+      return `<button type="button" class="${c}${i === S.cur ? ' cur' : ''}" data-i="${i}" aria-label="Câu ${i + 1}">${i + 1}</button>`;
+    }).join('');
+    $('grid').querySelectorAll('button').forEach(b => b.onclick = () => { $('result').hidden = true; $('qcard').hidden = false; go(+b.dataset.i); });
+    $('submit').hidden = S.mode !== 'exam' || S.submitted;
+  }
+
+  function choose(di) {
+    const it = S.items[S.cur];
+    if (revealed(it)) return;
+    it.pick = di;
+    render();
+  }
+  function go(i) { if (i < 0 || i >= S.items.length) return; S.cur = i; render(); }
+
+  function submit() {
+    if (S.submitted) return;
+    S.submitted = true; clearInterval(tick);
+    S.used = Math.floor((Date.now() - S.start) / 1000);
+    showResult();
+  }
+
+  function showResult() {
+    const n = S.items.length, ok = S.items.filter(isRight).length;
+    const score = Math.round(ok / n * 100) / 10;
+    const verdict = score >= 9 ? 'Xuất sắc! Em đã nắm rất chắc lý thuyết giao thoa sóng.'
+      : score >= 7 ? 'Khá tốt. Xem lại các câu sai để hoàn thiện nhé.'
+      : score >= 5 ? 'Đạt yêu cầu. Nên ôn lại bảng công thức bên dưới rồi làm lại.'
+      : 'Cần ôn thêm. Hãy đọc kĩ bảng công thức và luyện tập lại các câu sai.';
+    const rows = Object.keys(T).map(k => {
+      const its = S.items.filter(i => Q[i.qi].t === k); if (!its.length) return '';
+      const c = its.filter(isRight).length;
+      return `<div class="trow"><span>${T[k]}</span><div class="meter"><i style="width:${c / its.length * 100}%"></i></div><span>${c}/${its.length}</span></div>`;
+    }).join('');
+    const wrong = S.items.filter(i => !isRight(i)).map(i => i.qi);
+    $('result').innerHTML = `<h2>${score.toString().replace('.', ',')} điểm – đúng ${ok}/${n} câu</h2>
+      <p class="verdict">${verdict}${S.used != null ? ` Thời gian làm bài: ${fmt(S.used)}.` : ''}</p>
+      <div class="topics">${rows}</div>
+      <div class="actions">
+        <button type="button" class="btn" id="review">Xem lại từng câu</button>
+        ${wrong.length ? `<button type="button" class="btn ghost" id="redo">Làm lại ${wrong.length} câu sai</button>` : ''}
+        <button type="button" class="btn ghost" id="again">Làm đề mới</button>
+      </div>`;
+    $('qcard').hidden = true; $('result').hidden = false;
+    $('review').onclick = () => { $('result').hidden = true; $('qcard').hidden = false; go(0); };
+    if ($('redo')) $('redo').onclick = () => build(shuffle(wrong));
+    $('again').onclick = newQuiz;
+    renderSide();
+  }
+
+  // ---------- Sự kiện ----------
+  $('mode').querySelectorAll('button').forEach(b => b.onclick = () => {
+    mode = b.dataset.mode;
+    $('mode').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    newQuiz();
+  });
+  topicSel.onchange = newQuiz;
+  $('count').onchange = newQuiz;
+  $('newQuiz').onclick = newQuiz;
+  $('submit').onclick = submit;
+  document.addEventListener('keydown', e => {
+    if (!S || $('qcard').hidden || e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    const map = { A: 0, B: 1, C: 2, D: 3, 1: 0, 2: 1, 3: 2, 4: 3 };
+    if (k in map) choose(map[k]);
+    else if (e.key === 'ArrowRight') go(S.cur + 1);
+    else if (e.key === 'ArrowLeft') go(S.cur - 1);
+  });
+
+  newQuiz();
+
+  // ---------- Chậu sóng: vân giao thoa hai nguồn ----------
+  const cv = $('tank'), ctx = cv.getContext('2d');
+  const off = document.createElement('canvas'), octx = off.getContext('2d');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SC = 4;
+  let W = 0, Hh = 0, img = null;
+  function size() {
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width); cv.height = Math.round(r.height);
+    W = Math.ceil(cv.width / SC); Hh = Math.ceil(cv.height / SC);
+    off.width = W; off.height = Hh; img = octx.createImageData(W, Hh);
+  }
+  function draw(t) {
+    if (!img) return;
+    const rgb = getComputedStyle(document.documentElement).getPropertyValue('--wave-rgb').split(',').map(Number);
+    const sx1 = W * 0.70, sx2 = W * 0.84, sy = Hh * 0.5;
+    const kw = 2 * Math.PI / (14 / SC * 4), ph = t * 0.003;
+    const d = img.data;
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+      const r1 = Math.hypot(x - sx1, y - sy), r2 = Math.hypot(x - sx2, y - sy);
+      const s = Math.cos(kw * r1 - ph) + Math.cos(kw * r2 - ph);
+      const fade = Math.min(1, 1.6 * x / W) * Math.max(0, 1 - Math.min(r1, r2) / (W * 0.9));
+      const p = (y * W + x) * 4;
+      d[p] = rgb[0]; d[p + 1] = rgb[1]; d[p + 2] = rgb[2];
+      d[p + 3] = Math.max(0, s) * 70 * fade;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+    ctx.fillStyle = `rgb(${rgb})`;
+    [sx1, sx2].forEach(sx => { ctx.beginPath(); ctx.arc(sx * SC, sy * SC, 5, 0, 7); ctx.fill(); });
+  }
+  size(); draw(0);
+  window.addEventListener('resize', () => { size(); draw(performance.now()); });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => draw(performance.now()));
+  if (!still) {
+    let lastT = 0;
+    const loop = t => { if (t - lastT > 40) { draw(t); lastT = t; } requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
