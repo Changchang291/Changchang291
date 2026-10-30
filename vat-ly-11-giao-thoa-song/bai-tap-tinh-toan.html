@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bài tập Giao thoa sóng</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: "chậu sóng" — dải đầu trang là mô phỏng vân giao thoa của hai nguồn S1, S2; bên dưới là thẻ câu hỏi + cột bảng điều khiển (tiến độ, điểm), cuối trang là bảng công thức. */
+:root {
+  --bg: #eaf3f4;
+  --surface: #ffffff;
+  --surface-2: #f3f8f9;
+  --line: #cfe0e3;
+  --ink: #0d2a33;
+  --muted: #557079;
+  --accent: #0a7c86;
+  --accent-ink: #ffffff;
+  --crest: #d9681a;
+  --ok: #1d8a4e;
+  --ok-bg: #e2f5ea;
+  --bad: #c93c3c;
+  --bad-bg: #fbe7e7;
+  --wave-rgb: 10, 124, 134;
+  --hero-bg: #dceef0;
+  --font-display: "Lexend", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #08171c; --surface: #0f252c; --surface-2: #133039; --line: #21444e;
+    --ink: #e3f1f3; --muted: #8fb0b7; --accent: #3cc6cf; --accent-ink: #04262a;
+    --crest: #f39a4a; --ok: #4fd18b; --ok-bg: #12352a; --bad: #ff7b7b; --bad-bg: #3a1a1d;
+    --wave-rgb: 60, 198, 207; --hero-bg: #0b2026;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #08171c; --surface: #0f252c; --surface-2: #133039; --line: #21444e;
+  --ink: #e3f1f3; --muted: #8fb0b7; --accent: #3cc6cf; --accent-ink: #04262a;
+  --crest: #f39a4a; --ok: #4fd18b; --ok-bg: #12352a; --bad: #ff7b7b; --bad-bg: #3a1a1d;
+  --wave-rgb: 60, 198, 207; --hero-bg: #0b2026;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--crest); outline-offset: 2px; }
+sub, sup { font-size: .7em; line-height: 0; }
+i.v { font-family: "Times New Roman", Georgia, serif; font-size: 1.08em; }
+.fr { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: .92em; margin: 0 .1em; line-height: 1.15; }
+.fr > span { padding: 0 .2em; }
+.fr > span:first-child { border-bottom: 1.2px solid currentColor; }
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- Hero ---------- */
+.hero { position: relative; background: var(--hero-bg); border-bottom: 1px solid var(--line); overflow: hidden; }
+#tank { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero .wrap { position: relative; padding-block: 28px 30px; display: grid; gap: 10px; }
+.team {
+  justify-self: start; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 14px 5px 6px; font-weight: 700; font-size: .9rem; letter-spacing: .02em;
+}
+.team b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-family: var(--font-display); font-size: .8rem; }
+.hero h1 { margin: 4px 0 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.8rem, 4.6vw, 3rem); line-height: 1.1; text-wrap: balance; max-width: 18ch; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero p { margin: 0; color: var(--muted); max-width: 60ch; font-weight: 500; }
+.hero p strong { color: var(--ink); }
+
+/* ---------- Settings bar ---------- */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; padding-block: 18px 6px; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+select {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 10px; min-width: 0; max-width: 100%;
+}
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.btn {
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  border-radius: 10px; padding: 9px 16px; font-weight: 700;
+}
+.btn.ghost { background: var(--surface); color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- Main grid ---------- */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; padding-block: 12px 28px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.qcard { padding: 22px clamp(16px, 3vw, 28px) 22px; display: grid; gap: 16px; min-width: 0; }
+.qmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.qnum { font-family: var(--font-display); color: var(--ink); font-size: 1rem; }
+.tag { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: .78rem; }
+.tag.ext { color: var(--crest); border-color: color-mix(in srgb, var(--crest) 45%, var(--line)); }
+.timer { margin-left: auto; font-variant-numeric: tabular-nums; font-family: var(--font-display); color: var(--ink); }
+.timer.low { color: var(--bad); }
+.stem { margin: 0; font-size: 1.12rem; font-weight: 600; line-height: 1.6; }
+.opts { display: grid; gap: 10px; }
+.opt {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left;
+  background: var(--surface-2); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px 10px 10px;
+  transition: border-color .15s, background .15s;
+}
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt .k { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); font-family: var(--font-display); font-weight: 600; background: var(--surface); }
+.opt.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.opt.sel .k { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.opt.right { border-color: var(--ok); background: var(--ok-bg); }
+.opt.right .k { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+.opt.wrong .k { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+.opt:disabled { cursor: default; }
+.explain { border-left: 4px solid var(--accent); background: var(--surface-2); border-radius: 0 10px 10px 0; padding: 10px 14px; font-size: .96rem; }
+.explain strong { display: block; margin-bottom: 2px; }
+.explain.ok strong { color: var(--ok); }
+.explain.bad strong { color: var(--bad); }
+.nav { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.hint { font-size: .8rem; color: var(--muted); }
+
+/* ---------- Side panel ---------- */
+.side { display: grid; gap: 16px; }
+.panel { padding: 16px; display: grid; gap: 12px; }
+.panel h2 { margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
+.score { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-display); }
+.score .big { font-size: 2.4rem; font-weight: 700; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.score .of { color: var(--muted); font-weight: 600; }
+.meter { height: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: .78rem; color: var(--muted); text-align: center; }
+.stats b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stats .g b { color: var(--ok); } .stats .r b { color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+.grid button {
+  aspect-ratio: 1; max-width: 100%; border: 1.5px solid var(--line); background: var(--surface-2); border-radius: 9px;
+  font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; padding: 0;
+}
+.grid button.ans { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); }
+.grid button.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.grid button.no { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.grid button.cur { outline: 2.5px solid var(--crest); outline-offset: 1px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .74rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid var(--line); }
+.legend .l-ok::before { background: var(--ok-bg); border-color: var(--ok); }
+.legend .l-no::before { background: var(--bad-bg); border-color: var(--bad); }
+.legend .l-ans::before { border-color: var(--accent); }
+
+/* ---------- Result ---------- */
+.result { padding: 22px clamp(16px, 3vw, 28px); display: grid; gap: 16px; }
+.result h2 { margin: 0; font-family: var(--font-display); font-size: 1.5rem; }
+.result .verdict { color: var(--muted); margin: 0; }
+.topics { display: grid; gap: 8px; }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) 120px 48px; gap: 10px; align-items: center; font-size: .92rem; }
+.trow .meter i { background: var(--ok); }
+.trow span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- Formula sheet ---------- */
+.sheet { padding-block: 8px 32px; }
+.sheet h2 { font-family: var(--font-display); font-size: 1.35rem; margin: 0 0 4px; }
+.sheet > p { margin: 0 0 14px; color: var(--muted); }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.fbox { padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.fbox h3 { margin: 0; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.fbox ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.fbox li { display: grid; gap: 2px; }
+.fbox li span { font-size: .86rem; color: var(--muted); }
+.fbox li div { font-size: 1.05rem; }
+footer { border-top: 1px solid var(--line); }
+footer .wrap { padding-block: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .88rem; }
+footer strong { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>
+.xlink { justify-self: start; color: var(--accent); font-weight: 700; text-decoration: none; border-bottom: 2px solid currentColor; font-size: .92rem; }
+.xlink:hover { color: var(--crest); }
+.steps { margin: 6px 0 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.steps li { padding-left: 2px; }
+.steps b { color: var(--accent); }
+.hintbox { border: 1px dashed var(--crest); border-radius: 10px; padding: 8px 12px; font-size: .95rem; background: var(--surface-2); }
+.hintbox strong { color: var(--crest); margin-right: 6px; }
+.stem { font-weight: 500; }
+.opt span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+.fbox li div { font-size: 1rem; }
+.fbox ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: .95rem; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="tank" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <span class="team"><b>KA</b>Team Vật lý Kỳ Anh</span>
+    <h1>Bài tập tính toán <em>Giao thoa sóng</em></h1>
+    <p><strong>Vật lí 11 – Kết nối tri thức, Bài 12.</strong> Mỗi lần bấm "Đề mới", số liệu được sinh ngẫu nhiên nên em có thể luyện mãi không trùng đề. Chọn đáp án để xem lời giải từng bước. Dạng gắn nhãn "Mở rộng" là bài nâng cao ngoài SGK.</p>
+    <a class="xlink" href="https://claude.ai/artifact/Bd8Lxt4yV4CsHe7grog84M" target="_blank" rel="noopener">← Sang trang trắc nghiệm lý thuyết</a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="bar">
+      <div class="field">
+        <label for="topic">Dạng bài</label>
+        <select id="topic"></select>
+      </div>
+      <div class="field">
+        <label for="count">Số bài</label>
+        <select id="count">
+          <option value="5">5 bài</option>
+          <option value="10" selected>10 bài</option>
+          <option value="15">15 bài</option>
+        </select>
+      </div>
+      <button type="button" class="btn" id="newQuiz">Đề mới</button>
+    </div>
+
+    <div class="main">
+      <section class="card qcard" id="qcard" aria-live="polite"></section>
+      <section class="card result" id="result" hidden></section>
+
+      <aside class="side">
+        <div class="card panel">
+          <h2>Kết quả</h2>
+          <div class="score"><span class="big" id="sc">0</span><span class="of">/ 10 điểm</span></div>
+          <div class="meter"><i id="prog"></i></div>
+          <div class="stats">
+            <div><b id="stDone">0/0</b>đã làm</div>
+            <div class="g"><b id="stOk">0</b>đúng</div>
+            <div class="r"><b id="stNo">0</b>sai</div>
+          </div>
+        </div>
+        <div class="card panel">
+          <h2>Danh sách bài</h2>
+          <div class="grid" id="grid"></div>
+          <div class="legend"><span class="l-ok">Đúng</span><span class="l-no">Sai</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <section class="wrap sheet" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">Phương pháp giải từng dạng</h2>
+    <p>Kí hiệu: <i class="v">d</i><sub>1</sub>, <i class="v">d</i><sub>2</sub> là khoảng cách từ M đến hai nguồn; <i class="v">l</i> = S<sub>1</sub>S<sub>2</sub>; <i class="v">k</i> là số nguyên. Mẹo đơn vị Y-âng: <i class="v">λ</i> (μm) × <i class="v">D</i> (m) : <i class="v">a</i> (mm) cho <i class="v">i</i> (mm).</p>
+    <div class="fgrid" id="sheet"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Biên soạn: <strong>Team Vật lý Kỳ Anh</strong></span>
+    <span>Phím tắt: A–D hoặc 1–4 để chọn, ← → để chuyển bài</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // ---------- Kí hiệu & tiện ích ----------
+  const v = s => `<i class="v">${s}</i>`;
+  const fr = (a, b) => `<span class="fr"><span>${a}</span><span>${b}</span></span>`;
+  const d1s = v('d') + '<sub>1</sub>', d2s = v('d') + '<sub>2</sub>';
+  const L = v('λ'), K = v('k'), A_ = v('A'), iD = v('i'), Dd = v('D'), a_ = v('a'), x_ = v('x'), l_ = v('l');
+  const H = fr('1', '2');
+  const dd = `${d2s} − ${d1s}`;
+  const S12 = 'S<sub>1</sub>S<sub>2</sub>';
+
+  const R = arr => arr[Math.floor(Math.random() * arr.length)];
+  const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const rd = (x, d = 2) => Math.round(x * 10 ** d) / 10 ** d;
+  const N = (x, d = 2) => String(rd(x, d)).replace('.', ',').replace('-', '−');
+  const unit = (u, d = 2) => x => `${N(x, d)} ${u}`;
+  const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const nearInt = (x, eps = 0.05) => Math.abs(x - Math.round(x)) < eps;
+
+  // Ghép đáp án đúng với các phương án nhiễu (lấy từ lỗi sai thường gặp), bỏ trùng.
+  function choices(correct, wrongs, fmt) {
+    const out = [fmt(correct)], seen = new Set(out);
+    const add = w => { if (typeof w === 'number' && (!isFinite(w) || w < 0)) return; const s = fmt(w); if (!seen.has(s)) { seen.add(s); out.push(s); } };
+    for (const w of wrongs) { if (out.length === 4) break; add(w); }
+    for (let g = 0; out.length < 4 && g < 60; g++) add(typeof correct === 'number' && correct > 0 ? correct * (1 + R([-1, 1]) * R([.2, .25, .4, .5, .6])) : g + 1);
+    const perm = shuffle([0, 1, 2, 3]);
+    return { opts: perm.map(i => out[i]), a: perm.indexOf(0) };
+  }
+  // Bước sóng cho trực tiếp hoặc qua v và f.
+  function lamGiven(lam) {
+    if (Math.random() < .5) return { txt: `bước sóng ${N(lam)} cm`, step: null };
+    const f = R([10, 20, 25, 40, 50]), vv = rd(lam * f);
+    return { txt: `tần số ${f} Hz, tốc độ truyền sóng ${N(vv)} cm/s`, step: `Bước sóng: ${L} = ${fr(v('v'), v('f'))} = ${fr(N(vv), f)} = ${N(lam)} cm.` };
+  }
+  const P = (o) => o; // đánh dấu đối tượng bài toán cho dễ đọc
+
+  // ---------- Các dạng bài ----------
+  function gSong() {
+    const f = R([10, 20, 25, 40, 50]), lam = R([0.8, 1, 1.2, 1.5, 2, 2.4, 3, 4]), vv = rd(lam * f);
+    if (Math.random() < .5) {
+      const c = choices(lam, [2 * lam, lam / 2, 10 * lam], unit('cm'));
+      return P({ ...c, q: `Trên mặt nước, một nguồn dao động với tần số ${f} Hz tạo ra sóng lan truyền với tốc độ ${N(vv)} cm/s. Bước sóng của sóng này là`,
+        hint: `${L} = ${fr(v('v'), v('f'))} = ${v('v')}${v('T')}`,
+        sol: [`Áp dụng ${L} = ${fr(v('v'), v('f'))}.`, `${L} = ${fr(N(vv), f)} = <b>${N(lam)} cm</b>.`] });
+    }
+    const n = ri(3, 7), Ls = rd((n - 1) * lam / 2);
+    const c = choices(vv, [2 * Ls / n * f, Ls / (n - 1) * f, 4 * Ls / (n - 1) * f], unit('cm/s'));
+    return P({ ...c, q: `Trong thí nghiệm giao thoa sóng nước, hai nguồn kết hợp cùng pha dao động với tần số ${f} Hz. Trên đoạn ${S12}, khoảng cách giữa ${n} cực đại liên tiếp là ${N(Ls)} cm. Tốc độ truyền sóng trên mặt nước là`,
+      hint: `Trên ${S12}, hai cực đại liên tiếp cách nhau ${fr(L, '2')}; ${n} cực đại liên tiếp tạo thành ${n - 1} khoảng.`,
+      sol: [`${n} cực đại liên tiếp tạo thành ${n - 1} khoảng, mỗi khoảng ${fr(L, '2')}: ${N(Ls)} = ${n - 1}·${fr(L, '2')}.`, `⇒ ${L} = ${fr('2·' + N(Ls), n - 1)} = ${N(lam)} cm.`, `${v('v')} = ${L}${v('f')} = ${N(lam)}·${f} = <b>${N(vv)} cm/s</b>.`] });
+  }
+  function gKc() {
+    const f = R([10, 20, 25, 40, 50]), lam = R([0.8, 1, 1.2, 1.6, 2, 2.4, 3, 4]), vv = rd(lam * f);
+    const head = `Hai nguồn kết hợp cùng pha trên mặt nước dao động với tần số ${f} Hz, tốc độ truyền sóng ${N(vv)} cm/s.`;
+    const st = `${L} = ${fr(v('v'), v('f'))} = ${fr(N(vv), f)} = ${N(lam)} cm.`;
+    if (Math.random() < .5) {
+      const c = choices(lam / 4, [lam / 2, lam, 3 * lam / 4], unit('cm', 3));
+      return P({ ...c, q: `${head} Trên đoạn ${S12}, khoảng cách giữa một điểm cực đại và một điểm cực tiểu gần nhau nhất là`,
+        hint: `Trên ${S12}: cực đại – cực tiểu liền kề cách nhau ${fr(L, '4')}.`,
+        sol: [st, `Cực tiểu nằm chính giữa hai cực đại liên tiếp ⇒ khoảng cách = ${fr(L, '4')} = ${fr(N(lam), 4)} = <b>${N(lam / 4, 3)} cm</b>.`] });
+    }
+    const n = ri(3, 7), ans = (n - 1) * lam / 2;
+    const c = choices(ans, [n * lam / 2, (n - 1) * lam, (n - 1) * lam / 4], unit('cm', 3));
+    return P({ ...c, q: `${head} Trên đoạn ${S12}, khoảng cách giữa ${n} điểm cực tiểu liên tiếp là`,
+      hint: `Hai cực tiểu liên tiếp cách nhau ${fr(L, '2')}; ${n} cực tiểu liên tiếp có ${n - 1} khoảng.`,
+      sol: [st, `${n} cực tiểu liên tiếp có ${n - 1} khoảng ${fr(L, '2')}.`, `Khoảng cách = ${n - 1}·${fr(N(lam), 2)} = <b>${N(ans, 3)} cm</b>.`] });
+  }
+  function gLoai() {
+    const lam = R([1, 1.2, 1.5, 2, 2.5, 3, 4]), lg = lamGiven(lam), isMax = Math.random() < .5;
+    const k = ri(1, 4), Δ = rd(isMax ? k * lam : (k - 0.5) * lam);
+    let d1 = ri(10, 20) + R([0, .5]), d2 = rd(d1 + Δ);
+    if (Math.random() < .5) [d1, d2] = [d2, d1];
+    const correct = isMax ? `Cực đại bậc ${k}` : `Cực tiểu thứ ${k}`;
+    const wr = isMax ? [`Cực tiểu thứ ${k}`, `Cực tiểu thứ ${k + 1}`, `Cực đại bậc ${k + 1}`]
+                     : [`Cực đại bậc ${k}`, `Cực tiểu thứ ${k + 1}`, k > 1 ? `Cực đại bậc ${k - 1}` : `Cực đại bậc ${k + 1}`];
+    const c = choices(correct, wr, s => s);
+    return P({ ...c, q: `Trên mặt nước có hai nguồn kết hợp S<sub>1</sub>, S<sub>2</sub> dao động cùng pha; ${lg.txt}. Điểm M cách S<sub>1</sub>, S<sub>2</sub> lần lượt ${N(d1)} cm và ${N(d2)} cm. Kể từ đường trung trực của ${S12}, điểm M thuộc`,
+      hint: `Lập tỉ số ${fr('|' + dd + '|', L)}: số nguyên ⇒ cực đại; số bán nguyên ⇒ cực tiểu.`,
+      sol: [lg.step, `Hiệu đường đi: |${dd}| = |${N(d2)} − ${N(d1)}| = ${N(Δ)} cm.`, `Tỉ số: ${fr('|' + dd + '|', L)} = ${fr(N(Δ), N(lam))} = ${N(Δ / lam)}.`,
+        isMax ? `Tỉ số là số nguyên ${k} ⇒ |${dd}| = ${k}${L} ⇒ <b>cực đại bậc ${k}</b>.`
+              : `Tỉ số = ${k - 1} + ½ ⇒ |${dd}| = (${k - 1} + ½)${L} ⇒ <b>cực tiểu thứ ${k}</b> kể từ trung trực.`] });
+  }
+  function gSo(anti) {
+    const lam = R([1, 1.2, 1.5, 2, 2.4, 3]);
+    let l, r;
+    do { l = rd(lam * (ri(2, 6) + R([.2, .3, .4, .6, .7, .8])), 1); r = l / lam; } while (nearInt(r) || nearInt(r - .5));
+    const lg = lamGiven(lam), wantMax = Math.random() < .5;
+    const off = (wantMax !== !!anti) ? 0 : 0.5;
+    const kmin = Math.floor(-r - off) + 1, kmax = Math.ceil(r - off) - 1, cnt = kmax - kmin + 1;
+    const ineq = off ? `−${fr(l_, L)} − ½ < ${K} < ${fr(l_, L)} − ½` : `−${fr(l_, L)} < ${K} < ${fr(l_, L)}`;
+    const c = choices(cnt, [cnt + 1, cnt - 1, cnt + 2, cnt - 2], x => `${x}`);
+    return P({ ...c, ext: !!anti, q: `Trên mặt nước có hai nguồn kết hợp S<sub>1</sub>, S<sub>2</sub> cách nhau ${N(l)} cm, dao động ${anti ? 'ngược pha' : 'cùng pha'} theo phương thẳng đứng; ${lg.txt}. Số điểm dao động với biên độ ${wantMax ? 'cực đại' : 'cực tiểu'} trên đoạn ${S12} là`,
+      hint: `${anti ? 'Ngược pha' : 'Cùng pha'}: ${wantMax ? 'cực đại' : 'cực tiểu'} khi ${dd} = ${off ? `(${K} + ½)${L}` : K + L}; trên ${S12} thì −${l_} < ${dd} < ${l_}.`,
+      sol: [lg.step, `Hai nguồn ${anti ? 'ngược pha' : 'cùng pha'}: ${wantMax ? 'cực đại' : 'cực tiểu'} khi ${dd} = ${off ? `(${K} + ½)${L}` : K + L}.`,
+        `Điểm trên ${S12} có −${l_} < ${dd} < ${l_} ⇒ ${ineq}.`,
+        `Thay số: ${N(-r - off)} < ${K} < ${N(r - off)} ⇒ ${K} ∈ {${kmin}; …; ${kmax}}.`, `Có <b>${cnt} điểm</b>.`] });
+  }
+  function gVtoc() {
+    const f = R([10, 12, 15, 16, 20, 25, 30]), lam = R([1, 1.2, 1.5, 1.6, 2, 2.4, 3]), n = ri(0, 3), isMax = Math.random() < .5;
+    const mult = isMax ? n + 1 : n + 0.5, Δ = rd(mult * lam), d1 = ri(12, 22) + R([0, .5]), d2 = rd(d1 + Δ), vv = rd(lam * f);
+    const alt = (isMax ? [n, n + 0.5, n + 2] : [n + 1, n + 1.5, n - 0.5]).filter(m => m > 0);
+    const c = choices(vv, alt.map(m => Δ / m * f), unit('cm/s'));
+    return P({ ...c, q: `Trong thí nghiệm giao thoa sóng nước, hai nguồn S<sub>1</sub>, S<sub>2</sub> dao động cùng pha với tần số ${f} Hz. Tại điểm M cách S<sub>1</sub>, S<sub>2</sub> lần lượt ${N(d1)} cm và ${N(d2)} cm, sóng có biên độ ${isMax ? 'cực đại' : 'cực tiểu'}. Giữa M và đường trung trực của ${S12} ${n ? `có ${n} dãy cực đại khác` : 'không có dãy cực đại nào khác'}. Tốc độ truyền sóng trên mặt nước là`,
+      hint: `Đường trung trực là cực đại bậc 0. Đếm dãy để biết M là cực đại bậc mấy hoặc cực tiểu thứ mấy.`,
+      sol: [`Hiệu đường đi: ${dd} = ${N(d2)} − ${N(d1)} = ${N(Δ)} cm.`,
+        isMax ? `M là cực đại, giữa M và trung trực có ${n} dãy cực đại ⇒ M là cực đại bậc ${n + 1}: ${dd} = ${n + 1}${L}.`
+              : `M là cực tiểu, giữa M và trung trực có ${n} dãy cực đại ⇒ M là cực tiểu thứ ${n + 1}: ${dd} = (${n} + ½)${L}.`,
+        `⇒ ${L} = ${fr(N(Δ), N(mult))} = ${N(lam)} cm.`, `${v('v')} = ${L}${v('f')} = ${N(lam)}·${f} = <b>${N(vv)} cm/s</b>.`] });
+  }
+  function gBd() {
+    const R6 = [[1, 4, Math.SQRT1_2, '√2/2'], [3, 4, Math.SQRT1_2, '√2/2'], [1, 3, .5, '½'], [2, 3, .5, '½'], [1, 6, Math.sqrt(3) / 2, '√3/2'], [5, 6, Math.sqrt(3) / 2, '√3/2'], [1, 2, 0, '0']];
+    const [n, d, fac, facS] = R(R6), lam = R([1.2, 2.4, 4.8, 6, 12]), m = ri(0, 2), A = R([2, 3, 4, 5]);
+    const Δ = rd((m + n / d) * lam), d1 = ri(10, 20), d2 = rd(d1 + Δ), AM = 2 * A * fac;
+    const ratio = m ? `${m} + ${fr(n, d)}` : fr(n, d);
+    const c = choices(AM, [2 * A, A, 2 * A * Math.sqrt(1 - fac * fac), A * fac, 0], unit('mm'));
+    return P({ ...c, ext: true, q: `Hai nguồn kết hợp S<sub>1</sub>, S<sub>2</sub> trên mặt nước dao động cùng pha, cùng biên độ ${A} mm, bước sóng ${N(lam)} cm. Coi biên độ sóng không đổi khi truyền đi. Điểm M cách S<sub>1</sub>, S<sub>2</sub> lần lượt ${d1} cm và ${N(d2)} cm dao động với biên độ`,
+      hint: `${A_}<sub>M</sub> = 2${A_}|cos${fr('π(' + dd + ')', L)}|`,
+      sol: [`Công thức: ${A_}<sub>M</sub> = 2${A_}|cos${fr('π(' + dd + ')', L)}|.`, `${dd} = ${N(Δ)} cm ⇒ ${fr(dd, L)} = ${fr(N(Δ), N(lam))} = ${ratio}.`,
+        `${A_}<sub>M</sub> = 2·${A}·|cos(${m ? '(' + ratio + ')' : ratio}π)| = 2·${A}·${facS} ≈ <b>${N(AM)} mm</b>.`] });
+  }
+  function gTt() {
+    const lam = R([1, 1.2, 1.5, 2, 2.5, 3]), same = Math.random() < .6;
+    let l, h, d, dAlt;
+    for (;;) {
+      l = rd(lam * (ri(3, 8) + R([.2, .4, .6, .8])), 1); h = l / 2;
+      const kS = Math.floor(h / lam) + 1, kN = Math.floor(h / lam - .5) + 1;
+      const dS = kS * lam, dN = (kN + .5) * lam;
+      d = same ? dS : dN; dAlt = same ? dN : dS;
+      if (d - h > .05 * lam && dAlt - h > .05 * lam) break;
+    }
+    const om = x => Math.sqrt(x * x - h * h), OM = om(d);
+    const c = choices(OM, [d, om(d + lam), d - h, om(dAlt)], unit('cm'));
+    return P({ ...c, ext: true, q: `Hai nguồn kết hợp S<sub>1</sub>, S<sub>2</sub> trên mặt nước cách nhau ${N(l)} cm, dao động cùng pha với bước sóng ${N(lam)} cm. Gọi O là trung điểm của ${S12}. Điểm M trên đường trung trực của ${S12}, dao động ${same ? 'cùng pha' : 'ngược pha'} với hai nguồn và gần O nhất, cách O một đoạn`,
+      hint: `M trên trung trực cách mỗi nguồn ${v('d')}: ${v('u')}<sub>M</sub> = 2${A_}cos(ω${v('t')} − ${fr('2π' + v('d'), L)}); ${v('d')} phải lớn hơn ${fr(S12, '2')}.`,
+      sol: [`M cách mỗi nguồn ${v('d')} ⇒ ${v('u')}<sub>M</sub> = 2${A_}cos(ω${v('t')} − ${fr('2π' + v('d'), L)}).`,
+        same ? `Cùng pha với nguồn ⇔ ${v('d')} = ${K}${L} = ${N(lam)}${K}.` : `Ngược pha với nguồn ⇔ ${v('d')} = (${K} + ½)${L} = ${N(lam)}(${K} + ½).`,
+        `Điều kiện ${v('d')} > ${fr(S12, '2')} = ${N(h)} cm ⇒ ${v('d')} nhỏ nhất = ${N(d)} cm.`,
+        `OM = √(${v('d')}² − (${S12}/2)²) = √(${N(d)}² − ${N(h)}²) ≈ <b>${N(OM)} cm</b>.`] });
+  }
+
+  // ---------- Giao thoa ánh sáng Y-âng ----------
+  function yP() {
+    let lamU, a, D, i;
+    do { lamU = R([0.4, 0.45, 0.48, 0.5, 0.6, 0.64, 0.7, 0.72, 0.75]); a = R([0.5, 0.8, 1, 1.2, 1.5, 2]); D = R([1, 1.2, 1.5, 2, 2.4]); i = lamU * D / a; } while (Math.abs(rd(i, 3) - i) > 1e-9);
+    i = rd(i, 3);
+    return { lamU, a, D, i,
+      txt: `Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách giữa hai khe là ${N(a)} mm, khoảng cách từ hai khe đến màn là ${N(D)} m, ánh sáng đơn sắc có bước sóng ${N(lamU)} μm.`,
+      step: `Khoảng vân: ${iD} = ${fr(L + Dd, a_)} = ${fr(N(lamU) + '·' + N(D), N(a))} = ${N(i, 3)} mm.` };
+  }
+  const mm3 = unit('mm', 3);
+  function gYi() {
+    const y = yP();
+    const c = choices(y.i, [y.i * 10, y.i / 10, y.lamU * y.a / y.D, 2 * y.i], mm3);
+    return P({ ...c, q: `${y.txt} Khoảng vân trên màn là`, hint: `${iD} = ${fr(L + Dd, a_)}; λ (μm)·D (m) : a (mm) cho ${iD} (mm).`,
+      sol: [`${iD} = ${fr(L + Dd, a_)}. Với λ đo bằng μm, D bằng m, a bằng mm thì ${iD} tính ra mm.`, `${iD} = ${fr(N(y.lamU) + '·' + N(y.D), N(y.a))} = <b>${N(y.i, 3)} mm</b>.`] });
+  }
+  function gYx() {
+    const y = yP(), k = ri(2, 5), bright = Math.random() < .5, x = bright ? k * y.i : (k - .5) * y.i;
+    const wr = bright ? [(k - .5) * y.i, (k + .5) * y.i, (k + 1) * y.i] : [k * y.i, (k + .5) * y.i, (k - 1) * y.i];
+    const c = choices(x, wr, mm3);
+    return P({ ...c, q: `${y.txt} Vân ${bright ? 'sáng bậc ' + k : 'tối thứ ' + k} cách vân sáng trung tâm một đoạn`,
+      hint: `Vân sáng bậc ${K}: ${x_} = ${K}${iD}. Vân tối thứ ${K}: ${x_} = (${K} − ½)${iD}.`,
+      sol: [y.step, bright ? `Vân sáng bậc ${k}: ${x_} = ${k}${iD} = ${k}·${N(y.i, 3)} = <b>${N(x, 3)} mm</b>.` : `Vân tối thứ ${k}: ${x_} = (${k} − ½)${iD} = ${N(k - .5)}·${N(y.i, 3)} = <b>${N(x, 3)} mm</b>.`] });
+  }
+  function gYkc() {
+    const y = yP(), k1 = ri(1, 3), k2 = ri(k1 + 1, 6), dark = Math.random() < .5, same = Math.random() < .5;
+    const x1 = k1 * y.i, x2 = dark ? (k2 - .5) * y.i : k2 * y.i, ans = same ? x2 - x1 : x2 + x1;
+    const c = choices(ans, [same ? x2 + x1 : x2 - x1, ans + y.i, ans + (dark ? .5 * y.i : -y.i)], mm3);
+    const name2 = dark ? `vân tối thứ ${k2}` : `vân sáng bậc ${k2}`;
+    return P({ ...c, q: `${y.txt} Khoảng cách giữa vân sáng bậc ${k1} và ${name2} ở ${same ? 'cùng một phía' : 'hai phía'} so với vân trung tâm là`,
+      hint: `Tính vị trí từng vân; cùng phía thì trừ, khác phía thì cộng.`,
+      sol: [y.step, `Vân sáng bậc ${k1}: ${x_}<sub>1</sub> = ${k1}${iD} = ${N(x1, 3)} mm.`,
+        dark ? `Vân tối thứ ${k2}: ${x_}<sub>2</sub> = (${k2} − ½)${iD} = ${N(x2, 3)} mm.` : `Vân sáng bậc ${k2}: ${x_}<sub>2</sub> = ${k2}${iD} = ${N(x2, 3)} mm.`,
+        same ? `Cùng phía: Δ${x_} = ${x_}<sub>2</sub> − ${x_}<sub>1</sub> = <b>${N(ans, 3)} mm</b>.` : `Hai phía: Δ${x_} = ${x_}<sub>2</sub> + ${x_}<sub>1</sub> = <b>${N(ans, 3)} mm</b>.`] });
+  }
+  function gYlam() {
+    const y = yP(), n = ri(5, 11), Lw = rd((n - 1) * y.i, 3);
+    const lamOf = i => i * y.a / y.D;
+    const c = choices(y.lamU, [lamOf(Lw / n), lamOf(Lw / (n - 2)), lamOf(Lw / (n + 1))], unit('μm', 3));
+    return P({ ...c, q: `Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách giữa hai khe là ${N(y.a)} mm, khoảng cách từ hai khe đến màn là ${N(y.D)} m. Trên màn, khoảng cách giữa ${n} vân sáng liên tiếp là ${N(Lw, 3)} mm. Bước sóng ánh sáng dùng trong thí nghiệm là`,
+      hint: `${n} vân sáng liên tiếp có ${n - 1} khoảng vân; ${L} = ${fr(iD + a_, Dd)}.`,
+      sol: [`${n} vân sáng liên tiếp có ${n - 1} khoảng vân ⇒ ${iD} = ${fr(N(Lw, 3), n - 1)} = ${N(y.i, 3)} mm.`, `${L} = ${fr(iD + a_, Dd)} = ${fr(N(y.i, 3) + '·' + N(y.a), N(y.D))} = <b>${N(y.lamU, 3)} μm</b>.`] });
+  }
+  function gYloai() {
+    const y = yP(), k = ri(2, 6), bright = Math.random() < .5, x = bright ? k * y.i : (k - .5) * y.i;
+    const correct = bright ? `Vân sáng bậc ${k}` : `Vân tối thứ ${k}`;
+    const wr = bright ? [`Vân tối thứ ${k}`, `Vân tối thứ ${k + 1}`, `Vân sáng bậc ${k + 1}`] : [`Vân sáng bậc ${k}`, `Vân sáng bậc ${k - 1}`, `Vân tối thứ ${k + 1}`];
+    const c = choices(correct, wr, s => s);
+    return P({ ...c, q: `${y.txt} Tại điểm M trên màn cách vân sáng trung tâm ${N(x, 3)} mm có`,
+      hint: `Lập tỉ số ${fr(x_, iD)}: nguyên ⇒ vân sáng; bán nguyên ⇒ vân tối.`,
+      sol: [y.step, `${fr(x_, iD)} = ${fr(N(x, 3), N(y.i, 3))} = ${N(x / y.i)}.`,
+        bright ? `Tỉ số nguyên ⇒ <b>vân sáng bậc ${k}</b>.` : `Tỉ số = ${k - 1} + ½ ⇒ <b>vân tối thứ ${k}</b>.`] });
+  }
+  function gYso() {
+    let y, Lf, r;
+    do { y = yP(); Lf = rd(2 * y.i * (ri(3, 8) + R([.2, .3, .7, .8])), 2); r = Lf / (2 * y.i); } while (nearInt(r) || nearInt(r - .5));
+    const bright = Math.random() < .5, cnt = bright ? 2 * Math.floor(r) + 1 : 2 * Math.floor(r + .5);
+    const c = choices(cnt, [cnt + 1, cnt - 1, cnt + 2, cnt - 2], x => `${x}`);
+    return P({ ...c, q: `${y.txt} Bề rộng vùng giao thoa trên màn là ${N(Lf)} mm, vân trung tâm ở chính giữa. Số vân ${bright ? 'sáng' : 'tối'} quan sát được là`,
+      hint: `Lập tỉ số ${fr('L', '2' + iD)}. Số vân sáng = 2·[phần nguyên] + 1; số vân tối = 2·[phần nguyên của (tỉ số + ½)].`,
+      sol: [y.step, `${fr('L', '2' + iD)} = ${fr(N(Lf), '2·' + N(y.i, 3))} = ${N(r)}.`,
+        bright ? `Số vân sáng: 2·${Math.floor(r)} + 1 = <b>${cnt}</b>.` : `Số vân tối: 2·[${N(r)} + ½] = 2·${Math.floor(r + .5)} = <b>${cnt}</b>.`] });
+  }
+
+  const T = {
+    song: { n: 'Bước sóng, tốc độ, khoảng cách', g: [gSong, gKc] },
+    loai: { n: 'Xác định cực đại – cực tiểu', g: [gLoai] },
+    so:   { n: 'Đếm cực đại – cực tiểu trên S₁S₂', g: [() => gSo(false)] },
+    vtoc: { n: 'Tìm tốc độ từ vị trí vân', g: [gVtoc] },
+    bd:   { n: 'Biên độ tại một điểm', ext: true, g: [gBd] },
+    tt:   { n: 'Điểm trên đường trung trực', ext: true, g: [gTt] },
+    np:   { n: 'Hai nguồn ngược pha', ext: true, g: [() => gSo(true)] },
+    ya:   { n: 'Giao thoa ánh sáng Y-âng', g: [gYi, gYx, gYkc, gYlam, gYloai, gYso] }
+  };
+  function make(t) { const p = R(T[t].g)(); p.t = t; p.ext = !!T[t].ext; p.sol = p.sol.filter(Boolean); return p; }
+
+  // ---------- Phương pháp ----------
+  const METHOD = [
+    ['Bước sóng & khoảng cách', [`${L} = ${fr(v('v'), v('f'))} = ${v('v')}${v('T')}`, `Trên ${S12}: hai cực đại (cực tiểu) liên tiếp cách ${fr(L, '2')}; cực đại – cực tiểu liền kề cách ${fr(L, '4')}`, `${v('n')} vân liên tiếp có (${v('n')} − 1) khoảng`]],
+    ['Xác định loại điểm M (cùng pha)', [`Tính |${dd}| rồi lập tỉ số với ${L}`, `Tỉ số = ${K} nguyên ⇒ cực đại bậc ${K}`, `Tỉ số = ${K} + ½ ⇒ cực tiểu thứ ${K} + 1`]],
+    ['Đếm số điểm trên S₁S₂ (cùng pha)', [`Cực đại: −${fr(l_, L)} < ${K} < ${fr(l_, L)}`, `Cực tiểu: −${fr(l_, L)} − ½ < ${K} < ${fr(l_, L)} − ½`, 'Đếm số giá trị nguyên của k']],
+    ['Tìm v từ vị trí vân', ['Trung trực là cực đại bậc 0', `M cực đại, giữa M và trung trực có ${v('n')} dãy cực đại ⇒ ${dd} = (${v('n')} + 1)${L}`, `M cực tiểu, giữa có ${v('n')} dãy cực đại ⇒ ${dd} = (${v('n')} + ½)${L}`]],
+    ['Biên độ & trung trực (mở rộng)', [`${A_}<sub>M</sub> = 2${A_}|cos${fr('π(' + dd + ')', L)}|`, `Trên trung trực: cùng pha nguồn khi ${v('d')} = ${K}${L}, ngược pha khi ${v('d')} = (${K} + ½)${L}, với ${v('d')} > ${fr(l_, '2')}`, `OM = √(${v('d')}² − (${l_}/2)²)`]],
+    ['Hai nguồn ngược pha (mở rộng)', [`Cực đại: ${dd} = (${K} + ½)${L}`, `Cực tiểu: ${dd} = ${K}${L}`, `Số cực đại trên ${S12}: −${fr(l_, L)} − ½ < ${K} < ${fr(l_, L)} − ½`]],
+    ['Giao thoa ánh sáng Y-âng', [`${iD} = ${fr(L + Dd, a_)}; vân sáng ${x_} = ${K}${iD}; vân tối thứ ${K}: ${x_} = (${K} − ½)${iD}`, `Cùng phía: trừ vị trí; khác phía: cộng vị trí`, `Trong bề rộng L: số vân sáng = 2[${fr('L', '2' + iD)}] + 1, số vân tối = 2[${fr('L', '2' + iD)} + ½]`]]
+  ];
+  document.getElementById('sheet').innerHTML = METHOD.map(([h, it]) => `<div class="card fbox"><h3>${h}</h3><ul>${it.map(s => `<li><div>${s}</div></li>`).join('')}</ul></div>`).join('');
+
+  // ---------- Trạng thái ----------
+  const $ = id => document.getElementById(id);
+  const topicSel = $('topic');
+  topicSel.innerHTML = '<option value="all">Trộn tất cả các dạng</option><option value="core">Chỉ các dạng trong SGK</option>' +
+    Object.entries(T).map(([k, o]) => `<option value="${k}">${o.n}${o.ext ? ' (mở rộng)' : ''}</option>`).join('');
+  let S = null;
+
+  function build(types) { S = { items: types.map(t => ({ p: make(t), pick: null, hint: false })), cur: 0 }; $('result').hidden = true; $('qcard').hidden = false; render(); }
+  function newQuiz() {
+    const tp = topicSel.value, n = +$('count').value;
+    const keys = tp === 'all' ? Object.keys(T) : tp === 'core' ? Object.keys(T).filter(k => !T[k].ext) : [tp];
+    let list = [];
+    while (list.length < n) list = list.concat(shuffle(keys));
+    build(list.slice(0, n));
+  }
+  const isRight = it => it.pick === it.p.a;
+
+  function render() {
+    const it = S.items[S.cur], p = it.p, show = it.pick !== null, letters = 'ABCD';
+    let html = `<div class="qmeta"><span class="qnum">Bài ${S.cur + 1}/${S.items.length}</span><span class="tag">${T[p.t].n}</span>${p.ext ? '<span class="tag ext">Mở rộng</span>' : ''}</div>
+      <p class="stem">${p.q}</p><div class="opts" role="group" aria-label="Các phương án">`;
+    p.opts.forEach((o, i) => {
+      let cls = 'opt';
+      if (show) { if (i === p.a) cls += ' right'; else if (i === it.pick) cls += ' wrong'; }
+      html += `<button type="button" class="${cls}" data-i="${i}" ${show ? 'disabled' : ''}><span class="k">${letters[i]}</span><span>${o}</span></button>`;
+    });
+    html += '</div>';
+    if (!show && it.hint) html += `<div class="hintbox"><strong>Gợi ý</strong>${p.hint}</div>`;
+    if (show) html += `<div class="explain ${isRight(it) ? 'ok' : 'bad'}"><strong>${isRight(it) ? 'Chính xác!' : 'Chưa đúng – đáp án ' + letters[p.a]}</strong>Lời giải:<ol class="steps">${p.sol.map(s => `<li>${s}</li>`).join('')}</ol></div>`;
+    const last = S.cur === S.items.length - 1, allDone = S.items.every(i => i.pick !== null);
+    html += `<div class="nav"><button type="button" class="btn ghost" id="prev" ${S.cur === 0 ? 'disabled' : ''}>← Bài trước</button>
+      ${show ? '<button type="button" class="btn ghost" id="again1">Đổi số liệu, làm lại</button>' : `<button type="button" class="btn ghost" id="hintBtn" ${it.hint ? 'disabled' : ''}>Xem gợi ý</button>`}
+      ${last && allDone ? '<button type="button" class="btn" id="fin">Xem kết quả</button>' : `<button type="button" class="btn" id="next" ${last ? 'disabled' : ''}>Bài sau →</button>`}</div>`;
+    $('qcard').innerHTML = html;
+    $('qcard').querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => choose(+b.dataset.i)));
+    $('prev').onclick = () => go(S.cur - 1);
+    if ($('next')) $('next').onclick = () => go(S.cur + 1);
+    if ($('fin')) $('fin').onclick = showResult;
+    if ($('hintBtn')) $('hintBtn').onclick = () => { it.hint = true; render(); };
+    if ($('again1')) $('again1').onclick = () => { S.items[S.cur] = { p: make(p.t), pick: null, hint: false }; render(); };
+    renderSide();
+  }
+
+  function renderSide() {
+    const n = S.items.length, done = S.items.filter(i => i.pick !== null).length, ok = S.items.filter(isRight).length;
+    $('sc').textContent = String(rd(ok / n * 10, 1)).replace('.', ',');
+    $('prog').style.width = (done / n * 100) + '%';
+    $('stDone').textContent = `${done}/${n}`; $('stOk').textContent = ok; $('stNo').textContent = done - ok;
+    $('grid').innerHTML = S.items.map((it, i) => `<button type="button" class="${it.pick === null ? '' : isRight(it) ? 'ok' : 'no'}${i === S.cur ? ' cur' : ''}" data-i="${i}" aria-label="Bài ${i + 1}">${i + 1}</button>`).join('');
+    $('grid').querySelectorAll('button').forEach(b => b.onclick = () => { $('result').hidden = true; $('qcard').hidden = false; go(+b.dataset.i); });
+  }
+  function choose(i) { const it = S.items[S.cur]; if (it.pick !== null) return; it.pick = i; render(); }
+  function go(i) { if (i < 0 || i >= S.items.length) return; S.cur = i; render(); }
+
+  function showResult() {
+    const n = S.items.length, ok = S.items.filter(isRight).length, score = rd(ok / n * 10, 1);
+    const verdict = score >= 9 ? 'Xuất sắc! Em giải rất chắc các dạng bài giao thoa sóng.'
+      : score >= 7 ? 'Khá tốt. Luyện thêm các dạng còn sai để hoàn thiện nhé.'
+      : score >= 5 ? 'Đạt yêu cầu. Đọc lại phương pháp giải bên dưới rồi luyện tiếp.'
+      : 'Cần luyện thêm. Hãy dùng nút "Xem gợi ý" và đọc kĩ lời giải từng bước.';
+    const rows = Object.keys(T).map(k => {
+      const its = S.items.filter(i => i.p.t === k); if (!its.length) return '';
+      const c = its.filter(isRight).length;
+      return `<div class="trow"><span>${T[k].n}</span><div class="meter"><i style="width:${c / its.length * 100}%"></i></div><span>${c}/${its.length}</span></div>`;
+    }).join('');
+    const wrongTypes = S.items.filter(i => !isRight(i)).map(i => i.p.t);
+    $('result').innerHTML = `<h2>${String(score).replace('.', ',')} điểm – đúng ${ok}/${n} bài</h2>
+      <p class="verdict">${verdict}</p><div class="topics">${rows}</div>
+      <div class="actions"><button type="button" class="btn" id="review">Xem lại lời giải</button>
+      ${wrongTypes.length ? `<button type="button" class="btn ghost" id="redo">Luyện lại ${wrongTypes.length} bài sai (số liệu mới)</button>` : ''}
+      <button type="button" class="btn ghost" id="again">Đề mới</button></div>`;
+    $('qcard').hidden = true; $('result').hidden = false;
+    $('review').onclick = () => { $('result').hidden = true; $('qcard').hidden = false; go(0); };
+    if ($('redo')) $('redo').onclick = () => build(shuffle(wrongTypes));
+    $('again').onclick = newQuiz;
+    renderSide();
+  }
+
+  topicSel.onchange = newQuiz;
+  $('count').onchange = newQuiz;
+  $('newQuiz').onclick = newQuiz;
+  document.addEventListener('keydown', e => {
+    if (!S || $('qcard').hidden || e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toUpperCase(), map = { A: 0, B: 1, C: 2, D: 3, 1: 0, 2: 1, 3: 2, 4: 3 };
+    if (k in map) choose(map[k]);
+    else if (e.key === 'ArrowRight') go(S.cur + 1);
+    else if (e.key === 'ArrowLeft') go(S.cur - 1);
+  });
+  newQuiz();
+
+  // ---------- Chậu sóng: vân giao thoa hai nguồn ----------
+  const cv = $('tank'), ctx = cv.getContext('2d');
+  const off = document.createElement('canvas'), octx = off.getContext('2d');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SC = 4;
+  let W = 0, Hh = 0, img = null;
+  function size() {
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width); cv.height = Math.round(r.height);
+    W = Math.ceil(cv.width / SC); Hh = Math.ceil(cv.height / SC);
+    off.width = W; off.height = Hh; img = octx.createImageData(W, Hh);
+  }
+  function draw(t) {
+    if (!img) return;
+    const rgb = getComputedStyle(document.documentElement).getPropertyValue('--wave-rgb').split(',').map(Number);
+    const sx1 = W * 0.70, sx2 = W * 0.84, sy = Hh * 0.5;
+    const kw = 2 * Math.PI / (14 / SC * 4), ph = t * 0.003;
+    const d = img.data;
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+      const r1 = Math.hypot(x - sx1, y - sy), r2 = Math.hypot(x - sx2, y - sy);
+      const s = Math.cos(kw * r1 - ph) + Math.cos(kw * r2 - ph);
+      const fade = Math.min(1, 1.6 * x / W) * Math.max(0, 1 - Math.min(r1, r2) / (W * 0.9));
+      const p = (y * W + x) * 4;
+      d[p] = rgb[0]; d[p + 1] = rgb[1]; d[p + 2] = rgb[2];
+      d[p + 3] = Math.max(0, s) * 70 * fade;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+    ctx.fillStyle = `rgb(${rgb})`;
+    [sx1, sx2].forEach(sx => { ctx.beginPath(); ctx.arc(sx * SC, sy * SC, 5, 0, 7); ctx.fill(); });
+  }
+  size(); draw(0);
+  window.addEventListener('resize', () => { size(); draw(performance.now()); });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => draw(performance.now()));
+  if (!still) {
+    let lastT = 0;
+    const loop = t => { if (t - lastT > 40) { draw(t); lastT = t; } requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
