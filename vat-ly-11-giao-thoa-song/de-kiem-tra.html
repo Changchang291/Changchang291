@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Đề kiểm tra Giao thoa sóng</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: tờ đề thi đặt trên nền "chậu sóng" — thanh chọn đề phía trên, tờ đề ở giữa (đề in kiểu giấy thi), bảng điểm dính bên phải trên màn rộng. */
+:root {
+  --bg: #e6eff1;
+  --paper: #ffffff;
+  --paper-2: #f4f8f9;
+  --line: #cddde1;
+  --ink: #102a32;
+  --muted: #587179;
+  --accent: #0a7c86;
+  --accent-ink: #ffffff;
+  --crest: #c4601a;
+  --ok: #1d8a4e;
+  --ok-bg: #e2f5ea;
+  --bad: #c93c3c;
+  --bad-bg: #fbe7e7;
+  --font-display: "Lexend", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-paper: "Noto Serif", "Times New Roman", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #08171c; --paper: #0f252c; --paper-2: #133039; --line: #24464f;
+    --ink: #e3f1f3; --muted: #8fb0b7; --accent: #3cc6cf; --accent-ink: #04262a;
+    --crest: #f39a4a; --ok: #4fd18b; --ok-bg: #12352a; --bad: #ff7b7b; --bad-bg: #3a1a1d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #08171c; --paper: #0f252c; --paper-2: #133039; --line: #24464f;
+  --ink: #e3f1f3; --muted: #8fb0b7; --accent: #3cc6cf; --accent-ink: #04262a;
+  --crest: #f39a4a; --ok: #4fd18b; --ok-bg: #12352a; --bad: #ff7b7b; --bad-bg: #3a1a1d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--crest); outline-offset: 2px; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- Đầu trang ---------- */
+.top { padding-block: 22px 8px; display: grid; gap: 10px; }
+.team { justify-self: start; display: inline-flex; align-items: center; gap: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px 5px 6px; font-weight: 700; font-size: .9rem; }
+.team b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-family: var(--font-display); font-size: .8rem; }
+.top h1 { margin: 0; font-family: var(--font-display); font-size: clamp(1.7rem, 4vw, 2.6rem); line-height: 1.1; text-wrap: balance; }
+.top h1 em { font-style: normal; color: var(--accent); }
+.top p { margin: 0; color: var(--muted); max-width: 70ch; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.links a { color: var(--accent); font-weight: 700; text-decoration: none; border-bottom: 2px solid currentColor; font-size: .9rem; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-block: 14px; }
+.tab { border: 1.5px solid var(--line); background: var(--paper); border-radius: 10px; padding: 8px 16px; font-family: var(--font-display); font-weight: 600; }
+.tab[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.seg { margin-left: auto; display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; padding-bottom: 32px; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .seg { margin-left: 0; } }
+
+/* ---------- Tờ đề ---------- */
+.paper { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: clamp(18px, 4vw, 44px); font-family: var(--font-paper); font-size: 1.02rem; line-height: 1.65; min-width: 0; box-shadow: 0 1px 0 var(--line), 0 12px 30px -18px rgba(8, 40, 48, .35); }
+.phead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px 20px; text-align: center; border-bottom: 1.5px solid var(--ink); padding-bottom: 14px; margin-bottom: 16px; font-size: .95rem; }
+@media (max-width: 560px) { .phead { grid-template-columns: minmax(0, 1fr); } }
+.phead strong { display: block; text-transform: uppercase; letter-spacing: .02em; }
+.phead .sub { font-style: italic; color: var(--muted); }
+.phead .code { display: inline-block; margin-top: 6px; border: 1.5px solid var(--ink); padding: 2px 12px; font-weight: 700; font-family: var(--font-display); font-size: .9rem; }
+.part { margin: 26px 0 10px; font-weight: 700; font-size: 1.02rem; }
+.part span { font-weight: 400; font-style: italic; }
+.q { margin: 14px 0; }
+.q > p { margin: 0 0 6px; }
+.q > p b { white-space: nowrap; }
+.lv { display: inline-block; font-family: var(--font-body); font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
+@media (max-width: 640px) { .opts { grid-template-columns: minmax(0, 1fr); } }
+.opt { display: flex; gap: 8px; align-items: baseline; text-align: left; background: none; border: 1.5px solid transparent; border-radius: 8px; padding: 3px 8px; font-family: inherit; }
+.opt b { flex: none; }
+.doing .opt:hover { border-color: var(--line); }
+.opt.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
+.opt.right { border-color: var(--ok); background: var(--ok-bg); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+.opt:disabled { cursor: default; color: inherit; }
+.tf { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: .98rem; }
+.tfwrap { overflow-x: auto; }
+.tf td, .tf th { border: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+.tf th { font-family: var(--font-body); font-size: .8rem; background: var(--paper-2); }
+.tf td.c { width: 58px; text-align: center; vertical-align: middle; }
+.tf .pick { width: 38px; height: 30px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--paper); font-family: var(--font-body); font-weight: 700; }
+.tf .pick.sel { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.tf .pick.right { border-color: var(--ok); background: var(--ok); color: var(--paper); }
+.tf .pick.wrong { border-color: var(--bad); background: var(--bad); color: var(--paper); }
+.tf .pick.miss { border-color: var(--ok); border-style: dashed; }
+.short { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: var(--font-body); font-size: .92rem; }
+.short input { width: 120px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper); font-variant-numeric: tabular-nums; }
+.short input.right { border-color: var(--ok); background: var(--ok-bg); }
+.short input.wrong { border-color: var(--bad); background: var(--bad-bg); }
+.sol { margin-top: 8px; border-left: 3px solid var(--accent); background: var(--paper-2); padding: 8px 12px; font-family: var(--font-body); font-size: .92rem; border-radius: 0 8px 8px 0; }
+.sol strong { color: var(--accent); }
+.sol ol, .sol ul { margin: 4px 0 0; padding-left: 1.2em; }
+.selfmark { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-weight: 600; }
+.endnote { text-align: center; font-style: italic; margin-top: 28px; color: var(--muted); }
+
+/* ---------- Bảng điểm ---------- */
+.side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); display: grid; gap: 14px; }
+@media (max-width: 900px) { .side { position: static; } }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.panel h2 { margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
+.clock { font-family: var(--font-display); font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.clock.low { color: var(--bad); }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 9px 14px; font-weight: 700; }
+.btn.ghost { background: var(--paper); color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.score { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.score td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.score td:last-child { text-align: right; font-weight: 700; }
+.score tr.total td { border-bottom: 0; font-size: 1.05rem; color: var(--accent); }
+.small { font-size: .8rem; color: var(--muted); margin: 0; }
+.matrix { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.matrix th, .matrix td { border: 1px solid var(--line); padding: 4px 6px; text-align: center; }
+.matrix th:first-child, .matrix td:first-child { text-align: left; }
+.keytbl { width: 100%; border-collapse: collapse; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.keytbl td, .keytbl th { border: 1px solid var(--line); padding: 3px 4px; text-align: center; }
+footer { border-top: 1px solid var(--line); }
+footer .wrap { padding-block: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .88rem; }
+footer strong { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="wrap top">
+  <span class="team"><b>KA</b>Team Vật lý Kỳ Anh</span>
+  <h1>Đề kiểm tra <em>Giao thoa sóng</em></h1>
+  <p>Vật lí 11 – Kết nối tri thức, Bài 12. Năm đề cùng cấu trúc: 12 câu trắc nghiệm, 2 câu đúng/sai, 4 câu trả lời ngắn, 2 câu tự luận. Chọn "Làm bài" để làm và chấm tự động, hoặc "Đáp án" để xem đáp án và hướng dẫn chấm.</p>
+  <nav class="links">
+    <a href="https://claude.ai/artifact/Bd8Lxt4yV4CsHe7grog84M" target="_blank" rel="noopener">Trắc nghiệm lý thuyết</a>
+    <a href="https://claude.ai/artifact/TQETTwXBQaRaaqcwdgYVPP" target="_blank" rel="noopener">Bài tập tính toán</a>
+  </nav>
+  <div class="tabs" id="tabs" role="tablist" aria-label="Chọn đề"></div>
+</header>
+
+<main class="wrap layout">
+  <article class="paper" id="paper"></article>
+  <aside class="side" id="side"></aside>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Biên soạn: <strong>Team Vật lý Kỳ Anh</strong></span>
+    <span>Thang điểm: I – 3đ · II – 2đ · III – 2đ · IV – 3đ</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // NB: nhận biết, TH: thông hiểu, VD: vận dụng, VDC: vận dụng cao
+  // p1: {q, o[4], a}; p2: {q, s: [[ý, đúng?, mức, giải thích] x4]}; p3: {q, ans, tol, unit, lv, sol}; p4: {q, parts: [[ý, mức, hướng dẫn]]}
+  const EXAMS = [
+  { // ===== ĐỀ 1 =====
+    p1: [
+      { lv: 'NB', q: 'Hai nguồn sóng kết hợp là hai nguồn dao động', o: ['cùng phương, cùng tần số và có hiệu số pha không đổi theo thời gian.', 'cùng biên độ và cùng tần số.', 'cùng biên độ nhưng khác tần số.', 'cùng pha ban đầu nhưng khác tần số.'], a: 0 },
+      { lv: 'NB', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, những điểm dao động với biên độ cực đại có hiệu đường đi d₂ − d₁ bằng', o: ['kλ (k = 0, ±1, ±2, …).', '(k + 0,5)λ (k = 0, ±1, ±2, …).', 'kλ/4 (k = 0, ±1, ±2, …).', '(2k + 1)λ (k = 0, ±1, ±2, …).'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, gọi a là khoảng cách hai khe, D là khoảng cách từ hai khe đến màn, λ là bước sóng. Khoảng vân i được tính bằng', o: ['i = λD/a.', 'i = λa/D.', 'i = aD/λ.', 'i = D/(λa).'], a: 0 },
+      { lv: 'NB', q: 'Hiện tượng giao thoa ánh sáng là bằng chứng thực nghiệm chứng tỏ ánh sáng', o: ['có tính chất sóng.', 'là dòng hạt mang điện.', 'luôn truyền thẳng.', 'không mang năng lượng.'], a: 0 },
+      { lv: 'NB', q: 'Trên mặt nước, các vân giao thoa của hai nguồn kết hợp S₁, S₂ có dạng', o: ['các đường hypebol nhận S₁, S₂ làm tiêu điểm.', 'các đường tròn đồng tâm S₁.', 'các đường thẳng song song với S₁S₂.', 'các đường elip nhận S₁, S₂ làm tiêu điểm.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, vân tối trên màn là nơi hai sóng ánh sáng truyền tới', o: ['ngược pha nhau nên triệt tiêu nhau.', 'cùng pha nhau nên tăng cường nhau.', 'có bước sóng khác nhau.', 'chỉ có một sóng truyền tới.'], a: 0 },
+      { lv: 'TH', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, trên đoạn S₁S₂ khoảng cách giữa hai cực đại liên tiếp bằng', o: ['λ/2.', 'λ.', 'λ/4.', '2λ.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, nếu tăng khoảng cách giữa hai khe lên 2 lần và giữ nguyên các điều kiện khác thì khoảng vân', o: ['giảm 2 lần.', 'tăng 2 lần.', 'không đổi.', 'giảm 4 lần.'], a: 0 },
+      { lv: 'TH', q: 'Một sóng trên mặt nước có tần số 20 Hz, tốc độ truyền sóng 40 cm/s. Bước sóng là', o: ['2 cm.', '0,5 cm.', '800 cm.', '20 cm.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha trên mặt nước có bước sóng 2 cm. Điểm M cách hai nguồn lần lượt 10 cm và 14 cm thuộc', o: ['vân cực đại bậc 2.', 'vân cực tiểu thứ 2.', 'vân cực đại bậc 4.', 'vân cực tiểu thứ 3.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, khoảng vân là 1,2 mm. Vân sáng bậc 3 cách vân sáng trung tâm', o: ['3,6 mm.', '3,0 mm.', '4,2 mm.', '2,4 mm.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, giữ nguyên a và D, thay ánh sáng đỏ bằng ánh sáng tím thì khoảng vân', o: ['giảm.', 'tăng.', 'không đổi.', 'tăng gấp đôi.'], a: 0 }
+    ],
+    p2: [
+      { q: 'Trong thí nghiệm giao thoa sóng nước, hai nguồn A, B cách nhau 11,2 cm dao động cùng pha theo phương thẳng đứng với tần số 25 Hz. Tốc độ truyền sóng trên mặt nước là 50 cm/s.',
+        s: [['Hai nguồn A, B là hai nguồn kết hợp.', true, 'NB', 'Cùng phương, cùng tần số, hiệu số pha bằng 0 không đổi.'],
+            ['Bước sóng bằng 2 cm.', true, 'TH', 'λ = v/f = 50/25 = 2 cm.'],
+            ['Trung điểm O của AB dao động với biên độ cực tiểu.', false, 'TH', 'O có d₁ = d₂ nên là cực đại (bậc 0).'],
+            ['Trên đoạn AB có 11 điểm dao động với biên độ cực tiểu.', false, 'VD', 'Cực tiểu: −AB/λ < k + 0,5 < AB/λ ⇔ −5,6 < k + 0,5 < 5,6 ⇒ k = −6, …, 5: có 12 điểm.']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách giữa hai khe là 1 mm, khoảng cách từ hai khe đến màn là 2 m, ánh sáng đơn sắc có bước sóng 0,6 μm.',
+        s: [['Tại vị trí chính giữa màn (vân trung tâm) là một vân sáng.', true, 'NB', 'Hiệu đường đi bằng 0 nên luôn là vân sáng.'],
+            ['Khoảng vân bằng 1,2 mm.', true, 'TH', 'i = λD/a = 0,6·2/1 = 1,2 mm.'],
+            ['Vân tối thứ 3 cách vân trung tâm 3,6 mm.', false, 'TH', 'x = (3 − 0,5)i = 2,5·1,2 = 3,0 mm.'],
+            ['Trên vùng giao thoa rộng 13 mm (vân trung tâm ở chính giữa) có 11 vân sáng.', true, 'VD', 'L/(2i) = 13/2,4 ≈ 5,42 ⇒ số vân sáng = 2·5 + 1 = 11.']] }
+    ],
+    p3: [
+      { lv: 'TH', q: 'Trong thí nghiệm giao thoa sóng nước, hai nguồn cùng pha dao động với tần số 40 Hz. Trên đoạn S₁S₂, khoảng cách giữa 5 cực đại liên tiếp là 4 cm. Tốc độ truyền sóng bằng bao nhiêu cm/s?', ans: 80, unit: 'cm/s', sol: '5 cực đại liên tiếp có 4 khoảng λ/2 ⇒ 4·λ/2 = 4 ⇒ λ = 2 cm; v = λf = 2·40 = 80 cm/s.' },
+      { lv: 'VD', q: 'Trong thí nghiệm Y-âng, khoảng cách hai khe 0,5 mm, khoảng cách từ hai khe đến màn 1,5 m. Khoảng cách giữa 6 vân sáng liên tiếp là 9 mm. Bước sóng ánh sáng bằng bao nhiêu μm?', ans: 0.6, unit: 'μm', sol: 'i = 9/5 = 1,8 mm; λ = ia/D = 1,8·0,5/1,5 = 0,6 μm.' },
+      { lv: 'VD', q: 'Hai nguồn kết hợp cùng pha trên mặt nước dao động với tần số 20 Hz. Điểm M cách hai nguồn 16 cm và 20 cm dao động với biên độ cực đại; giữa M và đường trung trực của hai nguồn có 1 dãy cực đại khác. Tốc độ truyền sóng bằng bao nhiêu cm/s?', ans: 40, unit: 'cm/s', sol: 'M là cực đại bậc 2: d₂ − d₁ = 4 = 2λ ⇒ λ = 2 cm; v = λf = 40 cm/s.' },
+      { lv: 'VDC', q: 'Hai nguồn kết hợp cùng pha đặt tại A, B cách nhau 16 cm trên mặt nước, bước sóng 3 cm. Gọi O là trung điểm AB. Điểm M trên đường trung trực của AB dao động cùng pha với hai nguồn và gần O nhất cách O bao nhiêu cm? (làm tròn đến hai chữ số thập phân)', ans: 4.12, tol: 0.011, unit: 'cm', sol: 'M cách mỗi nguồn d: cùng pha nguồn ⇔ d = kλ = 3k; d > AB/2 = 8 ⇒ d nhỏ nhất = 9 cm. OM = √(9² − 8²) = √17 ≈ 4,12 cm.' }
+    ],
+    p4: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 21 cm, dao động cùng pha với tần số 15 Hz. Tốc độ truyền sóng trên mặt nước là 30 cm/s.',
+        parts: [['Tính bước sóng. Điểm M cách A, B lần lượt 12 cm và 17 cm dao động với biên độ cực đại hay cực tiểu?', 'TH', 'λ = v/f = 30/15 = 2 cm (0,25đ). d₂ − d₁ = 17 − 12 = 5 cm = 2,5λ = (2 + 0,5)λ (0,25đ) ⇒ M dao động với biên độ cực tiểu, thuộc vân cực tiểu thứ 3 (0,25đ).'],
+                ['Tính số điểm dao động với biên độ cực đại trên đoạn AB.', 'VD', 'Cực đại: −AB/λ < k < AB/λ (0,25đ) ⇔ −10,5 < k < 10,5 (0,25đ) ⇒ k = −10, …, 10: có 21 điểm cực đại (0,25đ).']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 1,2 mm, khoảng cách từ hai khe đến màn là 1,5 m, ánh sáng đơn sắc có bước sóng 0,48 μm.',
+        parts: [['Tính khoảng vân và vị trí vân sáng bậc 4.', 'TH', 'i = λD/a = 0,48·1,5/1,2 = 0,6 mm (0,5đ). x₄ = 4i = 2,4 mm (0,25đ).'],
+                ['Hai điểm M, N ở cùng một phía vân trung tâm, cách vân trung tâm lần lượt 2,1 mm và 4,5 mm. Tại M, N là vân sáng hay vân tối? Giữa M và N có bao nhiêu vân sáng?', 'VD', 'x_M/i = 3,5 ⇒ M là vân tối thứ 4; x_N/i = 7,5 ⇒ N là vân tối thứ 8 (0,5đ). Vân sáng giữa M, N: 3,5 < k < 7,5 ⇒ k = 4, 5, 6, 7: có 4 vân sáng (0,25đ).']] }
+    ]
+  },
+  { // ===== ĐỀ 2 =====
+    p1: [
+      { lv: 'NB', q: 'Hiện tượng giao thoa sóng là', o: ['sự tổng hợp của hai sóng kết hợp, tạo nên những điểm cực đại và cực tiểu xen kẽ, cố định trong không gian.', 'sự gặp nhau của hai sóng bất kì.', 'sự đổi phương truyền của sóng khi gặp vật cản.', 'sự phản xạ của sóng tại mặt phân cách.'], a: 0 },
+      { lv: 'NB', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, những điểm dao động với biên độ cực tiểu có', o: ['d₂ − d₁ = (k + 0,5)λ.', 'd₂ − d₁ = kλ.', 'd₂ − d₁ = 2kλ.', 'd₂ + d₁ = kλ.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, vị trí vân sáng trên màn được xác định bởi', o: ['x = kλD/a.', 'x = (k + 0,5)λD/a.', 'x = kλa/D.', 'x = kaD/λ.'], a: 0 },
+      { lv: 'NB', q: 'Điều kiện để hai sóng gặp nhau tạo được hệ vân giao thoa ổn định là hai sóng phải được phát ra từ', o: ['hai nguồn kết hợp.', 'hai nguồn cùng biên độ.', 'hai nguồn đặt rất gần nhau.', 'hai nguồn có kích thước bằng nhau.'], a: 0 },
+      { lv: 'NB', q: 'Bước sóng là', o: ['quãng đường sóng truyền được trong một chu kì.', 'quãng đường sóng truyền được trong 1 giây.', 'khoảng cách giữa hai điểm dao động ngược pha gần nhau nhất.', 'quãng đường một phần tử môi trường đi được trong một chu kì.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, khoảng vân là khoảng cách giữa', o: ['hai vân sáng (hoặc hai vân tối) liên tiếp.', 'một vân sáng và một vân tối liền kề.', 'vân trung tâm và vân tối thứ nhất.', 'hai khe hẹp.'], a: 0 },
+      { lv: 'TH', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, đường trung trực của S₁S₂ là', o: ['vân cực đại ứng với k = 0.', 'vân cực tiểu ứng với k = 0.', 'vân cực đại bậc 1.', 'không phải vân giao thoa.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, khoảng cách giữa một vân sáng và một vân tối liền kề bằng', o: ['i/2.', 'i.', '2i.', 'i/4.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, λ = 0,5 μm, a = 1 mm, D = 2 m. Khoảng vân bằng', o: ['1 mm.', '0,25 mm.', '4 mm.', '10 mm.'], a: 0 },
+      { lv: 'TH', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, trên đoạn S₁S₂ khoảng cách giữa một cực đại và một cực tiểu liền kề bằng', o: ['λ/4.', 'λ/2.', 'λ.', '3λ/4.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, nếu tăng khoảng cách từ hai khe đến màn lên 2 lần đồng thời giảm khoảng cách hai khe đi 2 lần thì khoảng vân', o: ['tăng 4 lần.', 'tăng 2 lần.', 'không đổi.', 'giảm 4 lần.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha trên mặt nước có bước sóng 1,5 cm. Điểm M cách hai nguồn 12 cm và 15,75 cm thuộc', o: ['vân cực tiểu thứ 3.', 'vân cực đại bậc 2.', 'vân cực đại bậc 3.', 'vân cực tiểu thứ 2.'], a: 0 }
+    ],
+    p2: [
+      { q: 'Trên mặt nước có hai nguồn S₁, S₂ cách nhau 9,6 cm dao động cùng pha, cùng biên độ 2 mm, tần số 50 Hz. Tốc độ truyền sóng là 1 m/s. Coi biên độ sóng không đổi khi truyền đi.',
+        s: [['Các điểm trên đường trung trực của S₁S₂ dao động với biên độ cực đại.', true, 'NB', 'Trên trung trực d₂ − d₁ = 0 ⇒ cực đại.'],
+            ['Bước sóng bằng 2 cm.', true, 'TH', 'λ = v/f = 100/50 = 2 cm.'],
+            ['Phần tử nước tại điểm cực đại giao thoa dao động với biên độ 2 mm.', false, 'TH', 'Tại cực đại hai dao động cùng pha: biên độ 2 + 2 = 4 mm.'],
+            ['Trên đoạn S₁S₂ có 10 điểm dao động với biên độ cực tiểu.', true, 'VD', '−4,8 < k + 0,5 < 4,8 ⇒ k = −5, …, 4: có 10 điểm.']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 0,8 mm, khoảng cách từ hai khe đến màn là 1,6 m, ánh sáng đơn sắc có bước sóng 0,5 μm.',
+        s: [['Nếu che kín một khe thì trên màn không còn quan sát được hệ vân giao thoa.', true, 'NB', 'Chỉ còn một nguồn sáng nên không có giao thoa.'],
+            ['Khoảng vân bằng 1 mm.', true, 'TH', 'i = 0,5·1,6/0,8 = 1 mm.'],
+            ['Tại điểm cách vân trung tâm 3,5 mm là vân sáng bậc 3.', false, 'TH', 'x/i = 3,5 ⇒ vân tối thứ 4.'],
+            ['Khoảng cách giữa vân sáng bậc 2 và vân tối thứ 5 ở cùng một phía vân trung tâm là 6,5 mm.', false, 'VD', 'x₂ = 2 mm, vân tối thứ 5: 4,5 mm. Cùng phía: 4,5 − 2 = 2,5 mm.']] }
+    ],
+    p3: [
+      { lv: 'TH', q: 'Trên mặt nước, hai nguồn kết hợp cùng pha dao động với tần số 10 Hz, tốc độ truyền sóng 30 cm/s. Trên đoạn nối hai nguồn, khoảng cách giữa hai cực tiểu liên tiếp bằng bao nhiêu cm?', ans: 1.5, unit: 'cm', sol: 'λ = 30/10 = 3 cm; hai cực tiểu liên tiếp cách λ/2 = 1,5 cm.' },
+      { lv: 'VD', q: 'Trong thí nghiệm Y-âng, a = 1 mm, D = 2 m, λ = 0,55 μm. Khoảng cách từ vân sáng bậc 2 đến vân sáng bậc 5 ở cùng một phía vân trung tâm bằng bao nhiêu mm?', ans: 3.3, unit: 'mm', sol: 'i = 0,55·2/1 = 1,1 mm; Δx = (5 − 2)i = 3,3 mm.' },
+      { lv: 'VD', q: 'Hai nguồn kết hợp cùng pha cách nhau 12 cm trên mặt nước, dao động với tần số 20 Hz, tốc độ truyền sóng 50 cm/s. Trên đoạn nối hai nguồn có bao nhiêu điểm dao động với biên độ cực đại?', ans: 9, unit: 'điểm', sol: 'λ = 2,5 cm; −4,8 < k < 4,8 ⇒ k = −4, …, 4: 9 điểm.' },
+      { lv: 'VDC', q: 'Hai nguồn kết hợp cùng pha đặt tại A, B cách nhau 15 cm trên mặt nước, bước sóng 4 cm. Điểm M nằm trên đường thẳng vuông góc với AB tại B, dao động với biên độ cực đại và gần B nhất. Khoảng cách MB bằng bao nhiêu cm? (làm tròn đến hai chữ số thập phân)', ans: 3.38, tol: 0.006, unit: 'cm', sol: 'M gần B nhất thuộc cực đại bậc cao nhất: k < AB/λ = 3,75 ⇒ k = 3, MA − MB = 12 cm. Lại có MA² − MB² = AB² = 225 ⇒ MA + MB = 18,75 ⇒ MB = (18,75 − 12)/2 = 3,375 ≈ 3,38 cm.' }
+    ],
+    p4: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 13,4 cm, dao động cùng pha với tần số 20 Hz. Điểm M cách A 14 cm, cách B 20 cm dao động với biên độ cực đại; giữa M và đường trung trực của AB có 2 dãy cực đại khác.',
+        parts: [['Tính bước sóng và tốc độ truyền sóng.', 'TH', 'Trung trực là cực đại bậc 0 ⇒ M là cực đại bậc 3 (0,25đ): d₂ − d₁ = 6 = 3λ ⇒ λ = 2 cm (0,25đ). v = λf = 40 cm/s (0,25đ).'],
+                ['Tính số điểm dao động với biên độ cực tiểu trên đoạn AB.', 'VD', '−AB/λ < k + 0,5 < AB/λ (0,25đ) ⇔ −6,7 < k + 0,5 < 6,7 ⇒ −7,2 < k < 6,2 (0,25đ) ⇒ k = −7, …, 6: có 14 điểm cực tiểu (0,25đ).']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 1 mm, khoảng cách từ hai khe đến màn là 1,5 m. Trên màn, khoảng cách giữa 10 vân sáng liên tiếp là 8,1 mm.',
+        parts: [['Tính khoảng vân và bước sóng ánh sáng.', 'TH', '10 vân sáng liên tiếp có 9 khoảng vân ⇒ i = 8,1/9 = 0,9 mm (0,5đ). λ = ia/D = 0,9·1/1,5 = 0,6 μm (0,25đ).'],
+                ['Dịch màn ra xa hai khe thêm 0,5 m. Tính khoảng vân mới và cho biết tại điểm cách vân trung tâm 3 mm là vân sáng hay vân tối, bậc (thứ) mấy.', 'VD', 'D′ = 2 m ⇒ i′ = 0,6·2/1 = 1,2 mm (0,25đ). x/i′ = 3/1,2 = 2,5 (0,25đ) ⇒ vân tối thứ 3 (0,25đ).']] }
+    ]
+  },
+  { // ===== ĐỀ 3 =====
+    p1: [
+      { lv: 'NB', q: 'Hiện tượng giao thoa là hiện tượng đặc trưng của', o: ['sóng.', 'chuyển động thẳng đều.', 'dao động tắt dần.', 'chuyển động của chất điểm.'], a: 0 },
+      { lv: 'NB', q: 'Trong giao thoa sóng nước với hai nguồn kết hợp cùng pha, trung điểm của đoạn nối hai nguồn dao động với biên độ', o: ['cực đại.', 'cực tiểu.', 'bằng biên độ một nguồn.', 'bằng không.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, vị trí vân tối trên màn được xác định bởi', o: ['x = (k + 0,5)λD/a.', 'x = kλD/a.', 'x = (k + 0,5)λa/D.', 'x = kλD/(2a).'], a: 0 },
+      { lv: 'NB', q: 'Trong công thức tính khoảng vân i = λD/a, đại lượng D là', o: ['khoảng cách từ mặt phẳng chứa hai khe đến màn quan sát.', 'khoảng cách giữa hai khe.', 'khoảng cách từ nguồn sáng đến hai khe.', 'bề rộng vùng giao thoa trên màn.'], a: 0 },
+      { lv: 'NB', q: 'Hai nguồn kết hợp cùng pha, cùng biên độ A. Coi biên độ sóng không đổi khi truyền đi, tại điểm cực đại giao thoa phần tử môi trường dao động với biên độ', o: ['2A.', 'A.', '0.', 'A√2.'], a: 0 },
+      { lv: 'NB', q: 'Liên hệ giữa bước sóng λ, tốc độ truyền sóng v và chu kì T là', o: ['λ = vT.', 'λ = v/T.', 'λ = T/v.', 'λ = v²T.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha, cùng biên độ. Phần tử nước tại điểm cực tiểu giao thoa', o: ['đứng yên.', 'dao động với biên độ lớn nhất.', 'dao động với biên độ bằng biên độ mỗi nguồn.', 'dao động cùng pha với nguồn.'], a: 0 },
+      { lv: 'TH', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, vân cực tiểu gần đường trung trực nhất có độ lớn hiệu đường đi bằng', o: ['λ/2.', 'λ.', 'λ/4.', '0.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, giữ nguyên các điều kiện khác, nếu giảm khoảng cách từ hai khe đến màn thì khoảng vân', o: ['giảm.', 'tăng.', 'không đổi.', 'tăng rồi giảm.'], a: 0 },
+      { lv: 'TH', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, tần số 50 Hz, trên đoạn S₁S₂ hai cực đại liên tiếp cách nhau 1 cm. Tốc độ truyền sóng là', o: ['100 cm/s.', '50 cm/s.', '25 cm/s.', '200 cm/s.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, khoảng vân là 0,8 mm. Vân tối thứ 2 cách vân sáng trung tâm', o: ['1,2 mm.', '1,6 mm.', '2,0 mm.', '0,8 mm.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha trên mặt nước có bước sóng 2,5 cm. Điểm M cách hai nguồn 10 cm và 17,5 cm thuộc', o: ['vân cực đại bậc 3.', 'vân cực tiểu thứ 3.', 'vân cực tiểu thứ 4.', 'vân cực đại bậc 7.'], a: 0 }
+    ],
+    p2: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 13 cm dao động cùng pha với tần số 16 Hz. Điểm M cách A 25 cm, cách B 20,5 cm dao động với biên độ cực đại; giữa M và đường trung trực của AB có 2 dãy cực đại khác.',
+        s: [['Đường trung trực của AB là một vân cực đại.', true, 'NB', 'Trên trung trực d₂ − d₁ = 0 = 0·λ.'],
+            ['M thuộc vân cực đại bậc 3.', true, 'TH', 'Trung trực là bậc 0, có thêm 2 dãy cực đại (bậc 1, 2) ⇒ M là bậc 3.'],
+            ['Tốc độ truyền sóng trên mặt nước là 36 cm/s.', false, 'TH', 'd₁ − d₂ = 4,5 = 3λ ⇒ λ = 1,5 cm; v = 1,5·16 = 24 cm/s.'],
+            ['Trên đoạn AB có 15 điểm dao động với biên độ cực đại.', false, 'VD', '−13/1,5 < k < 13/1,5 ⇔ −8,67 < k < 8,67 ⇒ 17 điểm.']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 2 mm, khoảng cách từ hai khe đến màn là 1,2 m, ánh sáng đơn sắc có bước sóng 0,5 μm.',
+        s: [['Trên màn quan sát được các vân sáng và vân tối xen kẽ, cách đều nhau.', true, 'NB', 'Đặc điểm hệ vân với ánh sáng đơn sắc.'],
+            ['Khoảng vân bằng 0,3 mm.', true, 'TH', 'i = 0,5·1,2/2 = 0,3 mm.'],
+            ['Nếu dùng ánh sáng có bước sóng lớn hơn thì khoảng vân giảm.', false, 'TH', 'i tỉ lệ thuận với λ nên khoảng vân tăng.'],
+            ['Khoảng cách giữa 7 vân tối liên tiếp là 1,8 mm.', true, 'VD', '7 vân tối liên tiếp có 6 khoảng vân: 6·0,3 = 1,8 mm.']] }
+    ],
+    p3: [
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, a = 0,5 mm, D = 2 m, λ = 0,4 μm. Khoảng vân bằng bao nhiêu mm?', ans: 1.6, unit: 'mm', sol: 'i = λD/a = 0,4·2/0,5 = 1,6 mm.' },
+      { lv: 'VD', q: 'Hai nguồn kết hợp cùng pha cách nhau 10 cm trên mặt nước, bước sóng 1,6 cm. Trên đoạn nối hai nguồn có bao nhiêu điểm dao động với biên độ cực tiểu?', ans: 12, unit: 'điểm', sol: '−6,25 < k + 0,5 < 6,25 ⇒ −6,75 < k < 5,75 ⇒ k = −6, …, 5: 12 điểm.' },
+      { lv: 'VD', q: 'Hai nguồn kết hợp cùng pha, cùng biên độ 4 mm, bước sóng 4 cm. Coi biên độ sóng không đổi. Điểm M có hiệu đường đi tới hai nguồn bằng 1 cm dao động với biên độ bằng bao nhiêu mm? (làm tròn đến hai chữ số thập phân)', ans: 5.66, tol: 0.011, unit: 'mm', sol: 'A_M = 2A|cos(πΔd/λ)| = 2·4·|cos(π/4)| = 4√2 ≈ 5,66 mm.' },
+      { lv: 'VDC', q: 'Trong thí nghiệm Y-âng, tại điểm M trên màn là vân sáng bậc 5. Dịch màn ra xa hai khe thêm 0,4 m thì tại M là vân sáng bậc 4. Khoảng cách từ hai khe đến màn lúc đầu bằng bao nhiêu mét?', ans: 1.6, unit: 'm', sol: 'x_M = 5λD/a = 4λ(D + 0,4)/a ⇒ 5D = 4D + 1,6 ⇒ D = 1,6 m.' }
+    ],
+    p4: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 18 cm, dao động cùng pha với tần số 25 Hz. Tốc độ truyền sóng trên mặt nước là 1 m/s.',
+        parts: [['Tính bước sóng. Điểm M cách A 15 cm, cách B 9 cm dao động với biên độ cực đại hay cực tiểu?', 'TH', 'λ = 100/25 = 4 cm (0,25đ). d₁ − d₂ = 6 cm = 1,5λ = (1 + 0,5)λ (0,25đ) ⇒ M là cực tiểu, thuộc vân cực tiểu thứ 2 (0,25đ).'],
+                ['Tính số điểm cực đại trên đoạn AB và khoảng cách từ trung điểm O đến điểm cực đại xa O nhất trên AB.', 'VD', '−4,5 < k < 4,5 ⇒ k = −4, …, 4: có 9 điểm cực đại (0,25đ). Điểm trên AB cách O một đoạn x có d₂ − d₁ = 2x = kλ ⇒ x = kλ/2 (0,25đ). Xa O nhất ứng với |k| = 4: x = 8 cm (0,25đ).']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 1,5 mm, khoảng cách từ hai khe đến màn là 2 m, ánh sáng đơn sắc có bước sóng 0,6 μm.',
+        parts: [['Tính khoảng vân và vị trí vân tối thứ 3.', 'TH', 'i = 0,6·2/1,5 = 0,8 mm (0,5đ). Vân tối thứ 3: x = 2,5i = 2 mm (0,25đ).'],
+                ['Bề rộng vùng giao thoa trên màn là 10 mm (vân trung tâm ở chính giữa). Tính số vân sáng và số vân tối quan sát được.', 'VD', 'L/(2i) = 10/1,6 = 6,25 (0,25đ). Số vân sáng: 2·6 + 1 = 13 (0,25đ). Số vân tối: 2·[6,25 + 0,5] = 2·6 = 12 (0,25đ).']] }
+    ]
+  },
+  { // ===== ĐỀ 4 =====
+    p1: [
+      { lv: 'NB', q: 'Sóng do hai nguồn kết hợp phát ra được gọi là', o: ['hai sóng kết hợp.', 'hai sóng dừng.', 'hai sóng ngang.', 'hai sóng dọc.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, người ta chiếu', o: ['ánh sáng đơn sắc qua hai khe hẹp song song đặt gần nhau.', 'ánh sáng trắng qua một lăng kính.', 'ánh sáng đơn sắc qua một thấu kính hội tụ.', 'ánh sáng trắng lên một gương phẳng.'], a: 0 },
+      { lv: 'NB', q: 'Tại điểm cực tiểu giao thoa, hai sóng truyền tới', o: ['dao động ngược pha nhau.', 'dao động cùng pha nhau.', 'dao động vuông pha nhau.', 'có tần số khác nhau.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, tại vân sáng trung tâm, hiệu đường đi của hai sóng ánh sáng từ hai khe bằng', o: ['0.', 'λ/2.', 'λ.', '2λ.'], a: 0 },
+      { lv: 'NB', q: 'Trong hệ SI, đơn vị của bước sóng là', o: ['mét (m).', 'héc (Hz).', 'mét trên giây (m/s).', 'giây (s).'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, khoảng cách giữa hai vân sáng liên tiếp được gọi là', o: ['khoảng vân.', 'bước sóng.', 'biên độ.', 'chu kì.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha. Điểm M có hiệu đường đi d₂ − d₁ = 2,5λ sẽ dao động với biên độ', o: ['cực tiểu.', 'cực đại, thuộc vân bậc 2.', 'cực đại, thuộc vân bậc 3.', 'không xác định được.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, vân tối thứ k (k = 1, 2, 3, …) cách vân trung tâm một đoạn', o: ['(k − 0,5)i.', 'ki.', '(k + 0,5)i.', '2ki.'], a: 0 },
+      { lv: 'TH', q: 'Sóng trên mặt nước có tần số 25 Hz, bước sóng 3 cm. Tốc độ truyền sóng là', o: ['75 cm/s.', '8,33 cm/s.', '0,12 cm/s.', '28 cm/s.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, a = 1 mm, D = 2 m, khoảng vân đo được là 1,2 mm. Bước sóng ánh sáng là', o: ['0,6 μm.', '0,5 μm.', '2,4 μm.', '1,2 μm.'], a: 0 },
+      { lv: 'TH', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, trên đoạn S₁S₂ khoảng cách giữa 5 cực đại liên tiếp là 6 cm. Bước sóng là', o: ['3 cm.', '2,4 cm.', '1,5 cm.', '6 cm.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, giữ nguyên bước sóng và khoảng cách từ hai khe đến màn, nếu giảm khoảng cách giữa hai khe thì khoảng vân', o: ['tăng.', 'giảm.', 'không đổi.', 'giảm rồi tăng.'], a: 0 }
+    ],
+    p2: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 8 cm dao động cùng pha, cùng biên độ 3 mm, tần số 20 Hz. Tốc độ truyền sóng là 30 cm/s. Coi biên độ sóng không đổi khi truyền đi.',
+        s: [['Phần tử nước tại trung điểm AB dao động với biên độ 6 mm.', true, 'NB', 'Trung điểm là cực đại: biên độ 2A = 6 mm.'],
+            ['Bước sóng bằng 1,5 cm.', true, 'TH', 'λ = 30/20 = 1,5 cm.'],
+            ['Điểm M cách A 10 cm, cách B 13 cm dao động với biên độ cực tiểu.', false, 'TH', 'd₂ − d₁ = 3 cm = 2λ ⇒ M là cực đại bậc 2.'],
+            ['Trên đoạn AB có 11 điểm dao động với biên độ cực đại.', true, 'VD', '−5,33 < k < 5,33 ⇒ k = −5, …, 5: 11 điểm.']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 0,6 mm, khoảng cách từ hai khe đến màn là 1,2 m, ánh sáng đơn sắc có bước sóng 0,45 μm.',
+        s: [['Hai khe hẹp đóng vai trò là hai nguồn sáng kết hợp.', true, 'NB', 'Hai khe được chiếu từ cùng một nguồn nên là hai nguồn kết hợp.'],
+            ['Khoảng vân bằng 0,9 mm.', true, 'TH', 'i = 0,45·1,2/0,6 = 0,9 mm.'],
+            ['Vân sáng bậc 4 cách vân trung tâm 3,15 mm.', false, 'TH', 'x₄ = 4i = 3,6 mm (3,15 mm là vân tối thứ 4).'],
+            ['Tại điểm cách vân trung tâm 5,85 mm là vân tối thứ 7.', true, 'VD', 'x/i = 6,5 = 6 + 0,5 ⇒ vân tối thứ 7.']] }
+    ],
+    p3: [
+      { lv: 'TH', q: 'Trên mặt nước, hai nguồn kết hợp cùng pha dao động với tần số 50 Hz. Trên đoạn nối hai nguồn, khoảng cách giữa một cực đại và một cực tiểu liền kề là 0,5 cm. Tốc độ truyền sóng bằng bao nhiêu cm/s?', ans: 100, unit: 'cm/s', sol: 'λ/4 = 0,5 ⇒ λ = 2 cm; v = λf = 100 cm/s.' },
+      { lv: 'VD', q: 'Trong thí nghiệm Y-âng, a = 1,2 mm, D = 2 m. Khoảng cách từ vân sáng bậc 2 đến vân sáng bậc 7 ở cùng một phía vân trung tâm là 4 mm. Bước sóng ánh sáng bằng bao nhiêu μm?', ans: 0.48, unit: 'μm', sol: '5i = 4 ⇒ i = 0,8 mm; λ = ia/D = 0,8·1,2/2 = 0,48 μm.' },
+      { lv: 'VD', q: 'Hai nguồn kết hợp cùng pha cách nhau 11 cm trên mặt nước, dao động với tần số 25 Hz, tốc độ truyền sóng 60 cm/s. Trên đoạn nối hai nguồn có bao nhiêu điểm dao động với biên độ cực tiểu?', ans: 10, unit: 'điểm', sol: 'λ = 2,4 cm; −4,58 < k + 0,5 < 4,58 ⇒ k = −5, …, 4: 10 điểm.' },
+      { lv: 'VDC', q: 'Hai nguồn kết hợp cùng pha đặt tại A, B cách nhau 20 cm trên mặt nước, bước sóng 3 cm. Điểm M nằm trên đường thẳng vuông góc với AB tại A, dao động với biên độ cực đại và xa A nhất. Khoảng cách MA bằng bao nhiêu cm? (làm tròn đến hai chữ số thập phân)', ans: 65.17, tol: 0.011, unit: 'cm', sol: 'Xa A nhất thuộc cực đại bậc 1: MB − MA = 3 cm. MB² − MA² = AB² = 400 ⇒ MB + MA = 400/3 ⇒ MA = (400/3 − 3)/2 ≈ 65,17 cm.' }
+    ],
+    p4: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 10 cm, dao động cùng pha với tần số 40 Hz. Điểm M cách A 14 cm, cách B 17 cm dao động với biên độ cực tiểu; giữa M và đường trung trực của AB có 2 dãy cực đại khác.',
+        parts: [['Tính bước sóng và tốc độ truyền sóng.', 'TH', 'Giữa M và trung trực có các cực đại bậc 1, 2 ⇒ M là cực tiểu thứ 3 (0,25đ): d₂ − d₁ = 3 = 2,5λ ⇒ λ = 1,2 cm (0,25đ). v = λf = 48 cm/s (0,25đ).'],
+                ['Tính số điểm dao động với biên độ cực đại trên đoạn AB.', 'VD', '−AB/λ < k < AB/λ (0,25đ) ⇔ −8,33 < k < 8,33 (0,25đ) ⇒ k = −8, …, 8: có 17 điểm (0,25đ).']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 1 mm, khoảng cách từ hai khe đến màn là 2 m, ánh sáng đơn sắc có bước sóng 0,5 μm.',
+        parts: [['Tính khoảng vân và khoảng cách giữa vân sáng bậc 3 và vân tối thứ 5 ở hai phía vân trung tâm.', 'TH', 'i = 0,5·2/1 = 1 mm (0,25đ). x₃ = 3 mm; vân tối thứ 5: 4,5 mm (0,25đ). Hai phía: 3 + 4,5 = 7,5 mm (0,25đ).'],
+                ['Thay ánh sáng trên bằng ánh sáng đơn sắc có bước sóng λ′ thì tại vị trí vân sáng bậc 3 cũ bây giờ là vân sáng bậc 2. Tính λ′.', 'VD', 'Cùng vị trí: 3λD/a = 2λ′D/a (0,5đ) ⇒ λ′ = 1,5λ = 0,75 μm (0,25đ).']] }
+    ]
+  },
+  { // ===== ĐỀ 5 =====
+    p1: [
+      { lv: 'NB', q: 'Khi hai sóng kết hợp gặp nhau, tại những điểm hai sóng truyền tới cùng pha thì phần tử môi trường', o: ['dao động với biên độ cực đại.', 'đứng yên.', 'dao động với biên độ cực tiểu.', 'dao động với tần số gấp đôi.'], a: 0 },
+      { lv: 'NB', q: 'Điều nào sau đây KHÔNG phải là điều kiện để hai nguồn sóng là hai nguồn kết hợp?', o: ['Có cùng biên độ.', 'Có cùng tần số.', 'Có hiệu số pha không đổi theo thời gian.', 'Dao động cùng phương.'], a: 0 },
+      { lv: 'NB', q: 'Trong giao thoa sóng nước với hai nguồn cùng pha, trên đoạn S₁S₂ khoảng cách giữa hai cực tiểu liên tiếp bằng', o: ['λ/2.', 'λ.', 'λ/4.', '2λ.'], a: 0 },
+      { lv: 'NB', q: 'Thí nghiệm Y-âng về giao thoa ánh sáng chứng minh', o: ['ánh sáng có tính chất sóng.', 'ánh sáng có tính chất hạt.', 'ánh sáng bị khúc xạ khi qua lăng kính.', 'ánh sáng phản xạ trên gương phẳng.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng, vân sáng là nơi hai sóng ánh sáng truyền tới', o: ['cùng pha nhau nên tăng cường nhau.', 'ngược pha nhau nên triệt tiêu nhau.', 'vuông pha nhau.', 'có tần số khác nhau.'], a: 0 },
+      { lv: 'NB', q: 'Trong thí nghiệm Y-âng với ánh sáng đơn sắc, trên màn quan sát thu được', o: ['các vân sáng và vân tối xen kẽ, cách đều nhau.', 'một dải màu biến thiên liên tục như cầu vồng.', 'một vạch sáng duy nhất.', 'các vân sáng không cách đều nhau.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha trên mặt nước có bước sóng 4 cm. Điểm M cách hai nguồn 7 cm và 13 cm thuộc', o: ['vân cực tiểu thứ 2.', 'vân cực đại bậc 1.', 'vân cực đại bậc 2.', 'vân cực tiểu thứ 1.'], a: 0 },
+      { lv: 'TH', q: 'Sóng trên mặt nước có tần số 10 Hz, tốc độ truyền sóng 0,4 m/s. Bước sóng là', o: ['4 cm.', '25 cm.', '0,4 cm.', '40 cm.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, khoảng vân là 1,5 mm. Khoảng cách giữa 5 vân sáng liên tiếp là', o: ['6 mm.', '7,5 mm.', '4,5 mm.', '3 mm.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, λ = 0,64 μm, a = 0,8 mm, D = 1,5 m. Khoảng vân bằng', o: ['1,2 mm.', '0,12 mm.', '0,96 mm.', '2,4 mm.'], a: 0 },
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, nếu tăng đồng thời khoảng cách hai khe và khoảng cách từ hai khe đến màn lên 2 lần thì khoảng vân', o: ['không đổi.', 'tăng 2 lần.', 'giảm 2 lần.', 'tăng 4 lần.'], a: 0 },
+      { lv: 'TH', q: 'Hai nguồn kết hợp cùng pha. Điểm M có hiệu đường đi d₂ − d₁ = 3λ thuộc', o: ['vân cực đại bậc 3.', 'vân cực tiểu thứ 3.', 'vân cực tiểu thứ 4.', 'vân cực đại bậc 6.'], a: 0 }
+    ],
+    p2: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 15,4 cm dao động cùng pha với tần số 30 Hz. Tốc độ truyền sóng là 60 cm/s.',
+        s: [['Phần tử nước tại các điểm cực đại giao thoa dao động mạnh nhất.', true, 'NB', 'Tại cực đại hai sóng tới cùng pha, biên độ lớn nhất.'],
+            ['Bước sóng bằng 2 cm.', true, 'TH', 'λ = 60/30 = 2 cm.'],
+            ['Điểm C cách A 20 cm, cách B 14 cm thuộc vân cực tiểu thứ 3.', false, 'TH', 'd₁ − d₂ = 6 cm = 3λ ⇒ C thuộc vân cực đại bậc 3.'],
+            ['Trên đoạn AB có 14 điểm dao động với biên độ cực tiểu.', false, 'VD', '−7,7 < k + 0,5 < 7,7 ⇒ k = −8, …, 7: 16 điểm.']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 1 mm, khoảng cách từ hai khe đến màn là 2,5 m, ánh sáng đơn sắc có bước sóng 0,4 μm.',
+        s: [['Khi thay bằng ánh sáng đơn sắc khác, vị trí vân sáng trung tâm không thay đổi.', true, 'NB', 'Vân trung tâm luôn ở vị trí hiệu đường đi bằng 0.'],
+            ['Khoảng vân bằng 1 mm.', true, 'TH', 'i = 0,4·2,5/1 = 1 mm.'],
+            ['Khoảng cách từ vân sáng bậc 2 đến vân sáng bậc 6 ở hai phía vân trung tâm là 4 mm.', false, 'TH', 'Hai phía: (2 + 6)i = 8 mm.'],
+            ['Hai điểm M, N ở hai phía vân trung tâm, cách vân trung tâm 3,5 mm và 5,2 mm. Trên đoạn MN có 9 vân sáng.', true, 'VD', '−5,2 ≤ k ≤ 3,5 ⇒ k = −5, …, 3: 9 vân sáng.']] }
+    ],
+    p3: [
+      { lv: 'TH', q: 'Trong thí nghiệm Y-âng, a = 2 mm, D = 1,6 m, λ = 0,5 μm. Khoảng vân bằng bao nhiêu mm?', ans: 0.4, unit: 'mm', sol: 'i = 0,5·1,6/2 = 0,4 mm.' },
+      { lv: 'VD', q: 'Hai nguồn kết hợp cùng pha cách nhau 9 cm trên mặt nước, dao động với tần số 15 Hz, tốc độ truyền sóng 30 cm/s. Trên đoạn nối hai nguồn có bao nhiêu điểm dao động với biên độ cực đại?', ans: 9, unit: 'điểm', sol: 'λ = 2 cm; −4,5 < k < 4,5 ⇒ k = −4, …, 4: 9 điểm.' },
+      { lv: 'VD', q: 'Trong thí nghiệm Y-âng, a = 0,5 mm, D = 1 m. Tại điểm M cách vân trung tâm 4,4 mm là vân sáng bậc 4. Bước sóng ánh sáng bằng bao nhiêu μm?', ans: 0.55, unit: 'μm', sol: 'i = 4,4/4 = 1,1 mm; λ = ia/D = 1,1·0,5/1 = 0,55 μm.' },
+      { lv: 'VDC', q: 'Hai nguồn kết hợp cùng pha đặt tại A, B cách nhau 12 cm trên mặt nước, bước sóng 1,6 cm. Gọi O là trung điểm AB. Điểm M trên đường trung trực của AB dao động ngược pha với hai nguồn và gần O nhất cách O bao nhiêu cm? (làm tròn đến hai chữ số thập phân)', ans: 3.98, tol: 0.011, unit: 'cm', sol: 'Ngược pha ⇔ d = (k + 0,5)λ = 1,6(k + 0,5) > 6 ⇒ k + 0,5 > 3,75 ⇒ d nhỏ nhất = 4,5·1,6 = 7,2 cm. OM = √(7,2² − 6²) ≈ 3,98 cm.' }
+    ],
+    p4: [
+      { q: 'Trên mặt nước có hai nguồn kết hợp A, B cách nhau 16 cm, dao động cùng pha với tần số 20 Hz. Tốc độ truyền sóng trên mặt nước là 50 cm/s.',
+        parts: [['Tính bước sóng. Điểm M cách A 12,5 cm, cách B 18,75 cm dao động với biên độ cực đại hay cực tiểu?', 'TH', 'λ = 50/20 = 2,5 cm (0,25đ). d₂ − d₁ = 6,25 cm = 2,5λ (0,25đ) ⇒ M là cực tiểu, thuộc vân cực tiểu thứ 3 (0,25đ).'],
+                ['Tính số điểm dao động với biên độ cực đại và số điểm dao động với biên độ cực tiểu trên đoạn AB.', 'VD', 'AB/λ = 6,4 (0,25đ). Cực đại: −6,4 < k < 6,4 ⇒ 13 điểm (0,25đ). Cực tiểu: −6,4 < k + 0,5 < 6,4 ⇒ k = −6, …, 5: 12 điểm (0,25đ).']] },
+      { q: 'Trong thí nghiệm Y-âng về giao thoa ánh sáng, khoảng cách hai khe là 1 mm, khoảng cách từ hai khe đến màn là 2 m.',
+        parts: [['Dùng ánh sáng đơn sắc có bước sóng λ₁ = 0,5 μm. Tính khoảng vân và vị trí vân sáng bậc 5.', 'TH', 'i₁ = 0,5·2/1 = 1 mm (0,5đ). x₅ = 5i₁ = 5 mm (0,25đ).'],
+                ['Thay bằng ánh sáng đơn sắc có bước sóng λ₂ thì khoảng vân tăng thêm 0,2 mm. Tính λ₂ và cho biết tại vị trí vân sáng bậc 6 của λ₁ là vân gì của λ₂.', 'VD', 'i₂ = 1,2 mm ⇒ λ₂ = i₂a/D = 0,6 μm (0,25đ). x = 6i₁ = 6 mm (0,25đ); x/i₂ = 5 ⇒ vân sáng bậc 5 của λ₂ (0,25đ).']] }
+    ]
+  }
+  ];
+
+  // ---------- Trạng thái ----------
+  const $ = id => document.getElementById(id);
+  const L4 = 'ABCD';
+  const LV = { NB: 'Nhận biết', TH: 'Thông hiểu', VD: 'Vận dụng', VDC: 'Vận dụng cao' };
+  const fmt = (x, d = 2) => String(Math.round(x * 10 ** d) / 10 ** d).replace('.', ',');
+  let cur = 0, mode = 'do';
+  const st = EXAMS.map(() => fresh());
+  function fresh() { return { p1: Array(12).fill(null), p2: [Array(4).fill(null), Array(4).fill(null)], p3: Array(4).fill(''), p4: [[false, false], [false, false]], done: false, start: null, used: 0 }; }
+  let tick = null;
+  const LIMIT = 45 * 60;
+
+  // Mỗi đề có thứ tự đáp án trắc nghiệm cố định nhưng được trộn (đáp án đúng không luôn là A).
+  // Mỗi đề có đúng 3 câu đáp án A, 3 câu B, 3 câu C, 3 câu D.
+  const perm = EXAMS.map((ex, ei) => {
+    let s = (ei * 7919 + 12345) >>> 0;
+    const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const mix = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+    const pos = mix([0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3]);
+    return ex.p1.map((q, qi) => {
+      const others = mix([0, 1, 2, 3].filter(i => i !== q.a));
+      return [0, 1, 2, 3].map(d => d === pos[qi] ? q.a : others.shift()); // [vị trí hiển thị] = chỉ số phương án gốc
+    });
+  });
+  const keyOf = (ei, qi) => perm[ei][qi].indexOf(EXAMS[ei].p1[qi].a);
+
+  const tf2score = n => [0, 0.1, 0.25, 0.5, 1][n];
+  const parseNum = s => { const t = String(s).trim().replace(',', '.'); return t === '' || isNaN(+t) ? null : +t; };
+  const p3ok = (q, s) => { const x = parseNum(s); return x !== null && Math.abs(x - q.ans) <= (q.tol || 1e-6); };
+
+  function scoreOf(ei) {
+    const ex = EXAMS[ei], s = st[ei];
+    const s1 = s.p1.filter((v, i) => v === keyOf(ei, i)).length * 0.25;
+    const s2 = ex.p2.reduce((acc, q, ci) => acc + tf2score(q.s.filter((it, ii) => s.p2[ci][ii] === it[1]).length), 0);
+    const s3 = ex.p3.filter((q, i) => p3ok(q, s.p3[i])).length * 0.5;
+    const s4 = s.p4.flat().filter(Boolean).length * 0.75;
+    return { s1, s2, s3, s4, total: s1 + s2 + s3 + s4 };
+  }
+
+  // ---------- Vẽ tờ đề ----------
+  function renderTabs() {
+    $('tabs').innerHTML = EXAMS.map((_, i) => `<button type="button" class="tab" role="tab" aria-current="${i === cur}" data-i="${i}">Đề ${i + 1}</button>`).join('') +
+      `<div class="seg" role="group" aria-label="Chế độ xem"><button type="button" data-m="do" aria-pressed="${mode === 'do'}">Làm bài</button><button type="button" data-m="key" aria-pressed="${mode === 'key'}">Đáp án</button></div>`;
+    $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { cur = +b.dataset.i; render(); });
+    $('tabs').querySelectorAll('.seg button').forEach(b => b.onclick = () => { mode = b.dataset.m; render(); });
+  }
+
+  function render() {
+    renderTabs();
+    const ex = EXAMS[cur], s = st[cur];
+    const reveal = mode === 'key' || s.done;
+    const lv = k => `<span class="lv">${LV[k]}</span>`;
+    let h = `<div class="phead">
+      <div><strong>Team Vật lý Kỳ Anh</strong><span class="sub">Đề ôn luyện</span><br><span class="code">ĐỀ SỐ ${cur + 1}</span></div>
+      <div><strong>Đề kiểm tra chủ đề Giao thoa sóng</strong>Môn: Vật lí 11 – Kết nối tri thức<br><span class="sub">Thời gian làm bài: 45 phút, không kể thời gian phát đề</span></div>
+    </div>`;
+
+    h += `<p class="part">PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn <span>(3,0 điểm). Thí sinh trả lời từ câu 1 đến câu 12. Mỗi câu hỏi thí sinh chỉ chọn một phương án.</span></p>`;
+    ex.p1.forEach((q, qi) => {
+      const key = keyOf(cur, qi);
+      h += `<div class="q"><p><b>Câu ${qi + 1}.</b> ${q.q}${reveal ? lv(q.lv) : ''}</p><div class="opts">`;
+      perm[cur][qi].forEach((oi, di) => {
+        let c = 'opt';
+        if (reveal) { if (di === key) c += ' right'; else if (di === s.p1[qi]) c += ' wrong'; }
+        else if (di === s.p1[qi]) c += ' sel';
+        h += `<button type="button" class="${c}" data-p1="${qi}" data-d="${di}" ${reveal ? 'disabled' : ''}><b>${L4[di]}.</b><span>${q.o[oi]}</span></button>`;
+      });
+      h += '</div></div>';
+    });
+
+    h += `<p class="part">PHẦN II. Câu trắc nghiệm đúng sai <span>(2,0 điểm). Thí sinh trả lời câu 1 và câu 2. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng (Đ) hoặc sai (S).</span></p>`;
+    ex.p2.forEach((q, ci) => {
+      h += `<div class="q"><p><b>Câu ${ci + 1}.</b> ${q.q}</p><div class="tfwrap"><table class="tf"><thead><tr><th>Ý</th><th>Đ</th><th>S</th></tr></thead><tbody>`;
+      q.s.forEach((it, ii) => {
+        const pick = s.p2[ci][ii];
+        const cls = val => {
+          if (!reveal) return pick === val ? 'pick sel' : 'pick';
+          if (pick === val) return 'pick ' + (val === it[1] ? 'right' : 'wrong');
+          return val === it[1] ? 'pick miss' : 'pick';
+        };
+        h += `<tr><td>${'abcd'[ii]}) ${it[0]}${reveal ? lv(it[2]) + `<div class="sol"><strong>${it[1] ? 'Đúng' : 'Sai'}.</strong> ${it[3]}</div>` : ''}</td>
+          <td class="c"><button type="button" class="${cls(true)}" data-p2="${ci}" data-ii="${ii}" data-v="1" ${reveal ? 'disabled' : ''} aria-label="Ý ${'abcd'[ii]} đúng">Đ</button></td>
+          <td class="c"><button type="button" class="${cls(false)}" data-p2="${ci}" data-ii="${ii}" data-v="0" ${reveal ? 'disabled' : ''} aria-label="Ý ${'abcd'[ii]} sai">S</button></td></tr>`;
+      });
+      h += '</tbody></table></div></div>';
+    });
+
+    h += `<p class="part">PHẦN III. Câu trắc nghiệm trả lời ngắn <span>(2,0 điểm). Thí sinh trả lời từ câu 1 đến câu 4.</span></p>`;
+    ex.p3.forEach((q, qi) => {
+      const val = s.p3[qi], ok = p3ok(q, val);
+      h += `<div class="q"><p><b>Câu ${qi + 1}.</b> ${q.q}${reveal ? lv(q.lv) : ''}</p>
+        <div class="short"><label for="p3-${cur}-${qi}">Đáp số:</label><input id="p3-${cur}-${qi}" inputmode="decimal" autocomplete="off" data-p3="${qi}" value="${val}" ${reveal ? 'disabled' : ''} class="${reveal && mode !== 'key' ? (ok ? 'right' : 'wrong') : ''}"><span>${q.unit}</span></div>
+        ${reveal ? `<div class="sol"><strong>Đáp số: ${fmt(q.ans)} ${q.unit}.</strong> ${q.sol}</div>` : ''}</div>`;
+    });
+
+    h += `<p class="part">PHẦN IV. Tự luận <span>(3,0 điểm). Mỗi ý 0,75 điểm.</span></p>`;
+    ex.p4.forEach((q, ci) => {
+      h += `<div class="q"><p><b>Câu ${ci + 1}.</b> ${q.q}</p>`;
+      q.parts.forEach((pt, pi) => {
+        h += `<p style="margin-left:1em"><b>${'ab'[pi]})</b> ${pt[0]}${reveal ? lv(pt[1]) : ''}</p>`;
+        if (reveal) h += `<div class="sol" style="margin-left:1em"><strong>Hướng dẫn chấm.</strong> ${pt[2]}${s.done && mode !== 'key' ? `<br><label class="selfmark"><input type="checkbox" data-p4="${ci}" data-pi="${pi}" ${s.p4[ci][pi] ? 'checked' : ''}> Bài làm đạt ý này (+0,75đ)</label>` : ''}</div>`;
+      });
+      h += '</div>';
+    });
+    h += `<p class="endnote">— HẾT —</p>`;
+
+    const paper = $('paper');
+    paper.className = 'paper' + (reveal ? '' : ' doing');
+    paper.innerHTML = h;
+    paper.querySelectorAll('[data-p1]').forEach(b => b.onclick = () => { start(); s.p1[+b.dataset.p1] = +b.dataset.d; render(); });
+    paper.querySelectorAll('[data-p2]').forEach(b => b.onclick = () => { start(); s.p2[+b.dataset.p2][+b.dataset.ii] = b.dataset.v === '1'; render(); });
+    paper.querySelectorAll('[data-p3]').forEach(inp => inp.oninput = () => { start(); s.p3[+inp.dataset.p3] = inp.value; renderSide(); });
+    paper.querySelectorAll('[data-p4]').forEach(c => c.onchange = () => { s.p4[+c.dataset.p4][+c.dataset.pi] = c.checked; renderSide(); });
+    renderSide();
+  }
+
+  function start() { const s = st[cur]; if (!s.start && !s.done) { s.start = Date.now(); } ensureTick(); }
+  function ensureTick() { if (!tick) tick = setInterval(() => { const s = st[cur]; if (s.start && !s.done && left(s) <= 0) submit(); renderClock(); }, 1000); }
+  const left = s => s.start ? Math.max(0, LIMIT - Math.floor((Date.now() - s.start) / 1000)) : LIMIT;
+  const mmss = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  function renderClock() { const el = $('clock'); if (!el) return; const s = st[cur]; const t = s.done ? s.used : left(s); el.textContent = mmss(s.done ? t : t); el.classList.toggle('low', !s.done && t < 300); }
+
+  function submit() { const s = st[cur]; if (s.done) return; s.done = true; s.used = s.start ? Math.min(LIMIT, Math.floor((Date.now() - s.start) / 1000)) : 0; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+  function renderSide() {
+    const ex = EXAMS[cur], s = st[cur];
+    const answered = s.p1.filter(v => v !== null).length + s.p2.flat().filter(v => v !== null).length + s.p3.filter(v => String(v).trim() !== '').length;
+    let h = '';
+    if (mode === 'do') {
+      h += `<div class="panel"><h2>${s.done ? 'Thời gian đã làm' : 'Thời gian còn lại'}</h2><div class="clock" id="clock"></div>
+        <p class="small">${s.done ? 'Đã nộp bài.' : `Đã trả lời ${answered}/24 mục trắc nghiệm. Đồng hồ chạy khi em chọn đáp án đầu tiên.`}</p>
+        <div class="row">${s.done ? '<button type="button" class="btn ghost" id="redo">Làm lại đề này</button>' : '<button type="button" class="btn" id="submit">Nộp bài</button>'}</div></div>`;
+      if (s.done) {
+        const sc = scoreOf(cur);
+        h += `<div class="panel"><h2>Điểm</h2><table class="score">
+          <tr><td>Phần I (12 câu)</td><td>${fmt(sc.s1)} / 3</td></tr>
+          <tr><td>Phần II (2 câu)</td><td>${fmt(sc.s2)} / 2</td></tr>
+          <tr><td>Phần III (4 câu)</td><td>${fmt(sc.s3)} / 2</td></tr>
+          <tr><td>Phần IV (tự chấm)</td><td>${fmt(sc.s4)} / 3</td></tr>
+          <tr class="total"><td>Tổng</td><td>${fmt(sc.total)} / 10</td></tr></table>
+          <p class="small">Phần IV: đối chiếu bài làm trên giấy với hướng dẫn chấm, đánh dấu các ý đạt.</p></div>`;
+      }
+    } else {
+      h += `<div class="panel"><h2>Bảng đáp án Đề ${cur + 1}</h2>
+        <table class="keytbl"><tr>${ex.p1.slice(0, 6).map((_, i) => `<th>${i + 1}</th>`).join('')}</tr><tr>${ex.p1.slice(0, 6).map((_, i) => `<td>${L4[keyOf(cur, i)]}</td>`).join('')}</tr>
+        <tr>${ex.p1.slice(6).map((_, i) => `<th>${i + 7}</th>`).join('')}</tr><tr>${ex.p1.slice(6).map((_, i) => `<td>${L4[keyOf(cur, i + 6)]}</td>`).join('')}</tr></table>
+        <table class="keytbl"><tr><th>Phần II</th><th>a</th><th>b</th><th>c</th><th>d</th></tr>${ex.p2.map((q, ci) => `<tr><td>Câu ${ci + 1}</td>${q.s.map(it => `<td>${it[1] ? 'Đ' : 'S'}</td>`).join('')}</tr>`).join('')}</table>
+        <table class="keytbl"><tr><th>Phần III</th><th>1</th><th>2</th><th>3</th><th>4</th></tr><tr><td>Đáp số</td>${ex.p3.map(q => `<td>${fmt(q.ans)}</td>`).join('')}</tr></table></div>`;
+    }
+    h += `<div class="panel"><h2>Cấu trúc đề</h2><div style="overflow-x:auto"><table class="matrix">
+      <tr><th>Phần</th><th>NB</th><th>TH</th><th>VD</th><th>VDC</th></tr>
+      <tr><td>I. 12 câu</td><td>6</td><td>6</td><td></td><td></td></tr>
+      <tr><td>II. 8 ý</td><td>2</td><td>4</td><td>2</td><td></td></tr>
+      <tr><td>III. 4 câu</td><td></td><td>1</td><td>2</td><td>1</td></tr>
+      <tr><td>IV. 4 ý</td><td></td><td>2</td><td>2</td><td></td></tr></table></div>
+      <p class="small">Phần II tính điểm: đúng 1 ý 0,1đ; 2 ý 0,25đ; 3 ý 0,5đ; 4 ý 1đ. Phần III mỗi câu 0,5đ.</p></div>`;
+    $('side').innerHTML = h;
+    if ($('submit')) $('submit').onclick = submit;
+    if ($('redo')) $('redo').onclick = () => { st[cur] = fresh(); render(); };
+    renderClock();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
