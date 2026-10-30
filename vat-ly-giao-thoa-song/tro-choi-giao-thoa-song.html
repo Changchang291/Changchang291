@@ -1,0 +1,635 @@
+<title>Phòng chơi Giao thoa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: bể sóng — đầu trang là hình giao thoa hai nguồn chuyển động thật; bên dưới là 4 trò chơi chuyển bằng tab, mỗi trò có một bàn làm việc riêng. */
+:root {
+  --bg: #edf4f3;
+  --surface: #ffffff;
+  --surface-2: #e1ecea;
+  --line: #c3d5d2;
+  --fg: #0f2a2e;
+  --muted: #52706f;
+  --accent: #0b7a75;
+  --accent-ink: #ffffff;
+  --crest: #f2b705;
+  --center: #ff7a29;
+  --node: #2c3c82;
+  --src: #e0393e;
+  --blank: #f4f8f7;
+  --ok: #17864a;
+  --bad: #cf3c3c;
+  --ok-bg: #dff3e7;
+  --bad-bg: #fbe3e3;
+  --font-display: "Bricolage Grotesque", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1b1f; --surface: #10282d; --surface-2: #17343a; --line: #27494f;
+    --fg: #e3f0ee; --muted: #8fb0ae; --accent: #3cc7bd; --accent-ink: #04201e;
+    --node: #4457b8; --blank: #132e33; --ok: #4ade80; --bad: #ff6f6f;
+    --ok-bg: #12382a; --bad-bg: #3d1a1c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1b1f; --surface: #10282d; --surface-2: #17343a; --line: #27494f;
+  --fg: #e3f0ee; --muted: #8fb0ae; --accent: #3cc7bd; --accent-ink: #04201e;
+  --node: #4457b8; --blank: #132e33; --ok: #4ade80; --bad: #ff6f6f;
+  --ok-bg: #12382a; --bad-bg: #3d1a1c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; display: flex; flex-direction: column; gap: 18px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+sub, sup { font-size: .7em; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; text-wrap: balance; margin: 0; }
+
+/* ---------- Đầu trang ---------- */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; align-items: center; }
+.eyebrow { font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -.01em; margin-top: 6px; }
+.hero p { margin: 10px 0 0; color: var(--muted); max-width: 52ch; }
+.tank { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); aspect-ratio: 2 / 1; max-width: 100%; }
+.tank canvas { width: 100%; height: 100%; display: block; }
+.tank .src { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--src); box-shadow: 0 0 0 3px var(--surface); }
+.tank .src span { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font: 700 .8rem var(--font-mono); color: var(--fg); background: var(--surface); padding: 0 5px; border-radius: 6px; }
+.tank figcaption { position: absolute; left: 10px; bottom: 8px; font: 500 .74rem var(--font-mono); background: var(--surface); color: var(--muted); padding: 2px 8px; border-radius: 8px; }
+
+/* ---------- Tab ---------- */
+.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tab { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; transition: border-color .15s, transform .15s; }
+.tab b { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
+.tab small { color: var(--muted); font-size: .8rem; }
+.tab:hover { border-color: var(--accent); }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tab[aria-selected="true"] small { color: inherit; opacity: .85; }
+
+/* ---------- Khung trò chơi ---------- */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: clamp(16px, 2.6vw, 28px); display: flex; flex-direction: column; gap: 18px; }
+.p-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; justify-content: space-between; }
+.p-head h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 800; }
+.p-head p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chip { font: 600 .82rem var(--font-mono); padding: 4px 10px; border-radius: 999px; background: var(--surface-2); font-variant-numeric: tabular-nums; }
+.btn { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 7px 13px; font-weight: 600; font-size: .92rem; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: none; }
+.btn:disabled { opacity: .5; cursor: default; }
+.field { font: 600 1rem var(--font-mono); border: 1px solid var(--line); background: var(--blank); color: var(--fg); border-radius: 10px; padding: 7px 10px; min-width: 0; }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.note { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--ok-bg); color: var(--fg); }
+.note b { color: var(--ok); }
+
+/* ---------- Mật thư ---------- */
+.letter { border: 2px dashed var(--line); border-radius: 16px; padding: 16px; background: var(--blank); display: flex; flex-direction: column; gap: 12px; }
+.letter .from { font: 500 .85rem var(--font-mono); color: var(--muted); }
+.cipher { display: flex; flex-wrap: wrap; gap: 14px 26px; }
+.word { display: flex; gap: 6px; }
+.slot { width: clamp(38px, 8vw, 54px); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.slot .num { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font: 700 clamp(1rem, 2.6vw, 1.4rem) var(--font-mono); color: var(--muted); transition: background .3s; }
+.slot.on .num { background: var(--node); border-color: var(--node); color: #fff; }
+.slot .ch { font: 800 1.2rem var(--font-display); min-height: 1.6em; color: var(--accent); }
+.slot small { font: 500 .7rem var(--font-mono); color: var(--muted); }
+.decode { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.decode .field { flex: 1 1 200px; text-transform: uppercase; }
+.key { font: 600 .9rem var(--font-mono); padding: 8px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.qs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.q { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.q.done { border-color: var(--ok); background: var(--ok-bg); }
+.q .qt { display: flex; gap: 10px; }
+.q .badge { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font: 700 .85rem var(--font-mono); }
+.q.done .badge { background: var(--ok); color: var(--surface); }
+.q .qt p { margin: 0; min-width: 0; }
+.q .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.q .row .field { width: 110px; }
+.q .unit { color: var(--muted); font-size: .9rem; }
+.q .fb { font-size: .88rem; font-weight: 600; }
+.q .fb.bad { color: var(--bad); }
+.q .fb.ok { color: var(--ok); }
+.q .sol { font-size: .88rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 6px; }
+
+/* ---------- Ô chữ ---------- */
+.oc { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: start; }
+.grid-wrap { overflow-x: auto; padding-bottom: 4px; }
+.cw { --cell: clamp(26px, 6.6vw, 42px); display: flex; flex-direction: column; gap: 4px; width: max-content; }
+.cw-row { display: flex; gap: 4px; align-items: center; }
+.cw-row .rn { width: var(--cell); height: var(--cell); border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); font: 700 .85rem var(--font-mono); padding: 0; }
+.cw-row.sel .rn { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.cw-row.ok .rn { background: var(--ok); color: var(--surface); border-color: var(--ok); }
+.cell, .gap { width: var(--cell); height: var(--cell); flex: none; }
+.cell { border: 1.5px solid var(--line); border-radius: 6px; background: var(--blank); text-align: center; font: 800 calc(var(--cell) * .5) var(--font-display); color: var(--fg); padding: 0; text-transform: uppercase; caret-color: var(--accent); }
+.cell.k { background: color-mix(in srgb, var(--crest) 30%, var(--blank)); border-color: var(--crest); }
+.cw-row.sel .cell { border-color: var(--accent); }
+.cw-row.ok .cell { color: var(--ok); }
+.cw-row.shown .cell { color: var(--muted); }
+.clue { border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.clue h3 { font-size: 1.25rem; }
+.clue p { margin: 0; }
+.clue .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.clue .vn { font-weight: 700; color: var(--ok); }
+.kw { border-top: 1px dashed var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.kw .decode .field { flex-basis: 160px; }
+
+/* ---------- Domino ---------- */
+.dom-area { display: flex; flex-direction: column; gap: 10px; }
+.dom-area h3 { font-size: 1.05rem; display: flex; gap: 8px; align-items: baseline; }
+.dom-area h3 small { font-family: var(--font-body); font-weight: 500; color: var(--muted); font-size: .85rem; }
+.chain, .pool { display: flex; flex-wrap: wrap; gap: 10px; }
+.chain { min-height: 96px; padding: 12px; border-radius: 16px; background: var(--surface-2); }
+.tile { display: grid; grid-template-columns: 1fr 1fr; width: min(300px, 100%); min-height: 84px; border-radius: 12px; border: 2px solid var(--fg); background: var(--surface); text-align: left; padding: 0; overflow: hidden; }
+.tile > div { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font-size: .86rem; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
+.tile > div + div { border-left: 2px dotted var(--fg); }
+.tile i { font-style: normal; font: 700 .64rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tile .ans { font-weight: 700; }
+.tile .end { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--accent); }
+.chain .tile { border-color: var(--accent); }
+.chain .tile > div + div { border-left-color: var(--accent); }
+.chain .tile.new { animation: pop .35s; }
+@keyframes pop { from { transform: scale(.85); opacity: .4; } }
+.pool .tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+.pool .tile.hint { box-shadow: 0 0 0 4px var(--crest); }
+
+/* ---------- Tô màu ---------- */
+.paint { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.palette { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw { display: flex; align-items: center; gap: 8px; border: 2px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px 5px 5px; font-weight: 600; font-size: .9rem; }
+.sw i { width: 26px; height: 26px; border-radius: 50%; background: var(--c); border: 1px solid var(--line); }
+.sw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--fg) inset; }
+.canvas-box { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pix { display: grid; grid-template-columns: repeat(27, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; aspect-ratio: 27 / 15; max-width: 100%; }
+.px { background: var(--blank); display: grid; place-items: center; font: 700 clamp(.42rem, 1.1vw, .7rem) var(--font-mono); color: var(--muted); cursor: pointer; user-select: none; transition: background .35s; }
+.px.focus { background: color-mix(in srgb, var(--accent) 22%, var(--blank)); }
+.px.wrong { background: var(--bad-bg); }
+.px.done { color: transparent; }
+.pix.complete .px.crest { animation: shimmer 2.4s ease-in-out infinite; animation-delay: calc(var(--x) * 60ms); }
+@keyframes shimmer { 50% { filter: brightness(1.3) saturate(1.2); } }
+.regions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 520px; overflow-y: auto; }
+.rg { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 7px 10px; background: var(--surface); text-align: left; width: 100%; }
+.rg:hover, .rg.focus { border-color: var(--accent); }
+.rg .n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 .78rem var(--font-mono); background: var(--surface-2); }
+.rg.done .n { background: var(--c); color: #fff; }
+.rg span { font-size: .9rem; min-width: 0; }
+.rg.done { opacity: .7; }
+.rule { font-size: .88rem; color: var(--muted); margin: 0; }
+
+/* ---------- Thông báo ---------- */
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; max-width: calc(100% - 32px); z-index: 20; box-shadow: 0 8px 24px rgb(0 0 0 / .25); }
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
+
+@media (max-width: 860px) {
+  .hero, .oc, .paint { grid-template-columns: minmax(0, 1fr); }
+  .qs { grid-template-columns: minmax(0, 1fr); }
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Vật lí · Sóng · Giao thoa sóng</div>
+      <h1>Phòng chơi Giao thoa</h1>
+      <p>Bốn trò chơi nhỏ để ôn bài giao thoa sóng cơ trên mặt nước và giao thoa ánh sáng Young: giải mật thư, giải ô chữ, xếp domino và tô màu bức tranh vân giao thoa.</p>
+    </div>
+    <figure class="tank" style="margin:0">
+      <canvas id="tank" width="200" height="100" aria-label="Mô phỏng giao thoa của hai nguồn sóng cùng pha trên mặt nước"></canvas>
+      <div class="src" style="left:35%"><span>S₁</span></div>
+      <div class="src" style="left:65%"><span>S₂</span></div>
+      <figcaption>Hai nguồn cùng pha · S₁S₂ = 3λ</figcaption>
+    </figure>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Chọn trò chơi">
+    <button class="tab" role="tab" data-g="mat-thu"><b>Mật thư</b><small>8 câu · giải mã thông điệp</small></button>
+    <button class="tab" role="tab" data-g="o-chu"><b>Ô chữ</b><small>8 hàng ngang · 1 từ khóa</small></button>
+    <button class="tab" role="tab" data-g="domino"><b>Domino</b><small>Nối 9 quân thành chuỗi</small></button>
+    <button class="tab" role="tab" data-g="to-mau"><b>Tô màu</b><small>15 vùng · bức tranh vân</small></button>
+  </nav>
+
+  <section class="panel" id="g-mat-thu" role="tabpanel"></section>
+  <section class="panel" id="g-o-chu" role="tabpanel" hidden></section>
+  <section class="panel" id="g-domino" role="tabpanel" hidden></section>
+  <section class="panel" id="g-to-mau" role="tabpanel" hidden></section>
+</div>
+<canvas id="fx"></canvas>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'D').toUpperCase().replace(/[^A-Z]/g, '');
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const shake = el => { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); };
+
+let toastT;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600);
+}
+
+function confetti() {
+  if (reduced) return;
+  const c = $('#fx'), x = c.getContext('2d');
+  c.width = innerWidth; c.height = innerHeight;
+  const cs = getComputedStyle(document.documentElement);
+  const cols = ['--crest', '--accent', '--center', '--node', '--src'].map(v => cs.getPropertyValue(v).trim());
+  const ps = Array.from({ length: 140 }, () => ({ x: c.width / 2, y: c.height * .35, vx: (Math.random() - .5) * 14, vy: Math.random() * -12 - 3, s: 4 + Math.random() * 6, c: cols[Math.floor(Math.random() * cols.length)], r: Math.random() * 6 }));
+  let f = 0;
+  (function step() {
+    x.clearRect(0, 0, c.width, c.height);
+    ps.forEach(p => { p.vy += .35; p.x += p.vx; p.y += p.vy; p.r += .2; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); x.restore(); });
+    if (++f < 110) requestAnimationFrame(step); else x.clearRect(0, 0, c.width, c.height);
+  })();
+}
+
+/* ================= Bể sóng ở đầu trang ================= */
+(function tank() {
+  const cv = $('#tank'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const img = ctx.createImageData(W, H);
+  const lam = 20, s1 = [W * .35, H / 2], s2 = [W * .65, H / 2];
+  const d1 = new Float32Array(W * H), d2 = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    d1[i] = Math.hypot(x - s1[0], y - s1[1]); d2[i] = Math.hypot(x - s2[0], y - s2[1]);
+  }
+  const hex = h => { h = h.replace('#', ''); return [0, 2, 4].map(k => parseInt(h.slice(k, k + 2), 16)); };
+  let pal, frame = 0;
+  const readPal = () => { const cs = getComputedStyle(document.documentElement); pal = ['--node', '--surface-2', '--crest'].map(v => hex(cs.getPropertyValue(v).trim())); };
+  readPal();
+  const k = 2 * Math.PI / lam;
+  function draw(t) {
+    if (frame++ % 30 === 0) readPal();
+    const [a, m, b] = pal, D = img.data;
+    for (let i = 0; i < W * H; i++) {
+      const u = (Math.sin(k * d1[i] - t) + Math.sin(k * d2[i] - t)) / 2; // −1 … 1
+      const from = u < 0 ? a : b, w = Math.abs(u) * .9, j = i * 4;
+      D[j] = m[0] + (from[0] - m[0]) * w; D[j + 1] = m[1] + (from[1] - m[1]) * w; D[j + 2] = m[2] + (from[2] - m[2]) * w; D[j + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  if (reduced) { draw(0); return; }
+  (function loop(ts) { if (!document.hidden) draw(ts / 260); requestAnimationFrame(loop); })(0);
+})();
+
+/* ================= 1. Mật thư ================= */
+const MT = [
+  { q: 'Hai nguồn kết hợp cùng pha S₁, S₂ cách nhau 7,5 cm, bước sóng λ = 2 cm. Trên đoạn S₁S₂ có bao nhiêu điểm cực đại?', a: 7, u: 'điểm',
+    s: '−S₁S₂/λ < k < S₁S₂/λ ⇒ −3,75 < k < 3,75 ⇒ k = −3, …, 3: có 7 điểm.' },
+  { q: 'Thí nghiệm Young: a = 0,1 mm, D = 1,5 m, λ = 0,6 μm. Khoảng vân i bằng bao nhiêu?', a: 9, u: 'mm',
+    s: 'i = λD/a = 0,6·10⁻⁶ · 1,5 / 0,1·10⁻³ = 9·10⁻³ m = 9 mm.' },
+  { q: 'Hai nguồn cùng pha, λ = 4 cm. Điểm M có d₁ = 12 cm, d₂ = 16 cm là cực đại bậc mấy?', a: 1, u: '',
+    s: 'd₂ − d₁ = 4 cm = 1·λ ⇒ M là cực đại bậc k = 1.' },
+  { q: 'Thí nghiệm Young có khoảng vân i = 1,5 mm. Vân sáng bậc 10 cách vân sáng trung tâm bao nhiêu?', a: 15, u: 'mm',
+    s: 'x = ki = 10 · 1,5 = 15 mm.' },
+  { q: 'Hai nguồn cùng pha trên mặt nước, v = 40 cm/s. Hai cực đại liên tiếp trên S₁S₂ cách nhau 1 cm. Tần số sóng bằng bao nhiêu?', a: 20, u: 'Hz',
+    s: 'λ/2 = 1 cm ⇒ λ = 2 cm; f = v/λ = 40/2 = 20 Hz.' },
+  { q: 'Thí nghiệm Young có i = 2 mm. Khoảng cách từ vân sáng bậc 2 đến vân sáng bậc 6 (cùng phía vân trung tâm) là bao nhiêu?', a: 8, u: 'mm',
+    s: 'Δx = (6 − 2)i = 4 · 2 = 8 mm.' },
+  { q: 'Thí nghiệm Young có i = 3 mm. Khoảng cách giữa 6 vân sáng liên tiếp là bao nhiêu?', a: 15, u: 'mm',
+    s: '6 vân sáng liên tiếp có 5 khoảng vân: 5i = 15 mm.' },
+  { q: 'Thí nghiệm Young: a = 1 mm, D = 2 m, λ = 0,5 μm. Khoảng vân i bằng bao nhiêu?', a: 1, u: 'mm',
+    s: 'i = λD/a = 0,5·10⁻⁶ · 2 / 10⁻³ = 10⁻³ m = 1 mm.' },
+];
+const MT_WORDS = [[0, 1, 2, 3], [4, 5, 6, 7]];
+const MT_KEY = 'GIAOTHOA';
+let mt;
+function mtReset() { mt = { done: MT.map(() => false), miss: MT.map(() => 0), val: MT.map(() => ''), key: false, won: false }; mtRender(); }
+function mtRender() {
+  const p = $('#g-mat-thu');
+  const solved = mt.done.filter(Boolean).length;
+  p.innerHTML = `
+    <div class="p-head">
+      <div><h2>Mật thư sóng nước</h2>
+      <p>Mỗi câu hỏi cho một đáp số. Giải đúng, con số hiện vào ô tương ứng trong mật thư. Khi đủ 8 số, dùng khóa để đổi số thành chữ và đọc thông điệp.</p></div>
+      <div class="meta"><span class="chip">Đã giải ${solved}/8</span><button class="btn ghost" data-act="mt-reset">Chơi lại</button></div>
+    </div>
+    <div class="letter">
+      <div class="from">MẬT THƯ SỐ 1 · gửi đội trinh sát sóng · đọc theo thứ tự ô 1 → 8</div>
+      <div class="cipher">${MT_WORDS.map(w => `<div class="word">${w.map(i => `
+        <div class="slot ${mt.done[i] ? 'on' : ''}"><div class="num">${mt.done[i] ? MT[i].a : '?'}</div>
+        <div class="ch">${mt.won ? MT_KEY[i] : ''}</div><small>ô ${i + 1}</small></div>`).join('')}</div>`).join('')}</div>
+      <div class="decode">
+        ${mt.key ? `<span class="key">Khóa: A = 1, B = 2, C = 3 … (bảng chữ cái 26 chữ, không dấu)</span>` : `<button class="btn" data-act="mt-key">Mở khóa giải mã</button>`}
+      </div>
+      <form class="decode" id="mt-form">
+        <label for="mt-final" style="font-weight:600">Thông điệp:</label>
+        <input class="field" id="mt-final" autocomplete="off" placeholder="Gõ thông điệp đã giải" ${mt.won ? `value="GIAO THOA" readonly` : ''}>
+        <button class="btn primary" ${mt.won ? 'disabled' : ''}>Giải mã</button>
+      </form>
+      ${mt.won ? `<p class="note"><b>Thông điệp: GIAO THOA.</b> Giao thoa là hiện tượng hai sóng kết hợp gặp nhau, tạo nên những chỗ dao động được tăng cường (cực đại) xen kẽ những chỗ bị triệt tiêu (cực tiểu).</p>` : ''}
+    </div>
+    <ol class="qs">${MT.map((m, i) => `
+      <li class="q ${mt.done[i] ? 'done' : ''}" id="mt-q${i}">
+        <div class="qt"><span class="badge">${i + 1}</span><p>${m.q}</p></div>
+        ${mt.done[i] ? `<div class="fb ok">Đáp số: ${m.a} ${m.u}</div><div class="sol">${m.s}</div>` : `
+        <form class="row" data-mt="${i}">
+          <input class="field" id="mt-in${i}" inputmode="decimal" autocomplete="off" placeholder="Đáp số" aria-label="Đáp số câu ${i + 1}" value="${mt.val[i]}">
+          <span class="unit">${m.u}</span><button class="btn primary">Kiểm tra</button>
+          ${mt.miss[i] >= 2 ? `<button type="button" class="btn ghost" data-act="mt-show" data-i="${i}">Xem lời giải</button>` : ''}
+          <span class="fb bad" id="mt-fb${i}">${mt.miss[i] ? 'Chưa đúng, thử lại nhé.' : ''}</span>
+        </form>`}
+      </li>`).join('')}</ol>`;
+}
+function mtCheck(i) {
+  const inp = $('#mt-in' + i), v = parseFloat(inp.value.replace(',', '.'));
+  if (Number.isNaN(v)) { toast('Hãy nhập một con số.'); inp.focus(); return; }
+  if (Math.abs(v - MT[i].a) < 1e-6) {
+    mt.done[i] = true; mtRender();
+    if (mt.done.every(Boolean)) toast('Đủ 8 số rồi! Mở khóa để giải mật thư.'); else toast('Chính xác!');
+    const next = mt.done.findIndex(d => !d); if (next >= 0) $('#mt-in' + next)?.focus({ preventScroll: true });
+  } else {
+    mt.miss[i]++; mtRender(); const f = $('#mt-in' + i); f.focus(); shake($('#mt-q' + i));
+  }
+}
+function mtDecode() {
+  const v = norm($('#mt-final').value);
+  if (v === MT_KEY) { mt.won = true; mt.key = true; mtRender(); confetti(); return; }
+  shake($('#mt-form'));
+  toast(mt.done.every(Boolean) ? 'Chưa đúng. Đổi từng số thành chữ theo khóa rồi ghép lại.' : 'Hãy giải hết 8 câu để có đủ các con số.');
+}
+
+/* ================= 2. Ô chữ ================= */
+const OC = [
+  { a: 'BIENDO', k: 0, vn: 'BIÊN ĐỘ', c: 'Đại lượng đạt giá trị lớn nhất tại các điểm cực đại giao thoa.' },
+  { a: 'CUCDAI', k: 1, vn: 'CỰC ĐẠI', c: 'Những điểm dao động mạnh nhất trong vùng giao thoa, tại đó hai sóng tới cùng pha.' },
+  { a: 'YOUNG', k: 1, vn: 'YOUNG', c: 'Nhà vật lí người Anh làm thí nghiệm giao thoa ánh sáng qua hai khe hẹp (năm 1801).' },
+  { a: 'CUCTIEU', k: 0, vn: 'CỰC TIỂU', c: 'Những điểm đứng yên khi hai sóng tới có cùng biên độ và ngược pha nhau.' },
+  { a: 'VANSANG', k: 3, vn: 'VÂN SÁNG', c: 'Trong thí nghiệm Young, các vị trí trên màn có tọa độ x = ki là …' },
+  { a: 'KHOANGVAN', k: 2, vn: 'KHOẢNG VÂN', c: 'Đại lượng i = λD/a, là khoảng cách giữa hai vân sáng liên tiếp, gọi là …' },
+  { a: 'ANHSANG', k: 1, vn: 'ÁNH SÁNG', c: 'Thí nghiệm Young chứng tỏ … có tính chất sóng.' },
+  { a: 'CUNGPHA', k: 3, vn: 'CÙNG PHA', c: 'Tại điểm cực đại giao thoa, hai sóng tới dao động … với nhau.' },
+];
+const OC_KEY = 'BUOCSONG', OC_KEY_VN = 'BƯỚC SÓNG';
+const OC_MAXK = Math.max(...OC.map(r => r.k));
+const OC_W = Math.max(...OC.map(r => OC_MAXK - r.k + r.a.length));
+let oc;
+function ocReset() { oc = { sel: 0, st: OC.map(() => ''), typed: OC.map(r => Array(r.a.length).fill('')), key: false }; ocRender(); }
+function ocRender() {
+  const p = $('#g-o-chu');
+  const solved = oc.st.filter(s => s === 'ok').length;
+  const r = OC[oc.sel], st = oc.st[oc.sel];
+  p.innerHTML = `
+    <div class="p-head">
+      <div><h2>Ô chữ Giao thoa</h2>
+      <p>Chọn một hàng, đọc gợi ý rồi gõ đáp án (gõ không dấu cũng được). Các ô màu vàng ghép lại thành từ khóa hàng dọc. Đoán được từ khóa sớm là thắng lớn.</p></div>
+      <div class="meta"><span class="chip">Hàng đúng ${solved}/8</span><button class="btn ghost" data-act="oc-reset">Chơi lại</button></div>
+    </div>
+    <div class="oc">
+      <div class="grid-wrap"><div class="cw">${OC.map((row, ri) => {
+        const off = OC_MAXK - row.k;
+        let h = `<div class="cw-row ${ri === oc.sel ? 'sel' : ''} ${oc.st[ri]}" data-r="${ri}"><button class="rn" data-act="oc-sel" data-r="${ri}" aria-label="Hàng ${ri + 1}">${ri + 1}</button>`;
+        for (let c = 0; c < OC_W; c++) {
+          const li = c - off;
+          if (li < 0 || li >= row.a.length) { h += '<span class="gap"></span>'; continue; }
+          const fill = oc.st[ri] ? row.a[li] : (oc.key && li === row.k ? row.a[li] : oc.typed[ri][li]);
+          h += `<input class="cell ${li === row.k ? 'k' : ''}" id="oc-${ri}-${li}" data-r="${ri}" data-l="${li}" maxlength="2" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Hàng ${ri + 1}, ô ${li + 1}" value="${fill}" ${oc.st[ri] ? 'readonly' : ''}>`;
+        }
+        return h + '</div>';
+      }).join('')}</div></div>
+      <div class="clue">
+        <h3>Hàng ${oc.sel + 1} · ${r.a.length} chữ cái</h3>
+        <p>${r.c}</p>
+        ${st === 'ok' ? `<p class="vn">Đáp án: ${r.vn}</p>` : st === 'shown' ? `<p class="vn" style="color:var(--muted)">Đáp án (đã mở): ${r.vn}</p>` : `
+        <div class="acts"><button class="btn primary" data-act="oc-check">Kiểm tra hàng</button><button class="btn ghost" data-act="oc-show">Mở đáp án hàng</button></div>`}
+        <div class="acts"><button class="btn" data-act="oc-move" data-d="-1">← Hàng trước</button><button class="btn" data-act="oc-move" data-d="1">Hàng sau →</button></div>
+        <div class="kw">
+          <b>Từ khóa hàng dọc (8 chữ cái)</b>
+          <span style="color:var(--muted);font-size:.9rem">Khoảng cách giữa hai cực đại liên tiếp trên đoạn S₁S₂ bằng một nửa đại lượng này.</span>
+          ${oc.key ? `<p class="note"><b>Từ khóa: ${OC_KEY_VN}.</b> Trên đoạn nối hai nguồn, hai cực đại (hoặc hai cực tiểu) liên tiếp cách nhau λ/2.</p>` : `
+          <form class="decode" id="oc-form"><input class="field" id="oc-key" autocomplete="off" placeholder="Từ khóa" aria-label="Từ khóa hàng dọc"><button class="btn primary">Đoán từ khóa</button></form>`}
+        </div>
+      </div>
+    </div>`;
+}
+function ocSelect(ri, focus = true) {
+  oc.sel = (ri + OC.length) % OC.length; ocRender();
+  if (focus && !oc.st[oc.sel]) { const first = $$(`.cell[data-r="${oc.sel}"]`).find(c => !c.value) || $(`#oc-${oc.sel}-0`); first?.focus({ preventScroll: true }); }
+}
+function ocCheck() {
+  const ri = oc.sel, row = OC[ri];
+  const got = row.a.split('').map((_, li) => $(`#oc-${ri}-${li}`).value).join('');
+  if (got === row.a) { oc.st[ri] = 'ok'; toast('Chính xác: ' + row.vn); ocRender(); if (oc.st.every(Boolean) && !oc.key) toast('Đủ 8 hàng! Đoán từ khóa hàng dọc nào.'); }
+  else { shake($(`.cw-row[data-r="${ri}"]`)); toast(got.length < row.a.length ? 'Hàng này còn ô trống.' : 'Chưa đúng, thử lại nhé.'); }
+}
+function ocInput(e) {
+  const c = e.target; if (!c.classList.contains('cell')) return;
+  const v = norm(c.value); c.value = v.slice(-1); oc.typed[c.dataset.r][c.dataset.l] = c.value;
+  if (c.value) { const n = $(`#oc-${c.dataset.r}-${+c.dataset.l + 1}`); n?.focus(); n?.select(); }
+}
+function ocKey(e) {
+  const c = e.target; if (!c.classList.contains('cell')) return;
+  const r = +c.dataset.r, l = +c.dataset.l;
+  const go = (rr, ll) => { const n = $(`#oc-${rr}-${ll}`); if (n) { e.preventDefault(); n.focus(); n.select(); } };
+  if (e.key === 'Backspace' && !c.value) go(r, l - 1);
+  else if (e.key === 'ArrowLeft') go(r, l - 1);
+  else if (e.key === 'ArrowRight') go(r, l + 1);
+  else if (e.key === 'Enter') { e.preventDefault(); ocCheck(); }
+  else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); ocSelect(r + (e.key === 'ArrowUp' ? -1 : 1)); }
+}
+function ocGuess() {
+  if (norm($('#oc-key').value) === OC_KEY) { oc.key = true; ocRender(); confetti(); }
+  else { shake($('#oc-form')); toast('Chưa phải từ khóa. Giải thêm vài hàng để có thêm chữ.'); }
+}
+
+/* ================= 3. Domino ================= */
+const DOM = [
+  { a: '<span class="end">BẮT ĐẦU</span>', q: 'Điều kiện để hai nguồn là hai nguồn kết hợp' },
+  { a: 'Cùng tần số và hiệu số pha không đổi theo thời gian', q: 'Vị trí các điểm cực đại (hai nguồn cùng pha)' },
+  { a: 'd₂ − d₁ = kλ', q: 'Vị trí các điểm cực tiểu (hai nguồn cùng pha)' },
+  { a: 'd₂ − d₁ = (k + ½)λ', q: 'Khoảng cách giữa hai cực đại liên tiếp trên đoạn S₁S₂' },
+  { a: 'λ/2', q: 'Công thức tính khoảng vân trong thí nghiệm Young' },
+  { a: 'i = λD/a', q: 'Vị trí vân sáng bậc k trên màn' },
+  { a: 'x = ki', q: 'Vị trí các vân tối trên màn' },
+  { a: 'x = (k + ½)i', q: 'Hình dạng các đường cực đại, cực tiểu trên mặt nước' },
+  { a: 'Các đường hypebol nhận S₁, S₂ làm tiêu điểm', q: 'Hiện tượng giao thoa ánh sáng chứng tỏ ánh sáng có' },
+  { a: 'Tính chất sóng', q: '<span class="end">KẾT THÚC</span>' },
+];
+let dm;
+function dmReset() { dm = { chain: [0], pool: shuffle(DOM.map((_, i) => i).slice(1)), miss: 0, hint: -1, last: -1 }; dmRender(); }
+const tileHTML = (i, tag = 'div', extra = '') => `<${tag} class="tile ${extra}" data-t="${i}" ${tag === 'button' ? 'type="button"' : ''}>
+  <div><i>Đáp</i><span class="ans">${DOM[i].a}</span></div><div><i>Hỏi</i><span>${DOM[i].q}</span></div></${tag}>`;
+function dmRender() {
+  const p = $('#g-domino'), won = !dm.pool.length;
+  p.innerHTML = `
+    <div class="p-head">
+      <div><h2>Domino công thức</h2>
+      <p>Mỗi quân có hai nửa: bên trái là đáp án, bên phải là câu hỏi. Chọn quân có nửa trái trả lời đúng câu hỏi ở cuối chuỗi để nối tiếp, cho đến quân KẾT THÚC.</p></div>
+      <div class="meta"><span class="chip">Đã nối ${dm.chain.length - 1}/${DOM.length - 1}</span><span class="chip">Sai ${dm.miss}</span>
+      <button class="btn" data-act="dm-hint" ${won ? 'disabled' : ''}>Gợi ý</button><button class="btn ghost" data-act="dm-reset">Xáo lại</button></div>
+    </div>
+    <div class="dom-area"><h3>Chuỗi domino <small>Câu hỏi cần trả lời: “${won ? 'đã hoàn thành' : DOM[dm.chain.at(-1)].q}”</small></h3>
+      <div class="chain">${dm.chain.map(i => tileHTML(i, 'div', i === dm.last ? 'new' : '')).join('')}</div></div>
+    ${won ? `<p class="note"><b>Hoàn thành chuỗi với ${dm.miss} lần chọn sai.</b> Đọc lại chuỗi từ đầu đến cuối là có ngay bản tóm tắt các công thức của bài giao thoa sóng.</p>` : `
+    <div class="dom-area"><h3>Quân còn lại <small>${dm.pool.length} quân · bấm để nối</small></h3>
+      <div class="pool">${dm.pool.map(i => tileHTML(i, 'button', i === dm.hint ? 'hint' : '')).join('')}</div></div>`}`;
+}
+function dmPick(i, el) {
+  const need = dm.chain.at(-1) + 1;
+  if (i === need) {
+    dm.chain.push(i); dm.pool = dm.pool.filter(x => x !== i); dm.hint = -1; dm.last = i; dmRender();
+    if (!dm.pool.length) confetti();
+  } else { dm.miss++; shake(el); $('#g-domino .chip:nth-child(2)').textContent = 'Sai ' + dm.miss; toast('Chưa khớp: nửa “Đáp” của quân này không trả lời câu hỏi cuối chuỗi.'); }
+}
+
+/* ================= 4. Tô màu ================= */
+const COLS = 27, ROWS = 15, S1 = [9, 7], S2 = [17, 7], LAM = (S2[0] - S1[0]) / 3; // S₁S₂ = 3λ
+const PAINT = {
+  max: { name: 'Cực đại (k ≠ 0)', v: '--crest' },
+  center: { name: 'Cực đại trung tâm (k = 0)', v: '--center' },
+  min: { name: 'Cực tiểu', v: '--node' },
+  src: { name: 'Nguồn sóng', v: '--src' },
+};
+// Mỗi vùng ứng với một giá trị (d₂ − d₁)/λ; λ = 2 cm, hai nguồn cùng pha.
+const RG = [
+  { id: '3', t: 'd₁ = 3 cm, d₂ = 9 cm', ans: 'max' },
+  { id: '2.5', t: 'd₂ − d₁ = 5 cm', ans: 'min' },
+  { id: '2', t: 'd₁ = 4 cm, d₂ = 8 cm', ans: 'max' },
+  { id: '1.5', t: 'd₂ − d₁ = 1,5λ', ans: 'min' },
+  { id: '1', t: 'd₁ = 5 cm, d₂ = 7 cm', ans: 'max' },
+  { id: '0.5', t: 'd₂ − d₁ = 1 cm', ans: 'min' },
+  { id: '0', t: 'M nằm trên đường trung trực của S₁S₂', ans: 'center' },
+  { id: '-0.5', t: 'd₁ = 7,5 cm, d₂ = 6,5 cm', ans: 'min' },
+  { id: '-1', t: 'd₁ − d₂ = 2 cm', ans: 'max' },
+  { id: '-1.5', t: 'd₁ = 9 cm, d₂ = 6 cm', ans: 'min' },
+  { id: '-2', t: 'd₂ − d₁ = −2λ', ans: 'max' },
+  { id: '-2.5', t: 'd₁ = 10 cm, d₂ = 5 cm', ans: 'min' },
+  { id: '-3', t: 'd₁ − d₂ = 6 cm', ans: 'max' },
+  { id: 'S1', t: 'Điểm phát sóng bên trái (d₁ = 0)', ans: 'src' },
+  { id: 'S2', t: 'Điểm phát sóng bên phải (d₂ = 0)', ans: 'src' },
+];
+const ORDER = [6, 12, 2, 9, 14, 4, 0, 11, 7, 1, 13, 5, 10, 3, 8]; // số hiệu vùng xáo trộn để khỏi đoán theo thứ tự
+RG.forEach((r, i) => r.no = ORDER[i] + 1);
+const CELL_RG = [];
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  let id;
+  if (x === S1[0] && y === S1[1]) id = 'S1';
+  else if (x === S2[0] && y === S2[1]) id = 'S2';
+  else {
+    const d1 = Math.hypot(x - S1[0], y - S1[1]), d2 = Math.hypot(x - S2[0], y - S2[1]);
+    const v = Math.max(-3, Math.min(3, Math.round((d2 - d1) / LAM * 2) / 2));
+    id = String(Object.is(v, -0) ? 0 : v);
+  }
+  CELL_RG.push(id);
+}
+// Ô ghi số hiệu: ô của vùng nằm gần tâm vùng nhất.
+const LABEL_CELL = {};
+RG.forEach(r => {
+  const cells = CELL_RG.map((id, i) => id === r.id ? i : -1).filter(i => i >= 0);
+  const top = cells.filter(i => Math.floor(i / COLS) <= S1[1]);
+  const pool = top.length ? top : cells;
+  const cx = pool.reduce((s, i) => s + i % COLS, 0) / pool.length, cy = pool.reduce((s, i) => s + Math.floor(i / COLS), 0) / pool.length;
+  LABEL_CELL[r.id] = pool.reduce((b, i) => { const dd = Math.hypot(i % COLS - cx, Math.floor(i / COLS) - cy); return dd < b[1] ? [i, dd] : b; }, [pool[0], 1e9])[0];
+});
+let tm;
+function tmReset() { tm = { paint: null, done: {}, miss: 0, focus: null }; tmRender(); }
+function tmRender() {
+  const p = $('#g-to-mau'), n = Object.keys(tm.done).length, won = n === RG.length;
+  const byId = Object.fromEntries(RG.map(r => [r.id, r]));
+  p.innerHTML = `
+    <div class="p-head">
+      <div><h2>Tô màu vân giao thoa</h2>
+      <p>Hai nguồn cùng pha, λ = 2 cm. Chọn một màu, rồi bấm vào một vùng trên hình hoặc một thẻ trong danh sách. Tô đúng cả 15 vùng sẽ hiện ra bức tranh giao thoa trên mặt nước.</p></div>
+      <div class="meta"><span class="chip">Đã tô ${n}/${RG.length}</span><span class="chip">Sai ${tm.miss}</span><button class="btn ghost" data-act="tm-reset">Làm lại</button></div>
+    </div>
+    <div class="palette" role="group" aria-label="Bảng màu">${Object.entries(PAINT).map(([k, c]) => `
+      <button class="sw" data-act="tm-paint" data-k="${k}" aria-pressed="${tm.paint === k}" style="--c:var(${c.v})"><i></i>${c.name}</button>`).join('')}</div>
+    <div class="paint">
+      <div class="canvas-box">
+        <div class="pix ${won ? 'complete' : ''}">${CELL_RG.map((id, i) => {
+          const d = tm.done[id], lab = LABEL_CELL[id] === i ? byId[id].no : '';
+          const st = d ? `background:var(${PAINT[d].v})` : '';
+          return `<div class="px ${d ? 'done' : ''} ${d === 'max' || d === 'center' ? 'crest' : ''} ${tm.focus === id && !d ? 'focus' : ''}" data-c="${id}" style="${st};--x:${i % COLS}">${lab}</div>`;
+        }).join('')}</div>
+        <p class="rule">Nhắc lại: với hai nguồn cùng pha, cực đại khi d₂ − d₁ = kλ; cực tiểu khi d₂ − d₁ = (k + ½)λ.</p>
+        ${won ? `<p class="note"><b>Hoàn thành với ${tm.miss} lần tô sai!</b> Các đường cực đại (vàng) và cực tiểu (xanh) xen kẽ nhau, đều là các đường hypebol nhận S₁, S₂ làm tiêu điểm; đường trung trực của S₁S₂ là cực đại bậc 0. Trên đoạn S₁S₂ có 5 cực đại và 6 cực tiểu.</p>` : ''}
+      </div>
+      <ul class="regions">${[...RG].sort((a, b) => a.no - b.no).map(r => {
+        const d = tm.done[r.id];
+        return `<li><button class="rg ${d ? 'done' : ''} ${tm.focus === r.id ? 'focus' : ''}" data-act="tm-rg" data-id="${r.id}" style="${d ? `--c:var(${PAINT[d].v})` : ''}">
+          <span class="n">${r.no}</span><span>${r.t}${d ? ` → <b>${PAINT[d].name}</b>` : ''}</span></button></li>`;
+      }).join('')}</ul>
+    </div>`;
+}
+function tmTry(id) {
+  tm.focus = id;
+  if (tm.done[id]) { tmRender(); return; }
+  if (!tm.paint) { tmRender(); toast('Chọn một màu trong bảng màu trước nhé.'); return; }
+  const r = RG.find(x => x.id === id);
+  if (r.ans === tm.paint) {
+    tm.done[id] = tm.paint; tm.focus = null; tmRender();
+    if (Object.keys(tm.done).length === RG.length) confetti();
+  } else {
+    tm.miss++; tmRender();
+    $$(`.px[data-c="${id}"]`).forEach(c => c.classList.add('wrong'));
+    setTimeout(() => $$(`.px.wrong`).forEach(c => c.classList.remove('wrong')), 500);
+    toast(`Vùng ${r.no} (${r.t}) không phải “${PAINT[tm.paint].name}”.`);
+  }
+}
+
+/* ================= Điều khiển chung ================= */
+const GAMES = ['mat-thu', 'o-chu', 'domino', 'to-mau'];
+function show(g) {
+  if (!GAMES.includes(g)) g = GAMES[0];
+  GAMES.forEach(x => $('#g-' + x).hidden = x !== g);
+  $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.g === g));
+}
+$('.tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab'); if (!t) return;
+  show(t.dataset.g); try { location.hash = t.dataset.g; } catch (_) {}
+});
+addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (b) {
+    const a = b.dataset.act;
+    if (a === 'mt-reset') mtReset();
+    else if (a === 'mt-key') { mt.key = true; mtRender(); }
+    else if (a === 'mt-show') { const i = +b.dataset.i; mt.done[i] = true; mtRender(); }
+    else if (a === 'oc-reset') ocReset();
+    else if (a === 'oc-sel') ocSelect(+b.dataset.r);
+    else if (a === 'oc-move') ocSelect(oc.sel + +b.dataset.d);
+    else if (a === 'oc-check') ocCheck();
+    else if (a === 'oc-show') { oc.st[oc.sel] = 'shown'; ocRender(); }
+    else if (a === 'dm-reset') dmReset();
+    else if (a === 'dm-hint') { dm.hint = dm.chain.at(-1) + 1; dmRender(); }
+    else if (a === 'tm-reset') tmReset();
+    else if (a === 'tm-paint') { tm.paint = b.dataset.k; tmRender(); }
+    else if (a === 'tm-rg') tmTry(b.dataset.id);
+    return;
+  }
+  const tile = e.target.closest('.pool .tile'); if (tile) { dmPick(+tile.dataset.t, tile); return; }
+  const px = e.target.closest('.px'); if (px) tmTry(px.dataset.c);
+});
+$('#g-mat-thu').addEventListener('input', e => { const m = /^mt-in(\d)$/.exec(e.target.id); if (m) mt.val[+m[1]] = e.target.value.replace(/"/g, ''); });
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.dataset.mt !== undefined) mtCheck(+f.dataset.mt);
+  else if (f.id === 'mt-form') mtDecode();
+  else if (f.id === 'oc-form') ocGuess();
+});
+const ocPanel = $('#g-o-chu');
+ocPanel.addEventListener('input', ocInput);
+ocPanel.addEventListener('keydown', ocKey);
+ocPanel.addEventListener('focusin', e => {
+  const c = e.target.closest('.cell'); if (!c || +c.dataset.r === oc.sel) return;
+  const id = c.id; oc.sel = +c.dataset.r; ocRender();
+  document.getElementById(id)?.focus();
+});
+
+mtReset(); ocReset(); dmReset(); tmReset();
+show(location.hash.slice(1));
+</script>
