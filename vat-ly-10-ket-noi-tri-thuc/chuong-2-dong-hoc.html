@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phanh kịp và Pháo thủ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #ffb22e; --accent-ink: #2a1a00; }
+  .shots { display: flex; gap: 6px; }
+  .shots i { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .shots i.used { background: #2c4466; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương II · Động học</small><h1>Phanh kịp &amp; Pháo thủ</h1></div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-mode="phanh" aria-selected="true">Phanh kịp</button>
+      <button class="tab" role="tab" data-mode="phao" aria-selected="false">Pháo thủ</button>
+    </div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/5</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Sân chơi mô phỏng"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card" id="controls"></div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain">Kết quả và lời giải sẽ hiện ở đây.</div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card" id="theory"></div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted"><b>Phanh kịp:</b> bấm <b>Chạy</b>, rồi bấm <b>PHANH</b> (hoặc phím Space, hoặc chạm vào sân chơi) đúng lúc để xe dừng sát trước vạch. Cột mốc cho biết khoảng cách còn lại đến vạch. Dừng cách vạch ≤ 1 m: ★★★.</p>
+      <p class="muted"><b>Pháo thủ:</b> tính vận tốc ban đầu và góc bắn rồi bấm <b>Bắn</b>. Mỗi màn có 3 phát; trúng phát đầu +30, phát hai +20, phát ba +10.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, fmt, rand, randInt, pick, clamp, sfx, G } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+let mode = 'phanh';
+const M = {
+  phanh: { lv: 0, n: 5, score: 0, s: null, results: [] },
+  phao: { lv: 0, n: 6, score: 0, s: null, cfg: [] },
+};
+
+const fb = (msg, kind) => { $('#fb').textContent = msg; $('#fb').className = 'feedback ' + (kind || ''); };
+function hud() { const m = M[mode]; $('#hudLv').textContent = `${Math.min(m.lv + 1, m.n)}/${m.n}`; $('#hudScore').textContent = m.score; }
+
+/* =================== PHANH KỊP =================== */
+function phanhLevel() {
+  const v0 = randInt(10, 20), a = pick([4, 5, 6, 7.5]);
+  const sb = v0 * v0 / (2 * a);
+  const D = Math.round(sb + rand(28, 42));
+  M.phanh.s = { v0, a, sb, D, x: 0, v: v0, t: 0, phase: 'ready', braking: false, brakeGap: null, hist: [[0, v0]], gap: null };
+  const s = M.phanh.s;
+  $('#kind').textContent = `Màn ${M.phanh.lv + 1} · Chuyển động thẳng chậm dần đều`;
+  $('#goal').innerHTML = 'Xe đang chạy đều về phía vạch dừng. Hãy phanh để đầu xe dừng <b>sát trước vạch</b> (không vượt vạch).';
+  $('#givens').innerHTML = `<span>v₀ = ${s.v0} m/s (${fmt(s.v0 * 3.6, 1)} km/h)</span><span>Gia tốc khi phanh: a = −${fmt(s.a, 1)} m/s²</span>`;
+  $('#controls').innerHTML = `<div class="row"><button class="btn primary big" id="runBtn" type="button">Chạy ▶</button></div>
+    <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">Khi dừng hẳn v = 0. Từ v² − v₀² = 2as, tính quãng đường phanh s rồi bấm phanh khi xe còn cách vạch đúng bằng s.</p></details>`;
+  $('#runBtn').addEventListener('click', phanhAction);
+  fb(''); $('#explain').textContent = 'Kết quả và lời giải sẽ hiện ở đây.';
+  hud();
+}
+function phanhAction() {
+  const s = M.phanh.s;
+  if (s.phase === 'ready') { s.phase = 'run'; $('#runBtn').textContent = 'PHANH!'; sfx.click(); }
+  else if (s.phase === 'run' && !s.braking) { s.braking = true; s.brakeGap = s.D - s.x; $('#runBtn').disabled = true; sfx.whoosh(); }
+  else if (s.phase === 'end') nextLevel();
+}
+function phanhUpdate(dt) {
+  const s = M.phanh.s;
+  if (!s || s.phase !== 'run') return;
+  const steps = 4, h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    if (s.braking) {
+      const vNew = Math.max(0, s.v - s.a * h);
+      s.x += (s.v + vNew) / 2 * h; s.v = vNew;
+    } else s.x += s.v * h;
+    s.t += h;
+  }
+  if (s.hist.length === 0 || s.t - s.hist[s.hist.length - 1][0] > 0.05) s.hist.push([s.t, s.v]);
+  if (s.braking && s.v <= 0) { s.hist.push([s.t, 0]); phanhEnd(); }
+  else if (!s.braking && s.x > s.D + 6) phanhEnd();
+}
+function phanhEnd() {
+  const s = M.phanh.s, m = M.phanh;
+  s.phase = 'end'; s.gap = s.D - s.x;
+  let st = 0, msg;
+  if (!s.braking) msg = 'Xe không phanh và đã vượt vạch!';
+  else if (s.gap < 0) msg = `Vượt vạch ${fmt(-s.gap, 1)} m — nguy hiểm!`;
+  else if (s.gap <= 1) { st = 3; msg = `Tuyệt vời! Dừng cách vạch ${fmt(s.gap, 2)} m.`; }
+  else if (s.gap <= 3) { st = 2; msg = `Tốt! Dừng cách vạch ${fmt(s.gap, 1)} m.`; }
+  else if (s.gap <= 6) { st = 1; msg = `Tạm được: dừng cách vạch ${fmt(s.gap, 1)} m.`; }
+  else msg = `Phanh quá sớm, dừng cách vạch ${fmt(s.gap, 1)} m.`;
+  m.score += st * 10; m.results.push(st);
+  st ? sfx.ok() : (s.gap < 0 || !s.braking ? sfx.boom() : sfx.bad());
+  fb(`${'★'.repeat(st)} ${msg}`.trim(), st ? 'ok' : 'bad');
+  $('#explain').innerHTML = `Quãng đường phanh: s = v₀² / (2a) = ${s.v0}² / (2·${fmt(s.a, 1)}) = <b>${fmt(s.sb, 2)} m</b>; thời gian phanh t = v₀/a = ${fmt(s.v0 / s.a, 2)} s.` +
+    (s.braking ? ` Em bấm phanh khi xe còn cách vạch ${fmt(s.brakeGap, 1)} m.` : '');
+  const b = $('#runBtn'); b.disabled = false; b.textContent = m.lv + 1 >= m.n ? 'Xem kết quả' : 'Màn tiếp →';
+  hud();
+}
+const PX = 14;  // px mỗi mét
+function phanhDraw() {
+  const s = M.phanh.s; if (!s) return;
+  const carScreen = 300;
+  const sx = wx => carScreen + (wx - s.x) * PX;
+  // trời
+  const g = ctx.createLinearGradient(0, 0, 0, 330); g.addColorStop(0, '#0f2a4a'); g.addColorStop(1, '#244d75');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, 330);
+  // đồi xa (thị sai)
+  ctx.fillStyle = '#1b3b5c';
+  for (let k = -1; k < 6; k++) { const bx = ((k * 260 - s.x * 3) % 1560 + 1560) % 1560 - 260; ctx.beginPath(); ctx.ellipse(bx, 330, 180, 70, 0, Math.PI, 0); ctx.fill(); }
+  // cỏ, đường
+  ctx.fillStyle = '#1d5a3a'; ctx.fillRect(0, 330, W, 210);
+  ctx.fillStyle = '#2f3540'; ctx.fillRect(0, 360, W, 110);
+  ctx.fillStyle = '#e5e7eb';
+  for (let wx = Math.floor((s.x - 30) / 6) * 6; wx < s.x + 60; wx += 6) { if (wx > s.D - 1) continue; ctx.fillRect(sx(wx), 412, 3 * PX, 5); }
+  // vạch dừng & vạch qua đường
+  const xl = sx(s.D);
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(xl, 360, 7, 110);
+  for (let i = 0; i < 6; i++) ctx.fillRect(xl + 22, 364 + i * 18, 40, 10);
+  // đèn giao thông
+  ctx.fillStyle = '#111827'; ctx.fillRect(xl + 2, 230, 6, 130); VL.rrect(ctx, xl - 12, 190, 34, 70, 8); ctx.fill();
+  ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(xl + 5, 208, 10, 0, 7); ctx.fill();
+  ctx.fillStyle = '#3f3f46'; ctx.beginPath(); ctx.arc(xl + 5, 238, 10, 0, 7); ctx.fill();
+  // cột mốc
+  for (let k = 5; k <= 200; k += 5) {
+    const wx = s.D - k, x = sx(wx); if (x < -40 || x > W + 40) continue;
+    ctx.fillStyle = '#f1f5f9'; ctx.fillRect(x - 2, 316, 4, 44);
+    VL.rrect(ctx, x - 26, 296, 52, 24, 6); ctx.fill();
+    VL.text(ctx, k + ' m', x, 309, { size: 14, color: '#0b1422', align: 'center', base: 'middle', weight: 700 });
+  }
+  // xe (đầu xe tại s.x)
+  const cx = sx(s.x);
+  ctx.save(); ctx.translate(cx, 0);
+  ctx.fillStyle = '#e11d48'; VL.rrect(ctx, -4 * PX, 372, 4 * PX, 26, 8); ctx.fill();
+  VL.rrect(ctx, -3.2 * PX, 352, 2.3 * PX, 26, 8); ctx.fill();
+  ctx.fillStyle = '#bae6fd'; VL.rrect(ctx, -2.9 * PX, 357, 0.9 * PX, 14, 3); ctx.fill(); VL.rrect(ctx, -1.9 * PX, 357, 0.85 * PX, 14, 3); ctx.fill();
+  ctx.fillStyle = '#fde68a'; ctx.fillRect(-6, 378, 6, 8);
+  if (s.braking && s.v > 0) { ctx.fillStyle = '#ef4444'; ctx.fillRect(-4 * PX - 3, 378, 5, 10); }
+  ctx.fillStyle = '#111'; for (const wx of [-3.1, -0.9]) { ctx.beginPath(); ctx.arc(wx * PX, 400, 10, 0, 7); ctx.fill(); }
+  ctx.restore();
+  // vết phanh
+  if (s.braking && s.brakeGap != null) { const x0 = sx(s.D - s.brakeGap); ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(Math.max(-10, x0 - 4 * PX), 408, cx - x0, 4); }
+  // đồng hồ tốc độ
+  VL.label(ctx, `v = ${fmt(s.v, 1)} m/s`, 90, 40, { size: 20, align: 'center' });
+  VL.label(ctx, `còn ${fmt(Math.max(0, s.D - s.x), 1)} m đến vạch`, 90, 80, { size: 15, align: 'center', color: '#ffb22e' });
+  // đồ thị v–t
+  const gx = 640, gy = 30, gw = 290, gh = 150;
+  ctx.fillStyle = 'rgba(8,17,29,.8)'; VL.rrect(ctx, gx - 10, gy - 10, gw + 30, gh + 40, 10); ctx.fill();
+  ctx.strokeStyle = '#9bb0c9'; ctx.lineWidth = 1.5;
+  VL.arrow(ctx, gx + 20, gy + gh, gx + gw + 10, gy + gh, '#9bb0c9', 1.5); VL.arrow(ctx, gx + 20, gy + gh, gx + 20, gy, '#9bb0c9', 1.5);
+  VL.text(ctx, 'v (m/s)', gx + 26, gy + 8, { size: 12, color: '#9bb0c9' });
+  VL.text(ctx, 't (s)', gx + gw + 4, gy + gh + 20, { size: 12, color: '#9bb0c9', align: 'right' });
+  const tMax = Math.max(6, s.t + 1), vMax = 22;
+  ctx.strokeStyle = '#ffb22e'; ctx.lineWidth = 2.5; ctx.beginPath();
+  s.hist.concat([[s.t, s.v]]).forEach(([t, v], i) => { const x = gx + 20 + t / tMax * (gw - 20), y = gy + gh - v / vMax * gh; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.stroke();
+  if (s.phase === 'ready') VL.label(ctx, 'Bấm "Chạy" để bắt đầu', W / 2, 500, { size: 18 });
+  if (s.phase === 'end') VL.label(ctx, s.gap >= 0 && s.braking ? `Dừng cách vạch ${fmt(s.gap, 2)} m` : 'Vượt vạch!', W / 2, 500, { size: 20, color: s.gap >= 0 && s.braking ? '#4ade80' : '#ff6b6b' });
+}
+
+/* =================== PHÁO THỦ =================== */
+function phaoConfigs() {
+  const c = [];
+  for (let i = 0; i < 3; i++) c.push({ kind: 'ngang', h: randInt(15, 45), L: randInt(15, 40) });
+  c.push({ kind: 'xien', L: randInt(30, 65) });
+  const v0 = randInt(18, 26); c.push({ kind: 'xien', v0Fixed: v0, L: Math.round(v0 * v0 / G * rand(.45, .9)) });
+  const al = pick([30, 45, 60]); c.push({ kind: 'xien', aFixed: al, L: randInt(25, 60) });
+  return c;
+}
+function phaoLevel() {
+  const m = M.phao, cfg = m.cfg[m.lv];
+  m.s = { ...cfg, shots: 0, ball: null, marks: [], done: false, v0: cfg.v0Fixed || 15, ang: cfg.kind === 'ngang' ? 0 : (cfg.aFixed || 45) };
+  const s = m.s;
+  const scaleX = 760 / (s.L + 15), scaleY = s.kind === 'ngang' ? 330 / s.h : 1e9;
+  s.scale = Math.min(scaleX, scaleY);
+  $('#kind').textContent = `Màn ${m.lv + 1} · ${s.kind === 'ngang' ? 'Chuyển động ném ngang' : 'Chuyển động ném xiên'}`;
+  if (s.kind === 'ngang') {
+    $('#goal').innerHTML = 'Pháo đặt trên vách đá, nòng nằm ngang. Chọn vận tốc ban đầu để đạn rơi trúng thùng hàng.';
+    $('#givens').innerHTML = `<span>h = ${s.h} m</span><span>L = ${s.L} m</span><span>g = 9,8 m/s²</span><span>Bỏ qua sức cản</span>`;
+  } else {
+    $('#goal').innerHTML = s.v0Fixed ? `Pháo bắn từ mặt đất với vận tốc <b>cố định</b> v₀ = ${s.v0Fixed} m/s. Chọn góc bắn để trúng đích.` :
+      s.aFixed ? `Nòng pháo bị kẹt ở góc <b>α = ${s.aFixed}°</b>. Chọn vận tốc ban đầu để trúng đích.` : 'Pháo bắn từ mặt đất. Chọn vận tốc và góc bắn để trúng đích.';
+    $('#givens').innerHTML = `<span>L = ${s.L} m</span><span>g = 9,8 m/s²</span>${s.v0Fixed ? `<span>v₀ = ${s.v0Fixed} m/s</span>` : ''}${s.aFixed ? `<span>α = ${s.aFixed}°</span>` : ''}`;
+  }
+  $('#controls').innerHTML = `
+    <div class="field"><label for="v0">Vận tốc ban đầu v₀</label><output id="v0o"></output><input type="range" id="v0" min="${s.kind === 'ngang' ? 1 : 5}" max="40" step="0.5" value="${s.v0}" ${s.v0Fixed ? 'disabled' : ''}></div>
+    <div class="field"><label for="ang">Góc bắn α</label><output id="ango"></output><input type="range" id="ang" min="0" max="85" step="1" value="${s.ang}" ${s.kind === 'ngang' || s.aFixed ? 'disabled' : ''}></div>
+    <div class="row" style="justify-content:space-between"><span class="muted">Lượt bắn</span><span class="shots" id="shots"></span></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary big" id="fireBtn" type="button">Bắn!</button></div>
+    <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">${s.kind === 'ngang' ? 'Thời gian rơi chỉ phụ thuộc độ cao: t = √(2h/g). Tầm xa L = v₀·t.' : 'Tầm xa trên mặt đất: L = v₀²·sin2α / g. Hai góc phụ nhau (α và 90° − α) cho cùng tầm xa.'}</p></details>`;
+  const upd = () => { s.v0 = +$('#v0').value; s.ang = +$('#ang').value; $('#v0o').textContent = fmt(s.v0, 1) + ' m/s'; $('#ango').textContent = s.ang + '°'; };
+  $('#v0').addEventListener('input', upd); $('#ang').addEventListener('input', upd); upd();
+  $('#fireBtn').addEventListener('click', phaoFire);
+  paintShots();
+  fb(''); $('#explain').textContent = 'Kết quả và lời giải sẽ hiện ở đây.';
+  hud();
+}
+function paintShots() { const s = M.phao.s; $('#shots').innerHTML = [0, 1, 2].map(i => `<i class="${i < s.shots ? 'used' : ''}"></i>`).join(''); }
+function phaoFire() {
+  const s = M.phao.s;
+  if (s.done) { nextLevel(); return; }
+  if (s.ball || s.shots >= 3) return;
+  const a = s.ang * Math.PI / 180;
+  s.ball = { x: 0, y: s.kind === 'ngang' ? s.h : 0, vx: s.v0 * Math.cos(a), vy: s.v0 * Math.sin(a), t: 0, trail: [] };
+  s.shots++; paintShots(); sfx.boom();
+  $('#fireBtn').disabled = true;
+}
+function phaoUpdate(dt) {
+  const s = M.phao.s; if (!s || !s.ball) return;
+  const b = s.ball, steps = 6, h = dt * 1.2 / steps;
+  for (let i = 0; i < steps; i++) {
+    const py = b.y, px = b.x;
+    b.x += b.vx * h; b.vy -= G * h; b.y += b.vy * h; b.t += h;
+    if (b.t > 0.02 && b.y <= 0) {
+      const f = py / (py - b.y); b.x = px + (b.x - px) * f; b.y = 0; b.t -= h * (1 - f);
+      phaoLand(); return;
+    }
+  }
+  if (b.trail.length === 0 || b.t - b.trail[b.trail.length - 1][2] > 0.06) b.trail.push([b.x, b.y, b.t]);
+}
+function phaoLand() {
+  const s = M.phao.s, m = M.phao, b = s.ball;
+  const d = b.x - s.L, hit = Math.abs(d) <= 1.5;
+  s.marks.push({ x: b.x, hit, trail: b.trail.concat([[b.x, 0, b.t]]) });
+  s.ball = null;
+  const a = s.ang * Math.PI / 180;
+  let sol;
+  if (s.kind === 'ngang') { const t = Math.sqrt(2 * s.h / G); sol = `t = √(2h/g) = √(2·${s.h}/9,8) = ${fmt(t, 2)} s ⇒ v₀ = L/t = ${s.L}/${fmt(t, 2)} ≈ <b>${fmt(s.L / t, 2)} m/s</b>.`; }
+  else if (s.v0Fixed) { const x = Math.asin(clamp(s.L * G / (s.v0Fixed ** 2), -1, 1)) * 90 / Math.PI; sol = `sin2α = gL/v₀² = ${fmt(s.L * G / s.v0Fixed ** 2, 3)} ⇒ α ≈ <b>${fmt(x, 1)}°</b> hoặc α ≈ <b>${fmt(90 - x, 1)}°</b>.`; }
+  else if (s.aFixed) { sol = `v₀ = √(gL / sin2α) = √(9,8·${s.L} / sin${2 * s.aFixed}°) ≈ <b>${fmt(Math.sqrt(G * s.L / Math.sin(2 * s.aFixed * Math.PI / 180)), 2)} m/s</b>.`; }
+  else sol = `Ví dụ chọn α = 45°: v₀ = √(gL) = √(9,8·${s.L}) ≈ <b>${fmt(Math.sqrt(G * s.L), 2)} m/s</b>.`;
+  const info = `Phát ${s.shots}: thời gian bay ${fmt(b.t, 2)} s, tầm xa ${fmt(b.x, 2)} m.`;
+  if (hit) {
+    const pts = [30, 20, 10][s.shots - 1]; m.score += pts; s.done = true; sfx.ok();
+    fb(`Trúng đích! +${pts}`, 'ok'); $('#explain').innerHTML = info + '<br>' + sol;
+  } else {
+    sfx.bad();
+    fb(d < 0 ? `Hụt — ngắn ${fmt(-d, 1)} m.` : `Hụt — dài ${fmt(d, 1)} m.`, 'bad');
+    $('#explain').innerHTML = info + (s.shots >= 3 ? '<br>Lời giải: ' + sol : '');
+    if (s.shots >= 3) s.done = true;
+  }
+  const bt = $('#fireBtn'); bt.disabled = false;
+  if (s.done) bt.textContent = m.lv + 1 >= m.n ? 'Xem kết quả' : 'Màn tiếp →';
+  hud();
+}
+function phaoDraw() {
+  const s = M.phao.s; if (!s) return;
+  const ox = 120, gy = 470, k = s.scale;
+  const X = x => ox + x * k, Y = y => gy - y * k;
+  const g = ctx.createLinearGradient(0, 0, 0, gy); g.addColorStop(0, '#0d2340'); g.addColorStop(1, '#2b5d8a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, gy);
+  ctx.fillStyle = '#2d6a3e'; ctx.fillRect(0, gy, W, H - gy);
+  // thước đo mặt đất
+  const stepM = s.L > 45 ? 10 : 5;
+  for (let x = 0; X(x) < W; x += stepM) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(X(x) - 1, gy, 2, 10); VL.text(ctx, x + ' m', X(x), gy + 28, { size: 12, color: '#cfe3d4', align: 'center' }); }
+  // vách đá
+  if (s.kind === 'ngang') {
+    ctx.fillStyle = '#6b5a45'; ctx.fillRect(0, Y(s.h), ox + 4, gy - Y(s.h));
+    ctx.fillStyle = '#7d6a52'; ctx.fillRect(0, Y(s.h), ox + 4, 8);
+    VL.arrow(ctx, 40, gy, 40, Y(s.h) + 4, '#ffb22e', 2); VL.arrow(ctx, 40, Y(s.h) + 4, 40, gy, '#ffb22e', 2);
+    VL.label(ctx, `h = ${s.h} m`, 60, (gy + Y(s.h)) / 2, { align: 'left', color: '#ffb22e' });
+  }
+  // đích
+  const tx = X(s.L);
+  ctx.fillStyle = '#b45309'; ctx.fillRect(tx - 1.5 * k, gy - Math.max(18, 1.5 * k), 3 * k, Math.max(18, 1.5 * k));
+  ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.strokeRect(tx - 1.5 * k, gy - Math.max(18, 1.5 * k), 3 * k, Math.max(18, 1.5 * k));
+  ctx.fillStyle = '#ef4444'; ctx.fillRect(tx - 1, gy - Math.max(18, 1.5 * k) - 40, 3, 40);
+  ctx.beginPath(); ctx.moveTo(tx + 2, gy - Math.max(18, 1.5 * k) - 40); ctx.lineTo(tx + 26, gy - Math.max(18, 1.5 * k) - 32); ctx.lineTo(tx + 2, gy - Math.max(18, 1.5 * k) - 24); ctx.fill();
+  VL.label(ctx, `L = ${s.L} m`, tx, gy - Math.max(18, 1.5 * k) - 58, { color: '#fecaca' });
+  // quỹ đạo cũ
+  s.marks.forEach((mk, i) => {
+    ctx.fillStyle = mk.hit ? 'rgba(74,222,128,.8)' : `rgba(255,255,255,${.25 + .15 * i})`;
+    mk.trail.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(X(x), Y(y), 2.5, 0, 7); ctx.fill(); });
+    ctx.fillStyle = mk.hit ? '#4ade80' : '#ff6b6b'; ctx.beginPath(); ctx.arc(X(mk.x), gy, 5, 0, 7); ctx.fill();
+  });
+  // pháo
+  const y0 = s.kind === 'ngang' ? s.h : 0;
+  const a = s.ang * Math.PI / 180;
+  ctx.save(); ctx.translate(X(0), Y(y0) - 12); ctx.rotate(-a);
+  ctx.fillStyle = '#334155'; VL.rrect(ctx, -10, -9, 56, 18, 6); ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(X(0), Y(y0) - 12, 16, 0, 7); ctx.fill();
+  ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(X(0) - 6, Y(y0) - 2, 9, 0, 7); ctx.arc(X(0) + 8, Y(y0) - 2, 9, 0, 7); ctx.fill();
+  if (!s.ball && !s.done) { // mũi tên v0
+    const L = 30 + s.v0 * 3; VL.arrow(ctx, X(0), Y(y0) - 12, X(0) + L * Math.cos(a), Y(y0) - 12 - L * Math.sin(a), '#ffb22e', 3, 'v₀');
+  }
+  // đạn đang bay
+  if (s.ball) {
+    const b = s.ball;
+    ctx.fillStyle = 'rgba(255,178,46,.7)'; b.trail.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(X(x), Y(y), 2.5, 0, 7); ctx.fill(); });
+    const bx = X(b.x), by = Y(b.y);
+    VL.arrow(ctx, bx, by, bx + b.vx * 3, by, '#5cc8ff', 2.5, 'vₓ');
+    VL.arrow(ctx, bx, by, bx, by - b.vy * 3, '#f472b6', 2.5, 'v_y');
+    ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(bx, by, 7, 0, 7); ctx.fill(); ctx.strokeStyle = '#ffb22e'; ctx.lineWidth = 2; ctx.stroke();
+    VL.label(ctx, `t = ${fmt(b.t, 2)} s · x = ${fmt(b.x, 1)} m · y = ${fmt(b.y, 1)} m`, W / 2, 30, { size: 15 });
+  }
+}
+
+/* =================== Chung =================== */
+function nextLevel() {
+  const m = M[mode];
+  m.lv++;
+  if (m.lv >= m.n) { endMode(); return; }
+  mode === 'phanh' ? phanhLevel() : phaoLevel();
+}
+function endMode() {
+  const m = M[mode], max = m.n * 30, st = m.score >= max * .8 ? 3 : m.score >= max * .5 ? 2 : m.score > 0 ? 1 : 0;
+  const old = VL.best('ch2-' + mode, m.score); sfx.win();
+  VL.modal({ title: mode === 'phanh' ? 'Tài xế an toàn!' : 'Pháo thủ xuất sắc!', stars: st,
+    html: `<p>Điểm: <b>${m.score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: mode === 'phanh' ? 'Sang Pháo thủ' : 'Sang Phanh kịp', onClick: () => switchMode(mode === 'phanh' ? 'phao' : 'phanh', true) },
+      { label: 'Chơi lại', primary: true, onClick: () => startMode(mode) }] });
+}
+function startMode(md) {
+  const m = M[md]; m.lv = 0; m.score = 0; m.results = [];
+  if (md === 'phao') { m.cfg = phaoConfigs(); phaoLevel(); } else phanhLevel();
+  theory();
+}
+function switchMode(md, restart) {
+  mode = md;
+  VL.$$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.mode === md)));
+  if (restart || !M[md].s || M[md].lv >= M[md].n) startMode(md);
+  else { md === 'phanh' ? phanhLevel() : phaoLevel(); theory(); }
+}
+function theory() {
+  $('#theory').innerHTML = mode === 'phanh'
+    ? `<h2>Kiến thức: chuyển động thẳng biến đổi đều</h2><div class="formula">v = v₀ + at</div><div class="formula">d = v₀t + ½at²</div><div class="formula">v² − v₀² = 2ad</div><p class="muted">Chuyển động chậm dần đều: a ngược dấu với v. Đồ thị v–t là đoạn thẳng dốc xuống; diện tích dưới đồ thị bằng độ dịch chuyển.</p>`
+    : `<h2>Kiến thức: chuyển động ném</h2><p class="muted">Tách thành hai chuyển động thành phần: theo phương ngang là thẳng đều (vₓ không đổi); theo phương thẳng đứng là biến đổi đều với gia tốc g.</p><div class="formula">Ném ngang: t = √(2h/g) · L = v₀√(2h/g)</div><div class="formula">Ném xiên: H = v₀²sin²α / (2g) · L = v₀²sin2α / g</div>`;
+}
+VL.tabs($('#tabs'), md => switchMode(md, false));
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && mode === 'phanh' && !/INPUT|BUTTON|SUMMARY/.test(document.activeElement.tagName)) { e.preventDefault(); phanhAction(); }
+});
+cv.addEventListener('pointerdown', () => { if (mode === 'phanh' && M.phanh.s && M.phanh.s.phase === 'run') phanhAction(); });
+
+VL.loop(dt => {
+  ctx.clearRect(0, 0, W, H);
+  if (mode === 'phanh') { phanhUpdate(dt); phanhDraw(); } else { phaoUpdate(dt); phaoDraw(); }
+});
+startMode('phanh');
+</script>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thợ đo tài ba</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #7dd3fc; --accent-ink: #062739; }
+  .inputs { display: grid; gap: 10px; }
+  .inputs label { font-weight: 600; font-size: .95rem; display: block; margin-bottom: 4px; }
+  .unit { color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương I · Mở đầu</small><h1>Thợ đo tài ba</h1></div>
+    <div class="hud">
+      <div class="stat"><span>Câu</span><b id="hudLv">1/10</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Hình minh hoạ câu hỏi"></canvas></section>
+    <aside class="side">
+      <div class="card mission">
+        <h3 id="kind">Đọc thước</h3>
+        <div class="goal" id="goal"></div>
+        <div class="givens" id="givens"></div>
+      </div>
+      <div class="card" id="answerCard">
+        <div id="answerArea"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary big" id="checkBtn" type="button">Kiểm tra</button>
+          <button class="btn big" id="nextBtn" type="button" hidden>Câu tiếp →</button>
+        </div>
+        <p class="feedback" id="fb" aria-live="polite"></p>
+        <div class="muted" id="explain"></div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card">
+      <h2>Kiến thức cần nhớ</h2>
+      <p class="muted">Kết quả đo: <b>A = Ā ± ΔA</b>. Sai số dụng cụ thường lấy bằng <b>nửa</b> (hoặc một) độ chia nhỏ nhất (ĐCNN).</p>
+      <div class="formula">Ā = (A₁ + A₂ + … + Aₙ) / n &nbsp;·&nbsp; ΔAᵢ = |Ā − Aᵢ|</div>
+      <div class="formula">ΔĀ = (ΔA₁ + … + ΔAₙ) / n &nbsp;·&nbsp; ΔA = ΔĀ + ΔA<sub>dc</sub></div>
+      <div class="formula">δA = ΔA / Ā · 100%</div>
+    </div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted">10 câu gồm: đọc thước, đọc ống đong, tính sai số và nhận biết biển báo – đơn vị. Đúng ngay lần đầu được <b>+10</b>, đúng ở lần thứ hai được <b>+5</b> (câu trắc nghiệm chỉ được trả lời một lần). Kính lúp phóng to giúp đọc vạch chính xác.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, fmt, parse, rand, randInt, pick, shuffle, sfx } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+const ORDER = ['mc', 'thuoc', 'ong', 'mc', 'thuoc2', 'saiso', 'mc', 'ong', 'saiso', 'mc'];
+const MC = [
+  { sign: 'dien', q: 'Biển báo này có ý nghĩa gì?', a: ['Cảnh báo nguy hiểm về điện', 'Cấm sử dụng điện', 'Nơi có nguồn điện an toàn', 'Bắt buộc ngắt điện'] },
+  { sign: 'camLua', q: 'Biển báo này có ý nghĩa gì?', a: ['Cấm lửa (cấm dùng ngọn lửa trần)', 'Cảnh báo chất dễ cháy', 'Vị trí bình chữa cháy', 'Khu vực nhiệt độ cao'] },
+  { sign: 'kinh', q: 'Biển báo này có ý nghĩa gì?', a: ['Bắt buộc đeo kính bảo hộ', 'Cấm đeo kính', 'Cảnh báo tia laser', 'Khu vực quan sát'] },
+  { sign: 'deChay', q: 'Biển báo này có ý nghĩa gì?', a: ['Cảnh báo chất dễ cháy', 'Cấm lửa', 'Lối thoát hiểm', 'Cấm hút thuốc'] },
+  { q: 'Đơn vị nào sau đây là đơn vị cơ bản trong hệ SI?', a: ['Kelvin (K)', 'Niutơn (N)', 'Jun (J)', 'Oát (W)'] },
+  { q: 'Biểu diễn theo đơn vị cơ bản SI, 1 N bằng', a: ['1 kg·m/s²', '1 kg·m/s', '1 kg·m²/s²', '1 g·cm/s²'] },
+  { q: 'Đối tượng nghiên cứu của vật lí là', a: ['các dạng vận động của vật chất và năng lượng', 'sự sống và các loài sinh vật', 'các chất và sự biến đổi của chất', 'chỉ các thiên thể trong vũ trụ'] },
+  { q: 'Hai phương pháp nghiên cứu chủ yếu của vật lí là', a: ['phương pháp thực nghiệm và phương pháp lí thuyết (mô hình)', 'quan sát và ghi chép', 'điều tra và thống kê', 'phỏng vấn và khảo sát'] },
+  { q: 'Một cân khi chưa đặt vật đã chỉ 0,2 kg. Khi dùng cân này để đo, ta mắc', a: ['sai số hệ thống', 'sai số ngẫu nhiên', 'sai số tỉ đối', 'không mắc sai số nào'] },
+  { q: 'Bấm đồng hồ đo thời gian rơi, mỗi lần phản xạ của tay một khác. Đó là nguyên nhân của', a: ['sai số ngẫu nhiên', 'sai số hệ thống', 'sai số do dụng cụ bị lệch', 'sai số do đổi đơn vị'] },
+  { q: 'Việc làm nào sau đây đảm bảo an toàn trong phòng thí nghiệm?', a: ['Ngắt nguồn điện trước khi lắp hoặc tháo mạch', 'Cắm, rút phích điện khi tay còn ướt', 'Nhìn trực tiếp vào tia laser', 'Để dây điện vắt qua chậu nước'] },
+  { q: 'Sai số tỉ đối của phép đo đại lượng A được tính bằng', a: ['δA = ΔA / Ā · 100%', 'δA = Ā / ΔA · 100%', 'δA = ΔA · Ā', 'δA = Ā − ΔA'] },
+  { q: 'Đại lượng nào sau đây là đại lượng cơ bản trong hệ SI?', a: ['Cường độ dòng điện', 'Vận tốc', 'Lực', 'Áp suất'] },
+  { q: 'Kết quả của phép đo đại lượng A được viết dưới dạng', a: ['A = Ā ± ΔA', 'A = ΔA ± Ā', 'A = Ā · ΔA', 'A = Ā / ΔA'] },
+];
+
+let rounds = [], idx = 0, score = 0, tries = 0, done = false, cur = null, mcPool = [];
+
+function makeRound(t) {
+  if (t === 'mc') {
+    const m = mcPool.pop();
+    const opts = shuffle(m.a.map((s, i) => ({ s, ok: i === 0 })));
+    return { type: 'mc', ...m, opts };
+  }
+  if (t === 'thuoc' || t === 'thuoc2') {
+    const div = t === 'thuoc' ? pick([0.1, 0.5]) : 0.1;
+    const s0 = t === 'thuoc2' ? randInt(1, 4) : 0;
+    const maxDiv = Math.floor((19.5 - s0) / div);
+    const n = randInt(Math.ceil(4 / div), maxDiv);
+    return { type: 'thuoc', div, s0, L: +(n * div).toFixed(2) };
+  }
+  if (t === 'ong') {
+    const cfg = pick([{ cap: 100, div: 2, lab: 10 }, { cap: 50, div: 1, lab: 10 }, { cap: 250, div: 5, lab: 50 }]);
+    const n = randInt(Math.ceil(cfg.cap * .2 / cfg.div), Math.floor(cfg.cap * .9 / cfg.div));
+    return { type: 'ong', ...cfg, V: n * cfg.div };
+  }
+  // sai số
+  if (Math.random() < .5) {
+    const base = randInt(40, 90) / 100;
+    const vals = Array.from({ length: 5 }, () => +(base + randInt(-3, 3) / 100).toFixed(2));
+    return sai({ q: 't', name: 'thời gian rơi', unit: 's', vals, dc: 0.01, dcText: 'đồng hồ có ĐCNN 0,01 s, lấy Δt<sub>dc</sub> = 0,01 s', dec: 3 });
+  }
+  const base = randInt(180, 320);
+  const vals = Array.from({ length: 5 }, () => base + randInt(-2, 2));
+  return sai({ q: 'l', name: 'chiều dài cuốn sách', unit: 'mm', vals, dc: 0.5, dcText: 'thước có ĐCNN 1 mm, lấy Δl<sub>dc</sub> = 0,5 mm', dec: 2 });
+}
+function sai(r) {
+  if (new Set(r.vals).size === 1) r.vals[0] = +(r.vals[0] + (r.unit === 's' ? 0.02 : 2)).toFixed(2);
+  const mean = r.vals.reduce((a, b) => a + b, 0) / r.vals.length;
+  const devs = r.vals.map(v => Math.abs(v - mean));
+  const dbar = devs.reduce((a, b) => a + b, 0) / devs.length;
+  return { type: 'saiso', ...r, mean, devs, dbar, D: dbar + r.dc };
+}
+
+function start() {
+  mcPool = shuffle(MC);
+  rounds = ORDER.map(makeRound);
+  idx = 0; score = 0;
+  show();
+}
+
+function show() {
+  cur = rounds[idx]; tries = 0; done = false;
+  $('#hudLv').textContent = `${idx + 1}/${rounds.length}`;
+  $('#hudScore').textContent = score;
+  $('#fb').textContent = ''; $('#fb').className = 'feedback'; $('#explain').innerHTML = '';
+  $('#checkBtn').hidden = false; $('#nextBtn').hidden = true;
+  const area = $('#answerArea');
+  const giv = $('#givens'); giv.innerHTML = '';
+  if (cur.type === 'mc') {
+    $('#kind').textContent = cur.sign ? 'Biển báo an toàn' : 'Trắc nghiệm nhanh';
+    $('#goal').textContent = cur.q;
+    area.innerHTML = '<div class="choices">' + cur.opts.map((o, i) => `<button class="choice" type="button" data-i="${i}"><b>${'ABCD'[i]}.</b>${o.s}</button>`).join('') + '</div>';
+    $('#checkBtn').hidden = true;
+    area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerMC(+b.dataset.i)));
+  } else if (cur.type === 'thuoc') {
+    $('#kind').textContent = 'Đọc thước';
+    $('#goal').innerHTML = cur.s0 ? `Đầu bút chì <b>không</b> đặt trùng vạch 0. Hãy đọc chiều dài của bút chì.` : 'Hãy đọc chiều dài của bút chì.';
+    giv.innerHTML = `<span>ĐCNN = ${fmt(cur.div * 10, 1)} mm</span><span>GHĐ = 20 cm</span>`;
+    area.innerHTML = `<div class="inputs"><div><label for="a1">Chiều dài L <span class="unit">(cm)</span></label><input class="num" id="a1" inputmode="decimal" autocomplete="off" placeholder="Ví dụ: 12,3"></div></div>`;
+  } else if (cur.type === 'ong') {
+    $('#kind').textContent = 'Đọc ống đong';
+    $('#goal').textContent = 'Đọc thể tích chất lỏng trong ống đong (đặt mắt ngang mức đáy mặt khum).';
+    giv.innerHTML = `<span>GHĐ = ${cur.cap} mL</span><span>ĐCNN = ${cur.div} mL</span>`;
+    area.innerHTML = `<div class="inputs"><div><label for="a1">Thể tích V <span class="unit">(mL)</span></label><input class="num" id="a1" inputmode="decimal" autocomplete="off"></div></div>`;
+  } else {
+    $('#kind').textContent = 'Tính sai số';
+    $('#goal').innerHTML = `Đo ${cur.name} ${cur.q} 5 lần được kết quả như bảng bên. Biết ${cur.dcText}. Tính giá trị trung bình và sai số tuyệt đối của phép đo.`;
+    area.innerHTML = `<div class="inputs">
+      <div><label for="a1">${cur.q}̄ — giá trị trung bình <span class="unit">(${cur.unit})</span></label><input class="num" id="a1" inputmode="decimal" autocomplete="off"></div>
+      <div><label for="a2">Δ${cur.q} = Δ${cur.q}̄ + Δ${cur.q}<sub>dc</sub> <span class="unit">(${cur.unit})</span></label><input class="num" id="a2" inputmode="decimal" autocomplete="off"></div></div>`;
+  }
+  const first = area.querySelector('input, button');
+  first && first.focus({ preventScroll: true });
+  area.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(); }));
+}
+
+function answerMC(i) {
+  if (done) return;
+  done = true;
+  const btns = $('#answerArea').querySelectorAll('.choice');
+  const okIdx = cur.opts.findIndex(o => o.ok);
+  btns.forEach((b, j) => { b.disabled = true; if (j === okIdx) b.classList.add('ok'); else if (j === i) b.classList.add('no'); });
+  if (i === okIdx) { score += 10; good('Chính xác! +10'); } else { badMsg('Chưa đúng. Đáp án: ' + 'ABCD'[okIdx] + '.'); }
+  finish();
+}
+
+function check() {
+  if (done || cur.type === 'mc') return;
+  const a1 = parse($('#a1') && $('#a1').value);
+  const a2 = parse($('#a2') && $('#a2').value);
+  if (!isFinite(a1) || (cur.type === 'saiso' && !isFinite(a2))) { VL.toast('Hãy nhập số (dùng dấu phẩy hoặc dấu chấm).', 'bad'); return; }
+  let ok = false, expl = '';
+  if (cur.type === 'thuoc') {
+    ok = Math.abs(a1 - cur.L) <= cur.div / 2 + 1e-9;
+    expl = `${cur.s0 ? `Đầu bút ở vạch ${cur.s0} cm, ngọn bút ở vạch ${fmt(cur.s0 + cur.L, 2)} cm ⇒ ` : ''}L = ${fmt(cur.L, 2)} cm. Ghi kết quả: L = ${fmt(cur.L, 2)} ± ${fmt(cur.div / 2, 2)} cm.`;
+  } else if (cur.type === 'ong') {
+    ok = Math.abs(a1 - cur.V) <= cur.div / 2 + 1e-9;
+    expl = `Đáy mặt khum ở vạch ${cur.V} mL ⇒ V = ${cur.V} ± ${fmt(cur.div / 2, 1)} mL.`;
+  } else {
+    const tol = cur.unit === 's' ? 0.0051 : 0.051;
+    const okM = Math.abs(a1 - cur.mean) <= tol, okD = Math.abs(a2 - cur.D) <= tol;
+    ok = okM && okD;
+    const q = cur.q, u = cur.unit;
+    expl = `${q}̄ = ${fmt(cur.mean, cur.dec + 1)} ${u}; các Δ${q}ᵢ: ${cur.devs.map(d => fmt(d, cur.dec + 1)).join('; ')} ⇒ Δ${q}̄ = ${fmt(cur.dbar, cur.dec + 1)} ${u}; Δ${q} = ${fmt(cur.dbar, cur.dec + 1)} + ${fmt(cur.dc, 2)} = <b>${fmt(cur.D, cur.dec + 1)} ${u}</b>; δ${q} = ${fmt(cur.D / cur.mean * 100, 2)}%.`;
+    if (!ok && tries === 0) expl = (okM ? 'Giá trị trung bình đúng, ' : 'Giá trị trung bình chưa đúng, ') + (okD ? 'sai số đúng.' : 'sai số chưa đúng.');
+  }
+  tries++;
+  if (ok) {
+    const pts = tries === 1 ? 10 : 5;
+    score += pts; good(`Chính xác! +${pts}`);
+    $('#explain').innerHTML = expl; finish();
+  } else if (tries === 1) {
+    badMsg('Chưa đúng — thử lại một lần nữa!');
+    if (cur.type === 'saiso') $('#explain').innerHTML = expl;
+    else $('#explain').textContent = cur.type === 'ong' ? 'Gợi ý: đọc ở đáy mặt khum, mỗi vạch nhỏ ứng với ' + cur.div + ' mL.' : 'Gợi ý: dùng kính lúp, đếm số vạch nhỏ sau vạch cm.';
+  } else {
+    badMsg('Chưa đúng.'); $('#explain').innerHTML = 'Lời giải: ' + expl; finish();
+  }
+}
+function good(m) { sfx.ok(); $('#fb').textContent = m; $('#fb').className = 'feedback ok'; $('#hudScore').textContent = score; }
+function badMsg(m) { sfx.bad(); $('#fb').textContent = m; $('#fb').className = 'feedback bad'; }
+function finish() {
+  done = true;
+  $('#checkBtn').hidden = true; $('#nextBtn').hidden = false;
+  $('#nextBtn').textContent = idx === rounds.length - 1 ? 'Xem kết quả' : 'Câu tiếp →';
+  $('#nextBtn').focus({ preventScroll: true });
+}
+$('#checkBtn').addEventListener('click', check);
+$('#nextBtn').addEventListener('click', () => {
+  if (idx < rounds.length - 1) { idx++; show(); return; }
+  const max = rounds.length * 10, st = score >= max * .9 ? 3 : score >= max * .6 ? 2 : score >= max * .3 ? 1 : 0;
+  const old = VL.best('ch1', score);
+  sfx.win();
+  VL.modal({ title: 'Hoàn thành!', stars: st, html: `<p>Điểm của em: <b>${score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p><p class="muted">Đo đạc cẩn thận là bước đầu tiên của mọi nhà vật lí.</p>`,
+    buttons: [{ label: 'Về các chương', onClick: () => { location.href = 'index.html'; } }, { label: 'Chơi lại', primary: true, onClick: start }] });
+});
+
+// ---------------- Vẽ ----------------
+const RX = cm => 80 + cm * 40;  // toạ độ thước
+function drawRulerScene(c) {
+  const r = cur;
+  // thước gỗ
+  c.fillStyle = '#e9d38f'; c.fillRect(RX(-0.6), 298, RX(20.6) - RX(-0.6), 74);
+  c.fillStyle = '#d4b96c'; c.fillRect(RX(-0.6), 366, RX(20.6) - RX(-0.6), 6);
+  c.strokeStyle = '#2b2108'; c.fillStyle = '#2b2108';
+  const step = r.div;
+  const n = Math.round(20 / step);
+  for (let i = 0; i <= n; i++) {
+    const v = i * step, x = RX(v);
+    const isCm = Math.abs(v - Math.round(v)) < 1e-6;
+    const isHalf = !isCm && Math.abs(v * 2 - Math.round(v * 2)) < 1e-6;
+    const len = isCm ? 28 : isHalf ? 19 : 11;
+    c.lineWidth = isCm ? 1.6 : 1;
+    c.beginPath(); c.moveTo(x, 298); c.lineTo(x, 298 + len); c.stroke();
+    if (isCm) { c.font = '600 14px "Be Vietnam Pro", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(String(Math.round(v)), x, 330); }
+  }
+  c.font = '600 12px "Be Vietnam Pro", sans-serif'; c.textAlign = 'right'; c.fillText('cm', RX(20.5), 352);
+  // bút chì
+  const xs = RX(r.s0), xe = RX(r.s0 + r.L), y0 = 262, y1 = 296;
+  c.fillStyle = '#f0a3b5'; c.fillRect(xs, y0, 16, y1 - y0);           // tẩy
+  c.fillStyle = '#b9c2cc'; c.fillRect(xs + 16, y0, 10, y1 - y0);      // đai kim loại
+  c.fillStyle = '#f5b82e'; c.fillRect(xs + 26, y0, xe - xs - 66, y1 - y0);
+  c.fillStyle = '#dc9a14'; c.fillRect(xs + 26, y0 + 11, xe - xs - 66, 12);
+  c.fillStyle = '#efcf9c';
+  c.beginPath(); c.moveTo(xe - 40, y0); c.lineTo(xe, (y0 + y1) / 2 + 0); c.lineTo(xe - 40, y1); c.closePath(); c.fill();
+  c.fillStyle = '#333'; c.beginPath(); c.moveTo(xe - 13, (y0 + y1) / 2 - 5.6); c.lineTo(xe, (y0 + y1) / 2); c.lineTo(xe - 13, (y0 + y1) / 2 + 5.6); c.closePath(); c.fill();
+}
+function lens(drawScene, fx, fy, lx, ly, R, zoom) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(125,211,252,.6)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(lx, ly + (ly < fy ? R : -R)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(lx, ly, R, 0, Math.PI * 2); ctx.fillStyle = '#0b1828'; ctx.fill(); ctx.clip();
+  ctx.translate(lx, ly); ctx.scale(zoom, zoom); ctx.translate(-fx, -fy);
+  drawScene(ctx);
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(lx, ly, R, 0, Math.PI * 2); ctx.lineWidth = 6; ctx.strokeStyle = '#7dd3fc'; ctx.stroke();
+}
+function drawRuler() {
+  drawRulerScene(ctx);
+  const xs = RX(cur.s0), xe = RX(cur.s0 + cur.L);
+  let lE = VL.clamp(xe, 110, 850), lS = VL.clamp(xs, 110, 850);
+  if (cur.s0) {
+    if (lE - lS < 200) { lS = lE - 200; if (lS < 110) { lS = 110; lE = 310; } }
+    lens(drawRulerScene, xs, 300, lS, 130, 92, 4);
+  }
+  lens(drawRulerScene, xe, 300, lE, 130, 92, 4);
+  VL.text(ctx, 'Kính lúp ×4', 20, 520, { size: 14, color: '#9bb0c9' });
+}
+
+function drawCylScene(c) {
+  const r = cur, cx = 400, w = 120, yB = 480, yT = 100;
+  const Y = v => yB - (v / r.cap) * (yB - yT - 20);
+  // chất lỏng
+  const yl = Y(r.V);
+  c.fillStyle = 'rgba(56,189,248,.45)';
+  c.beginPath(); c.moveTo(cx - w / 2 + 4, yB); c.lineTo(cx - w / 2 + 4, yl - 9);
+  c.quadraticCurveTo(cx, yl + 9, cx + w / 2 - 4, yl - 9); c.lineTo(cx + w / 2 - 4, yB); c.closePath(); c.fill();
+  c.strokeStyle = '#38bdf8'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(cx - w / 2 + 4, yl - 9); c.quadraticCurveTo(cx, yl + 9, cx + w / 2 - 4, yl - 9); c.stroke();
+  // thành ống
+  c.strokeStyle = 'rgba(220,235,255,.85)'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(cx - w / 2, yT); c.lineTo(cx - w / 2, yB); c.lineTo(cx + w / 2, yB); c.lineTo(cx + w / 2, yT); c.stroke();
+  c.fillStyle = 'rgba(220,235,255,.85)'; c.fillRect(cx - w / 2 - 40, yB, w + 80, 12);
+  // vạch chia
+  c.strokeStyle = '#eef4fb'; c.fillStyle = '#eef4fb'; c.lineWidth = 1.2;
+  for (let v = 0; v <= r.cap + 1e-9; v += r.div) {
+    const y = Y(v), major = v % r.lab === 0, mid = !major && v % (r.lab / 2) === 0;
+    const len = major ? 34 : mid ? 24 : 14;
+    c.beginPath(); c.moveTo(cx - w / 2, y); c.lineTo(cx - w / 2 + len, y); c.stroke();
+    if (major) { c.font = '600 15px "Be Vietnam Pro", sans-serif'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(String(v), cx - w / 2 + 38, y); }
+  }
+  c.font = '600 14px "Be Vietnam Pro", sans-serif'; c.textAlign = 'center'; c.fillText('mL', cx, yT - 14);
+  return yl;
+}
+function drawCyl() {
+  const yl = drawCylScene(ctx);
+  lens(drawCylScene, 380, yl, 720, VL.clamp(yl, 140, 400), 130, 3);
+  VL.text(ctx, 'Kính lúp ×3', 650, 520, { size: 14, color: '#9bb0c9' });
+}
+
+function drawSaiSo() {
+  const r = cur;
+  VL.text(ctx, `Bảng kết quả đo ${r.name} ${r.q}`, 480, 60, { size: 24, align: 'center', font: '"Baloo 2", sans-serif', weight: 700 });
+  const showDev = done;
+  const cols = showDev ? [['Lần đo', 160], [`${r.q} (${r.unit})`, 200], [`Δ${r.q}ᵢ (${r.unit})`, 200]] : [['Lần đo', 180], [`${r.q} (${r.unit})`, 240]];
+  const tw = cols.reduce((a, c) => a + c[1], 0); let x0 = 480 - tw / 2; const y0 = 90, rh = 56;
+  ctx.fillStyle = '#1a3150'; ctx.fillRect(x0, y0, tw, rh);
+  const rows = r.vals.length + (showDev ? 2 : 1);
+  ctx.strokeStyle = '#2a4a70'; ctx.lineWidth = 1.5;
+  for (let i = 0; i <= rows; i++) { ctx.beginPath(); ctx.moveTo(x0, y0 + i * rh); ctx.lineTo(x0 + tw, y0 + i * rh); ctx.stroke(); }
+  let xx = x0; for (const c of cols) { ctx.beginPath(); ctx.moveTo(xx, y0); ctx.lineTo(xx, y0 + rows * rh); ctx.stroke(); xx += c[1]; }
+  ctx.beginPath(); ctx.moveTo(xx, y0); ctx.lineTo(xx, y0 + rows * rh); ctx.stroke();
+  const cell = (s, ci, ri, col = '#eef4fb') => { let x = x0; for (let k = 0; k < ci; k++) x += cols[k][1]; VL.text(ctx, s, x + cols[ci][1] / 2, y0 + ri * rh + rh / 2 + 1, { size: 20, align: 'center', base: 'middle', color: col }); };
+  cols.forEach((c, i) => cell(c[0], i, 0, '#7dd3fc'));
+  r.vals.forEach((v, i) => { cell(String(i + 1), 0, i + 1); cell(fmt(v, 2), 1, i + 1); if (showDev) cell(fmt(r.devs[i], r.dec + 1), 2, i + 1, '#ffb22e'); });
+  if (showDev) { cell('TB', 0, 6, '#4ade80'); cell(fmt(r.mean, r.dec + 1), 1, 6, '#4ade80'); cell(fmt(r.dbar, r.dec + 1), 2, 6, '#4ade80'); }
+}
+
+const SIGNS = {
+  tri(c, x, y, s, fill) { c.beginPath(); c.moveTo(x, y - s * .9); c.lineTo(x + s, y + s * .8); c.lineTo(x - s, y + s * .8); c.closePath(); c.fillStyle = fill; c.fill(); c.lineJoin = 'round'; c.lineWidth = s * .12; c.strokeStyle = '#111'; c.stroke(); },
+  dien(c, x, y, s) { this.tri(c, x, y, s, '#facc15'); c.fillStyle = '#111'; c.beginPath(); c.moveTo(x + s * .12, y - s * .5); c.lineTo(x - s * .22, y + s * .12); c.lineTo(x + s * .02, y + s * .12); c.lineTo(x - s * .12, y + s * .6); c.lineTo(x + s * .25, y - .02 * s); c.lineTo(x + .0 * s, y - .02 * s); c.closePath(); c.fill(); },
+  deChay(c, x, y, s) { this.tri(c, x, y, s, '#facc15'); flame(c, x, y + s * .15, s * .5, '#111'); },
+  camLua(c, x, y, s) { c.beginPath(); c.arc(x, y, s, 0, 7); c.fillStyle = '#fff'; c.fill(); flame(c, x, y + s * .05, s * .6, '#111'); c.lineWidth = s * .16; c.strokeStyle = '#dc2626'; c.beginPath(); c.arc(x, y, s * .92, 0, 7); c.stroke(); c.beginPath(); c.moveTo(x - s * .65, y - s * .65); c.lineTo(x + s * .65, y + s * .65); c.stroke(); },
+  kinh(c, x, y, s) { c.beginPath(); c.arc(x, y, s, 0, 7); c.fillStyle = '#1d4ed8'; c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y - s * .1, s * .55, Math.PI, 0); c.fill(); c.fillStyle = '#1d4ed8'; c.beginPath(); c.ellipse(x - s * .25, y + s * .05, s * .2, s * .14, 0, 0, 7); c.ellipse(x + s * .25, y + s * .05, s * .2, s * .14, 0, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = s * .08; c.beginPath(); c.ellipse(x - s * .25, y + s * .05, s * .22, s * .16, 0, 0, 7); c.stroke(); c.beginPath(); c.ellipse(x + s * .25, y + s * .05, s * .22, s * .16, 0, 0, 7); c.stroke(); c.beginPath(); c.moveTo(x - s * .47, y + s * .02); c.lineTo(x - s * .65, y - s * .05); c.moveTo(x + s * .47, y + s * .02); c.lineTo(x + s * .65, y - s * .05); c.stroke(); },
+};
+function flame(c, x, y, s, col) { c.fillStyle = col; c.beginPath(); c.moveTo(x, y - s); c.bezierCurveTo(x + s * .9, y - s * .2, x + s * .7, y + s * .7, x, y + s * .7); c.bezierCurveTo(x - s * .7, y + s * .7, x - s * .8, y - s * .1, x - s * .2, y - s * .45); c.bezierCurveTo(x - s * .1, y - s * .1, x + s * .05, y - s * .2, x, y - s); c.fill(); }
+function wrap(s, x, y, maxW, lh, opt) {
+  ctx.font = `${opt.weight || 700} ${opt.size}px ${opt.font || '"Be Vietnam Pro", sans-serif'}`;
+  const words = s.split(' '); let line = '', yy = y;
+  for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { VL.text(ctx, line, x, yy, opt); line = w; yy += lh; } else line = t; }
+  VL.text(ctx, line, x, yy, opt);
+}
+function drawMC() {
+  if (cur.sign) {
+    SIGNS[cur.sign](ctx, 260, 280, 150);
+    wrap(cur.q, 480, 230, 430, 44, { size: 32, font: '"Baloo 2", sans-serif' });
+    VL.text(ctx, 'Chọn đáp án ở bảng bên', 480, 330, { size: 18, color: '#9bb0c9' });
+  } else {
+    // bình thí nghiệm trang trí
+    ctx.save(); ctx.translate(140, 290);
+    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 4; ctx.fillStyle = 'rgba(125,211,252,.25)';
+    ctx.beginPath(); ctx.moveTo(-18, -90); ctx.lineTo(-18, -30); ctx.lineTo(-70, 60); ctx.lineTo(70, 60); ctx.lineTo(18, -30); ctx.lineTo(18, -90); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-45, 15); ctx.lineTo(-70, 60); ctx.lineTo(70, 60); ctx.lineTo(45, 15); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    wrap(cur.q, 270, 200, 640, 46, { size: 34, font: '"Baloo 2", sans-serif' });
+  }
+}
+
+VL.loop(() => {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#08111d'; ctx.fillRect(0, 0, W, H);
+  if (!cur) return;
+  if (cur.type === 'thuoc') drawRuler();
+  else if (cur.type === 'ong') drawCyl();
+  else if (cur.type === 'saiso') drawSaiSo();
+  else drawMC();
+});
+
+start();
+</script>
+</body>
+</html>

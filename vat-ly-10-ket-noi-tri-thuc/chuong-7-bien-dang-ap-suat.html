@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lò xo và Tàu lặn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #60a5fa; --accent-ink: #04172f; }
+  .tray { display: flex; flex-wrap: wrap; gap: 6px; min-height: 40px; padding: 6px; border: 1px dashed var(--line); border-radius: 10px; margin: 8px 0; }
+  .tray span { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương VII · Biến dạng của vật rắn. Áp suất chất lỏng</small><h1>Lò xo &amp; Tàu lặn</h1></div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-mode="loxo" aria-selected="true">Treo lò xo</button>
+      <button class="tab" role="tab" data-mode="taulan" aria-selected="false">Tàu lặn</button>
+    </div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/5</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Sân chơi mô phỏng"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card" id="controls"></div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card" id="theory"></div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted"><b>Treo lò xo:</b> chọn các quả nặng cho vào khay rồi bấm <b>Treo</b>. Kim chỉ phải dừng đúng vạch đỏ (sai lệch ≤ 0,15 cm).</p>
+      <p class="muted"><b>Tàu lặn:</b> tính độ sâu cần lặn, nhập vào và bấm <b>Lặn</b>. Vượt quá áp suất mà vỏ tàu chịu được thì tàu bị nứt!</p>
+      <p class="muted">Mỗi màn 3 lượt: +30, +20, +10.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, $$, fmt, sci, rand, randInt, pick, clamp, sfx, parse, G } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+const P0 = 1.013e5;
+
+let mode = 'loxo';
+const M = { loxo: { lv: 0, n: 5, score: 0, s: null }, taulan: { lv: 0, n: 5, score: 0, s: null } };
+const fb = (m, k) => { $('#fb').textContent = m; $('#fb').className = 'feedback ' + (k || ''); };
+function hud() { const m = M[mode]; $('#hudLv').textContent = `${Math.min(m.lv + 1, m.n)}/${m.n}`; $('#hudScore').textContent = m.score; }
+function pts(tries) { return [30, 20, 10][tries - 1] || 0; }
+
+/* =================== TREO LÒ XO =================== */
+const WEIGHTS = [50, 100, 200];
+function lxLevel() {
+  const m = M.loxo, lv = m.lv;
+  const k = pick(lv < 2 ? [25, 40, 50] : [20, 25, 40, 50, 80]);
+  let Mg;
+  do { Mg = randInt(2, 10) * 50; } while (Mg * 9.8 / 1000 / k * 100 > 20);
+  const dl = Mg / 1000 * G / k * 100;               // cm
+  const l0 = randInt(10, 16);
+  const type = ['dl', 'len', 'ref', 'len', 'refLen'][lv];
+  const refM = pick([50, 100, 200].filter(x => x !== Mg));
+  const refDl = refM / 1000 * G / k * 100;
+  m.s = { k, Mg, dl, l0, type, refM, refDl, tray: [], hung: 0, x: 0, v: 0, tries: 0, phase: 'set', target: Math.round(dl * 10) / 10 };
+  const s = m.s;
+  $('#kind').textContent = `Màn ${lv + 1} · Định luật Hooke`;
+  const targetLen = Math.round((l0 + dl) * 10) / 10;
+  s.targetLen = targetLen;
+  if (type === 'dl') $('#goal').innerHTML = `Treo quả nặng để lò xo <b>dãn thêm ${fmt(s.target, 1)} cm</b>.`;
+  else if (type === 'len' || type === 'refLen') $('#goal').innerHTML = `Treo quả nặng để chiều dài lò xo bằng <b>${fmt(targetLen, 1)} cm</b>.`;
+  else $('#goal').innerHTML = `Chưa biết độ cứng lò xo. Hãy treo quả nặng để lò xo <b>dãn thêm ${fmt(s.target, 1)} cm</b>.`;
+  const giv = [];
+  if (type === 'ref' || type === 'refLen') giv.push(`<span>Thí nghiệm mẫu: treo ${s.refM} g, lò xo dãn ${fmt(s.refDl, 2)} cm</span>`); else giv.push(`<span>k = ${k} N/m</span>`);
+  giv.push(`<span>Chiều dài tự nhiên l₀ = ${l0} cm</span>`, '<span>g = 9,8 m/s²</span>');
+  $('#givens').innerHTML = giv.join('');
+  $('#controls').innerHTML = `<h3>Khay quả nặng</h3><div class="row">${WEIGHTS.map(w => `<button class="btn" type="button" data-w="${w}">+ ${w} g</button>`).join('')}</div>
+    <div class="tray" id="tray" aria-live="polite"></div>
+    <div class="row" style="justify-content:space-between"><span class="muted">Tổng khối lượng: <b id="sum">0 g</b></span><button class="btn" id="undo" type="button">Bỏ quả cuối</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Treo ⬇</button></div>
+    <div class="row" style="justify-content:space-between;margin-top:8px"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+    <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">Khi vật cân bằng: F<sub>đh</sub> = P ⇒ k·Δl = m·g ⇒ m = kΔl/g (nhớ đổi Δl ra mét). ${type.startsWith('ref') ? 'Độ dãn tỉ lệ thuận với khối lượng treo: Δl/Δl<sub>mẫu</sub> = m/m<sub>mẫu</sub>.' : ''} ${type.endsWith('en') || type === 'len' ? 'Độ dãn Δl = l − l₀.' : ''}</p></details>`;
+  $$('#controls [data-w]').forEach(b => b.addEventListener('click', () => { if (s.phase === 'end') return; if (s.tray.length >= 12) return; s.tray.push(+b.dataset.w); sfx.click(); paintTray(); }));
+  $('#undo').addEventListener('click', () => { if (s.phase === 'end') return; s.tray.pop(); paintTray(); });
+  $('#goBtn').addEventListener('click', lxGo);
+  paintTray(); fb(''); $('#explain').textContent = ''; hud();
+}
+function paintTray() { const s = M.loxo.s; $('#tray').innerHTML = s.tray.map(w => `<span>${w} g</span>`).join('') || '<span class="muted" style="border:0;background:none">Khay trống</span>'; $('#sum').textContent = s.tray.reduce((a, b) => a + b, 0) + ' g'; }
+function lxGo() {
+  const s = M.loxo.s, m = M.loxo;
+  if (s.phase === 'end') { nextLevel(); return; }
+  if (s.phase === 'hang') return;
+  const sum = s.tray.reduce((a, b) => a + b, 0);
+  if (!sum) { VL.toast('Khay đang trống!', 'bad'); return; }
+  s.hung = sum; s.stack = s.tray.slice(); s.phase = 'hang'; s.t = 0; $('#goBtn').disabled = true; sfx.whoosh();
+}
+function lxUpdate(dt) {
+  const s = M.loxo.s; if (!s || s.phase !== 'hang') return;
+  const mass = Math.max(0.03, s.hung / 1000 + 0.02);
+  const steps = 20, h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    const a = (s.hung / 1000 * G - s.k * s.x) / mass - 3 * s.v;
+    s.v += a * h; s.x += s.v * h;
+  }
+  s.t += dt;
+  if (s.t > 2.6) {
+    s.x = s.hung / 1000 * G / s.k; s.v = 0; s.phase = 'idle'; s.tries++;
+    const left = 3 - s.tries, dlNow = s.x * 100;
+    const ok = Math.abs(dlNow - s.dl) <= 0.15;
+    const sol = s.type.startsWith('ref')
+      ? `k = m<sub>mẫu</sub>g/Δl<sub>mẫu</sub> = ${fmt(s.refM / 1000, 2)}·9,8/${fmt(s.refDl / 100, 4)} = ${s.k} N/m. `
+      : '';
+    const sol2 = sol + (s.type === 'len' || s.type === 'refLen' ? `Δl = ${fmt(s.targetLen, 1)} − ${s.l0} = ${fmt(s.targetLen - s.l0, 1)} cm. ` : '') + `m = kΔl/g = ${s.k}·${fmt(s.dl / 100, 4)}/9,8 = <b>${s.Mg} g</b>.`;
+    if (ok) { const p = pts(s.tries); M.loxo.score += p; sfx.ok(); fb(`Chính xác! Lò xo dãn ${fmt(dlNow, 2)} cm. +${p}`, 'ok'); s.phase = 'end'; }
+    else { sfx.bad(); fb(`Lò xo dãn ${fmt(dlNow, 2)} cm (l = ${fmt(s.l0 + dlNow, 2)} cm) — ${dlNow > s.dl ? 'quá nặng' : 'chưa đủ nặng'}.`, 'bad'); if (left <= 0) s.phase = 'end'; }
+    $('#left').textContent = Math.max(0, left);
+    $('#explain').innerHTML = `F<sub>đh</sub> = P = ${fmt(s.hung / 1000 * G, 3)} N. ` + (s.phase === 'end' ? '<br>Lời giải: ' + sol2 : `Còn ${left} lượt.`);
+    const b = $('#goBtn'); b.disabled = false; b.textContent = s.phase === 'end' ? (M.loxo.lv + 1 >= M.loxo.n ? 'Xem kết quả' : 'Màn tiếp →') : 'Treo lại ⬇';
+    if (s.phase !== 'end') { s.tray = s.stack.slice(); paintTray(); }
+    hud();
+  }
+}
+const CMPX = 11, TOP = 50;
+function lxDraw() {
+  const s = M.loxo.s; if (!s) return;
+  ctx.fillStyle = '#0b1726'; ctx.fillRect(0, 0, W, H);
+  const ax = 420;
+  // giá treo
+  ctx.fillStyle = '#475569'; ctx.fillRect(ax - 140, TOP - 16, 280, 16); ctx.fillRect(ax + 120, TOP - 16, 14, 510);
+  ctx.fillRect(ax + 40, 520, 200, 12);
+  // thước
+  const rx = ax - 120;
+  ctx.fillStyle = '#e9d38f'; ctx.fillRect(rx - 4, TOP, 52, 42 * CMPX);
+  ctx.strokeStyle = '#2b2108'; ctx.fillStyle = '#2b2108';
+  for (let c = 0; c <= 42; c++) {
+    const y = TOP + c * CMPX; ctx.lineWidth = c % 5 === 0 ? 1.8 : 1;
+    ctx.beginPath(); ctx.moveTo(rx + 48, y); ctx.lineTo(rx + 48 - (c % 5 === 0 ? 20 : 10), y); ctx.stroke();
+    if (c % 5 === 0) VL.text(ctx, String(c), rx + 2, y + 5, { size: 13, color: '#2b2108' });
+  }
+  for (let c = 0; c <= 42; c += 0.5) if (c % 1) { const y = TOP + c * CMPX; ctx.lineWidth = .6; ctx.beginPath(); ctx.moveTo(rx + 48, y); ctx.lineTo(rx + 42, y); ctx.stroke(); }
+  // vạch mục tiêu
+  const yT = TOP + (s.l0 + s.dl) * CMPX;
+  const yT2 = TOP + (s.type === 'len' || s.type === 'refLen' ? s.targetLen : s.l0 + s.target) * CMPX;
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(rx + 20, yT2); ctx.lineTo(ax + 60, yT2); ctx.stroke();
+  VL.label(ctx, 'mục tiêu', ax + 110, yT2, { size: 12, color: '#fecaca' });
+  ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(rx + 20, TOP + s.l0 * CMPX); ctx.lineTo(ax + 60, TOP + s.l0 * CMPX); ctx.stroke(); ctx.setLineDash([]);
+  VL.label(ctx, `l₀ = ${s.l0} cm`, ax + 110, TOP + s.l0 * CMPX, { size: 12, color: '#cbd5e1' });
+  // lò xo
+  const L = (s.l0 + s.x * 100) * CMPX, coils = 16, yEnd = TOP + L;
+  ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ax, TOP);
+  const y1 = TOP + 10, y2 = yEnd - 10;
+  ctx.lineTo(ax, y1);
+  for (let i = 0; i <= coils; i++) ctx.lineTo(ax + (i % 2 ? 16 : -16), y1 + (y2 - y1) * (i + .5) / (coils + 1));
+  ctx.lineTo(ax, y2); ctx.lineTo(ax, yEnd); ctx.stroke();
+  // kim chỉ
+  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ax, yEnd); ctx.lineTo(rx + 48, yEnd); ctx.stroke();
+  ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.moveTo(rx + 48, yEnd); ctx.lineTo(rx + 58, yEnd - 5); ctx.lineTo(rx + 58, yEnd + 5); ctx.fill();
+  // móc + quả nặng
+  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ax, yEnd + 6, 6, -Math.PI / 2, Math.PI); ctx.stroke();
+  let yy = yEnd + 12;
+  const stack = s.phase === 'set' ? [] : (s.stack || []);
+  stack.forEach(w => { const hh = w === 50 ? 12 : w === 100 ? 18 : 28; ctx.fillStyle = w === 50 ? '#a3e635' : w === 100 ? '#60a5fa' : '#f472b6'; VL.rrect(ctx, ax - 22, yy, 44, hh, 4); ctx.fill(); VL.text(ctx, w + 'g', ax, yy + hh / 2 + 1, { size: 10, color: '#0b1422', align: 'center', base: 'middle', weight: 800 }); yy += hh + 1; });
+  VL.label(ctx, `l = ${fmt(s.l0 + s.x * 100, 2)} cm · Δl = ${fmt(s.x * 100, 2)} cm`, 760, 60, { size: 15 });
+  if (s.phase !== 'set') VL.label(ctx, `F_đh = k·Δl = ${fmt(s.k * s.x, 3)} N`, 760, 96, { size: 14, color: '#93c5fd' });
+  if (s.type.startsWith('ref')) VL.label(ctx, 'k = ?', 760, 132, { size: 16, color: '#fbbf24' });
+  else VL.label(ctx, `k = ${s.k} N/m`, 760, 132, { size: 15, color: '#fbbf24' });
+}
+
+/* =================== TÀU LẶN =================== */
+const LIQ = [
+  { name: 'nước hồ', rho: 1000, col: '#1e6fa8' },
+  { name: 'nước biển', rho: 1030, col: '#155e75' },
+  { name: 'nước Biển Chết (rất mặn)', rho: 1240, col: '#2c6e6a' },
+];
+function tlLevel() {
+  const m = M.taulan, lv = m.lv;
+  const liq = lv === 0 ? LIQ[0] : lv === 3 ? LIQ[2] : pick(LIQ.slice(0, 2));
+  const type = ['p', 'pl', 'max', 'p', 'dp'][lv];
+  const s = { liq, type, tries: 0, phase: 'set', depth: 0, cur: 0, cracked: false };
+  const rg = liq.rho * G;
+  if (type === 'p') { s.h = randInt(8, 60); s.ptar = Math.round((P0 + rg * s.h) / 1000) * 1000; s.h = (s.ptar - P0) / rg; }
+  if (type === 'pl') { s.h = randInt(10, 80); s.plt = Math.round(rg * s.h / 1000) * 1000; s.h = s.plt / rg; }
+  if (type === 'max') { s.pmax = randInt(5, 12) * 1e5; s.h = (s.pmax - P0) / rg; }
+  if (type === 'dp') { s.h1 = randInt(10, 30); s.dp = randInt(1, 4) * 1e5; s.h = s.h1 + s.dp / rg; s.cur = s.h1; s.depth = s.h1; }
+  s.maxD = Math.max(40, Math.ceil(s.h * 1.35 / 10) * 10);
+  m.s = s;
+  $('#kind').textContent = `Màn ${lv + 1} · Áp suất chất lỏng`;
+  const goal = {
+    p: `Đưa tàu tới độ sâu mà áp kế ngoài vỏ tàu chỉ <b>p = ${sci(s.ptar, 4)} Pa</b> (áp suất toàn phần).`,
+    pl: `Đưa tàu tới độ sâu mà áp suất do riêng chất lỏng gây ra bằng <b>${sci(s.plt, 4)} Pa</b>.`,
+    max: `Vỏ tàu chỉ chịu được áp suất tối đa <b>${sci(s.pmax, 3)} Pa</b>. Hãy lặn <b>sâu nhất có thể</b> (cách giới hạn không quá 1,5 m) mà không làm nứt vỏ.`,
+    dp: `Tàu đang ở độ sâu ${s.h1} m. Hãy lặn thêm sao cho áp suất lên tàu <b>tăng thêm ${sci(s.dp, 2)} Pa</b>.`,
+  }[type];
+  $('#goal').innerHTML = goal;
+  $('#givens').innerHTML = `<span>Chất lỏng: ${liq.name}</span><span>ρ = ${liq.rho} kg/m³</span><span>p₀ = 1,013·10⁵ Pa</span><span>g = 9,8 m/s²</span>`;
+  $('#controls').innerHTML = `<label for="dep" style="font-weight:600">Độ sâu cần lặn tới h (m, tính từ mặt thoáng)</label>
+    <input class="num" id="dep" inputmode="decimal" autocomplete="off" style="margin-top:6px" placeholder="Ví dụ: 25,5">
+    <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Lặn ⬇</button></div>
+    <div class="row" style="justify-content:space-between;margin-top:8px"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+    <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">Áp suất tại độ sâu h: p = p₀ + ρgh. Áp suất do riêng chất lỏng gây ra: ρgh. Chênh lệch áp suất giữa hai độ sâu: Δp = ρgΔh.</p></details>`;
+  $('#goBtn').addEventListener('click', tlGo);
+  $('#dep').addEventListener('keydown', e => { if (e.key === 'Enter') tlGo(); });
+  fb(''); $('#explain').textContent = ''; hud();
+}
+function tlGo() {
+  const s = M.taulan.s;
+  if (s.phase === 'end') { nextLevel(); return; }
+  if (s.phase === 'dive') return;
+  const h = parse($('#dep').value);
+  if (!isFinite(h) || h < 0 || h > 2000) { VL.toast('Hãy nhập độ sâu hợp lệ (m).', 'bad'); return; }
+  s.depth = h; s.phase = 'dive'; s.cracked = false; s.maxD = Math.max(s.maxD, Math.ceil(h * 1.15 / 10) * 10); $('#goBtn').disabled = true; sfx.whoosh();
+}
+function tlUpdate(dt) {
+  const s = M.taulan.s; if (!s || s.phase !== 'dive') return;
+  const rg = s.liq.rho * G;
+  const dir = Math.sign(s.depth - s.cur), sp = Math.max(4, Math.abs(s.depth - s.cur) * 1.2);
+  s.cur += dir * Math.min(Math.abs(s.depth - s.cur), sp * dt);
+  if (s.type === 'max' && P0 + rg * s.cur > s.pmax) { s.cracked = true; return tlEnd(); }
+  if (Math.abs(s.cur - s.depth) < 1e-3) tlEnd();
+}
+function tlEnd() {
+  const s = M.taulan.s, m = M.taulan, rg = s.liq.rho * G;
+  s.tries++; s.phase = 'idle';
+  const p = P0 + rg * s.cur, left = 3 - s.tries;
+  let ok = false, msg;
+  if (s.type === 'max') {
+    if (s.cracked) { msg = `Rắc! Vỏ tàu nứt ở độ sâu ${fmt(s.cur, 1)} m (p vượt ${sci(s.pmax, 3)} Pa).`; sfx.boom(); }
+    else { ok = s.h - s.cur <= 1.5; msg = ok ? `An toàn ở độ sâu ${fmt(s.cur, 1)} m, sát giới hạn!` : `An toàn nhưng còn cách giới hạn ${fmt(s.h - s.cur, 1)} m — lặn sâu hơn được.`; }
+  } else {
+    const tol = Math.max(0.4, s.h * 0.015);
+    ok = Math.abs(s.cur - s.h) <= tol;
+    msg = `Áp kế: p = ${sci(p, 4)} Pa (ρgh = ${sci(rg * s.cur, 4)} Pa) — ${ok ? 'đúng yêu cầu!' : s.cur < s.h ? 'chưa đủ sâu.' : 'quá sâu.'}`;
+  }
+  const sol = {
+    p: `h = (p − p₀)/(ρg) = (${sci(s.ptar, 4)} − 1,013·10⁵)/(${s.liq.rho}·9,8) ≈ <b>${fmt(s.h, 2)} m</b>.`,
+    pl: `h = p/(ρg) = ${sci(s.plt, 4)}/(${s.liq.rho}·9,8) ≈ <b>${fmt(s.h, 2)} m</b>.`,
+    max: `h<sub>max</sub> = (p<sub>max</sub> − p₀)/(ρg) = (${sci(s.pmax, 3)} − 1,013·10⁵)/(${s.liq.rho}·9,8) ≈ <b>${fmt(s.h, 2)} m</b>.`,
+    dp: `Δh = Δp/(ρg) = ${sci(s.dp, 2)}/(${s.liq.rho}·9,8) ≈ ${fmt(s.dp / rg, 2)} m ⇒ h = ${s.h1} + ${fmt(s.dp / rg, 2)} ≈ <b>${fmt(s.h, 2)} m</b>.`,
+  }[s.type];
+  if (ok) { const p2 = pts(s.tries); m.score += p2; sfx.ok(); fb(msg + ` +${p2}`, 'ok'); s.phase = 'end'; }
+  else { if (!s.cracked) sfx.bad(); fb(msg, 'bad'); if (left <= 0) s.phase = 'end'; }
+  $('#left').textContent = Math.max(0, left);
+  $('#explain').innerHTML = s.phase === 'end' ? 'Lời giải: ' + sol : `Còn ${left} lượt.`;
+  const b = $('#goBtn'); b.disabled = false; b.textContent = s.phase === 'end' ? (m.lv + 1 >= m.n ? 'Xem kết quả' : 'Màn tiếp →') : 'Lặn lại ⬇';
+  if (s.cracked && s.phase !== 'end') { s.cur = 0; }
+  hud();
+}
+function tlDraw(t) {
+  const s = M.taulan.s; if (!s) return;
+  const sy = 90, by = 520, D = s.maxD, Y = d => sy + d / D * (by - sy);
+  const g = ctx.createLinearGradient(0, 0, 0, sy); g.addColorStop(0, '#0f2a4a'); g.addColorStop(1, '#3b6d99');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, sy);
+  const wg = ctx.createLinearGradient(0, sy, 0, H); wg.addColorStop(0, s.liq.col); wg.addColorStop(1, '#04121f');
+  ctx.fillStyle = wg; ctx.fillRect(0, sy, W, H - sy);
+  // sóng
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 10) ctx.lineTo(x, sy + Math.sin(x / 40 + t * 2) * 3); ctx.stroke();
+  // thước độ sâu
+  const step = D > 100 ? 20 : D > 50 ? 10 : 5;
+  for (let d = 0; d <= D; d += step) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(60, Y(d), 16, 2); VL.text(ctx, d + ' m', 54, Y(d) + 5, { size: 12, color: '#cbd5e1', align: 'right' }); }
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(74, sy, 2, by - sy);
+  if (s.type === 'max' && s.phase === 'end') { ctx.strokeStyle = '#ef4444'; ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(80, Y(s.h)); ctx.lineTo(700, Y(s.h)); ctx.stroke(); ctx.setLineDash([]); VL.label(ctx, `giới hạn ≈ ${fmt(s.h, 1)} m`, 620, Y(s.h) - 16, { size: 12, color: '#fecaca' }); }
+  if (s.type === 'dp') { ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(80, Y(s.h1)); ctx.lineTo(700, Y(s.h1)); ctx.stroke(); ctx.setLineDash([]); VL.label(ctx, `h₁ = ${s.h1} m`, 640, Y(s.h1) - 14, { size: 12 }); }
+  // đáy biển
+  ctx.fillStyle = '#3b3220'; ctx.beginPath(); ctx.moveTo(0, H); for (let x = 0; x <= W; x += 40) ctx.lineTo(x, by + 8 + Math.sin(x * .05) * 6); ctx.lineTo(W, H); ctx.fill();
+  // tàu
+  const tx = 380, ty = Y(s.cur);
+  ctx.save(); ctx.translate(tx, ty);
+  ctx.fillStyle = s.cracked ? '#94a3b8' : '#facc15';
+  ctx.beginPath(); ctx.ellipse(0, 0, 70, 24, 0, 0, 7); ctx.fill();
+  ctx.fillRect(-14, -40, 34, 20); ctx.fillRect(10, -52, 4, 14);
+  ctx.fillStyle = '#0ea5e9'; [-30, 0, 30].forEach(x => { ctx.beginPath(); ctx.arc(x, 0, 8, 0, 7); ctx.fill(); });
+  if (s.cracked) { ctx.strokeStyle = '#111'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-20, -20); ctx.lineTo(-6, -4); ctx.lineTo(-14, 6); ctx.lineTo(4, 22); ctx.stroke(); }
+  ctx.fillStyle = '#64748b'; ctx.beginPath(); ctx.moveTo(-70, 0); ctx.lineTo(-90, -14); ctx.lineTo(-90, 14); ctx.fill();
+  ctx.restore();
+  // bong bóng
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 8; i++) { const by2 = ty - ((t * 40 + i * 30) % 120); if (by2 > sy) { ctx.beginPath(); ctx.arc(tx - 90 + Math.sin(t * 3 + i) * 6, by2, 3 + i % 3, 0, 7); ctx.stroke(); } }
+  // áp kế
+  const rg = s.liq.rho * G, p = P0 + rg * s.cur;
+  const gx = 800, gy = 300, R = 90;
+  ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(gx, gy, R + 8, 0, 7); ctx.fill();
+  ctx.fillStyle = '#0b1422'; ctx.beginPath(); ctx.arc(gx, gy, R, 0, 7); ctx.fill();
+  const pMaxG = Math.ceil((P0 + rg * D) / 1e5);
+  const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25;
+  for (let v = 0; v <= pMaxG; v++) {
+    const a = a0 + (a1 - a0) * v / pMaxG;
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx + Math.cos(a) * (R - 4), gy + Math.sin(a) * (R - 4)); ctx.lineTo(gx + Math.cos(a) * (R - 16), gy + Math.sin(a) * (R - 16)); ctx.stroke();
+    if (pMaxG <= 16 || v % 2 === 0) VL.text(ctx, String(v), gx + Math.cos(a) * (R - 30), gy + Math.sin(a) * (R - 30) + 4, { size: 12, color: '#cbd5e1', align: 'center' });
+  }
+  const ap = a0 + (a1 - a0) * clamp(p / 1e5 / pMaxG, 0, 1);
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + Math.cos(ap) * (R - 14), gy + Math.sin(ap) * (R - 14)); ctx.stroke();
+  ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(gx, gy, 6, 0, 7); ctx.fill();
+  VL.text(ctx, '×10⁵ Pa', gx, gy + 40, { size: 12, color: '#9bb0c9', align: 'center' });
+  VL.label(ctx, `p = ${sci(p, 4)} Pa`, gx, gy + R + 34, { size: 15 });
+  VL.label(ctx, `độ sâu ${fmt(s.cur, 2)} m`, gx, gy - R - 30, { size: 15, color: '#fde68a' });
+}
+
+/* =================== Chung =================== */
+function nextLevel() { const m = M[mode]; m.lv++; if (m.lv >= m.n) { endMode(); return; } mode === 'loxo' ? lxLevel() : tlLevel(); }
+function endMode() {
+  const m = M[mode], max = m.n * 30, st = m.score >= max * .8 ? 3 : m.score >= max * .5 ? 2 : m.score > 0 ? 1 : 0;
+  const old = VL.best('ch7-' + mode, m.score); sfx.win();
+  VL.modal({ title: mode === 'loxo' ? 'Bậc thầy lò xo!' : 'Thuyền trưởng tàu lặn!', stars: st, html: `<p>Điểm: <b>${m.score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: mode === 'loxo' ? 'Sang Tàu lặn' : 'Sang Treo lò xo', onClick: () => switchMode(mode === 'loxo' ? 'taulan' : 'loxo', true) }, { label: 'Chơi lại', primary: true, onClick: () => startMode(mode) }] });
+}
+function startMode(md) { const m = M[md]; m.lv = 0; m.score = 0; md === 'loxo' ? lxLevel() : tlLevel(); theory(); }
+function switchMode(md, restart) {
+  mode = md; $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.mode === md)));
+  if (restart || !M[md].s || M[md].lv >= M[md].n) startMode(md); else { md === 'loxo' ? lxLevel() : tlLevel(); theory(); }
+}
+function theory() {
+  $('#theory').innerHTML = mode === 'loxo'
+    ? `<h2>Kiến thức: lực đàn hồi – định luật Hooke</h2><div class="formula">F<sub>đh</sub> = k·|Δl| &nbsp;·&nbsp; Δl = l − l₀</div><p class="muted">Trong giới hạn đàn hồi, độ lớn lực đàn hồi của lò xo tỉ lệ thuận với độ biến dạng. k (N/m) là độ cứng của lò xo. Khi treo vật cân bằng: k·Δl = m·g.</p>`
+    : `<h2>Kiến thức: khối lượng riêng – áp suất chất lỏng</h2><div class="formula">ρ = m/V &nbsp;·&nbsp; p = F/S</div><div class="formula">p = p₀ + ρgh &nbsp;·&nbsp; Δp = ρgΔh</div><p class="muted">Áp suất chất lỏng tại một điểm phụ thuộc độ sâu và khối lượng riêng của chất lỏng, không phụ thuộc hình dạng bình. Các điểm cùng độ sâu trong cùng chất lỏng đứng yên có áp suất bằng nhau.</p>`;
+}
+VL.tabs($('#tabs'), md => switchMode(md, false));
+VL.loop((dt, t) => { ctx.clearRect(0, 0, W, H); if (mode === 'loxo') { lxUpdate(dt); lxDraw(); } else { tlUpdate(dt); tlDraw(t); } });
+startMode('loxo');
+</script>
+</body>
+</html>

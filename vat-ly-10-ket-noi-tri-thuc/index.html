@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trò chơi Vật lí 10</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  .hero { padding: 18px 0 4px; }
+  .hero small { color: var(--accent); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; }
+  .hero h1 { font-family: var(--font-display); font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.05; margin: 4px 0 8px; }
+  .hero p { color: var(--muted); max-width: 70ch; margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .ch { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; position: relative; overflow: hidden; transition: transform .15s, border-color .15s; }
+  .ch:hover { transform: translateY(-2px); border-color: var(--c); }
+  .ch::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--c); }
+  .ch .no { font-family: var(--font-display); color: var(--c); font-weight: 800; font-size: .95rem; letter-spacing: .04em; }
+  .ch h2 { margin: 0; font-family: var(--font-display); font-size: 1.45rem; line-height: 1.1; }
+  .ch .topic { color: var(--muted); font-size: .92rem; }
+  .ch ul { margin: 0; padding-left: 18px; font-size: .92rem; }
+  .ch .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: .85rem; color: var(--muted); }
+  .ch .go { color: var(--c); font-weight: 700; }
+  .guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <small>Vật lí 10 · Kết nối tri thức với cuộc sống</small>
+    <h1>Phòng thí nghiệm trò chơi</h1>
+    <p>Mỗi chương một trò chơi mô phỏng: em tính toán bằng công thức của bài học, rồi kiểm chứng ngay bằng thí nghiệm ảo. Chạy trực tiếp trên trình duyệt, dùng được trên máy chiếu, máy tính và điện thoại.</p>
+  </header>
+
+  <section class="grid" id="grid"></section>
+
+  <section class="guide">
+    <div class="card">
+      <h2>Gợi ý cho giáo viên</h2>
+      <p class="muted">Chiếu trò chơi lên bảng, chia lớp thành các đội. Mỗi màn, các đội tính kết quả trên bảng con trong 1–2 phút; đội đúng nhất được cử đại diện lên nhập số và “bắn thử”. Phần <b>Lời giải</b> hiện ra sau mỗi màn để chữa bài ngay.</p>
+    </div>
+    <div class="card">
+      <h2>Cho học sinh tự luyện</h2>
+      <p class="muted">Số liệu được sinh ngẫu nhiên nên mỗi lần chơi là một bộ bài mới. Kỉ lục điểm được lưu trên trình duyệt của em. Dùng dấu phẩy hoặc dấu chấm khi nhập số thập phân đều được.</p>
+    </div>
+  </section>
+</div>
+<script src="chung.js"></script>
+<script>
+const CH = [
+  { f: 'chuong-1-mo-dau.html', no: 'Chương I', t: 'Thợ đo tài ba', c: '#7dd3fc', topic: 'Mở đầu', k: 'ch1',
+    items: ['Biển báo & an toàn phòng thí nghiệm', 'Đơn vị SI, đọc thước và ống đong', 'Tính giá trị trung bình và sai số'] },
+  { f: 'chuong-2-dong-hoc.html', no: 'Chương II', t: 'Phanh kịp & Pháo thủ', c: '#ffb22e', topic: 'Động học', k: ['ch2-phanh', 'ch2-phao'],
+    items: ['Chuyển động thẳng biến đổi đều, đồ thị v–t', 'Chuyển động ném ngang', 'Chuyển động ném xiên'] },
+  { f: 'chuong-3-dong-luc-hoc.html', no: 'Chương III', t: 'Trượt tới đích & Bập bênh', c: '#a3e635', topic: 'Động lực học', k: ['ch3-truot', 'ch3-bapbenh'],
+    items: ['Định luật II Newton, lực ma sát', 'Moment lực, quy tắc moment', 'Điều kiện cân bằng của vật'] },
+  { f: 'chuong-4-nang-luong.html', no: 'Chương IV', t: 'Tàu lượn năng lượng', c: '#f472b6', topic: 'Năng lượng, công, công suất', k: 'ch4',
+    items: ['Động năng, thế năng, cơ năng', 'Định luật bảo toàn cơ năng', 'Công của lực ma sát, hiệu suất'] },
+  { f: 'chuong-5-dong-luong.html', no: 'Chương V', t: 'Đường ray va chạm', c: '#5eead4', topic: 'Động lượng', k: 'ch5',
+    items: ['Động lượng của vật và hệ', 'Định luật bảo toàn động lượng', 'Va chạm mềm và va chạm đàn hồi'] },
+  { f: 'chuong-6-chuyen-dong-tron.html', no: 'Chương VI', t: 'Quăng đá', c: '#fb923c', topic: 'Chuyển động tròn', k: 'ch6',
+    items: ['Tốc độ góc, chu kì, tần số', 'Tốc độ dài theo phương tiếp tuyến', 'Gia tốc và lực hướng tâm'] },
+  { f: 'chuong-7-bien-dang-ap-suat.html', no: 'Chương VII', t: 'Lò xo & Tàu lặn', c: '#60a5fa', topic: 'Biến dạng của vật rắn. Áp suất chất lỏng', k: ['ch7-loxo', 'ch7-taulan'],
+    items: ['Lực đàn hồi, định luật Hooke', 'Khối lượng riêng', 'Áp suất chất lỏng p = p₀ + ρgh'] },
+];
+document.getElementById('grid').innerHTML = CH.map(c => {
+  const keys = [].concat(c.k), best = keys.map(k => VL.store.get('best:' + k, 0)).reduce((a, b) => a + b, 0);
+  return `<a class="ch" href="${c.f}" style="--c:${c.c}">
+    <span class="no">${c.no}</span><h2>${c.t}</h2><span class="topic">${c.topic}</span>
+    <ul>${c.items.map(i => `<li>${i}</li>`).join('')}</ul>
+    <span class="foot"><span>${best ? 'Kỉ lục: ' + best + ' điểm' : 'Chưa chơi'}</span><span class="go">Chơi →</span></span></a>`;
+}).join('');
+</script>
+</body>
+</html>

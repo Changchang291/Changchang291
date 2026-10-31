@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Đường ray va chạm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #5eead4; --accent-ink: #032b26; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương V · Động lượng</small><h1>Đường ray va chạm</h1></div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/6</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Đệm khí và hai xe"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card">
+        <div class="field"><label for="v1">Vận tốc ban đầu của xe A</label><output id="v1o"></output><input type="range" id="v1" min="0" max="4" step="0.05" value="1"></div>
+        <div class="row"><label class="muted" for="v1n" style="flex:1">Hoặc nhập chính xác (m/s):</label><input class="num" id="v1n" style="width:110px" inputmode="decimal"></div>
+        <div class="row" style="justify-content:space-between;margin-top:8px"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Phóng xe A ▶</button></div>
+        <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted" id="hint"></p></details>
+      </div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card">
+      <h2>Kiến thức: động lượng và va chạm</h2>
+      <div class="formula">p = m·v &nbsp;(kg·m/s) — động lượng là đại lượng vectơ, cùng hướng với vận tốc</div>
+      <div class="formula">Hệ kín: m₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′</div>
+      <p class="muted"><b>Va chạm mềm</b> (hai xe dính vào nhau): V = (m₁v₁ + m₂v₂)/(m₁ + m₂), động năng giảm. <b>Va chạm đàn hồi</b>: bảo toàn cả động lượng và động năng:</p>
+      <div class="formula">v₁′ = [(m₁ − m₂)v₁ + 2m₂v₂]/(m₁ + m₂) · v₂′ = [(m₂ − m₁)v₂ + 2m₁v₁]/(m₁ + m₂)</div>
+      <p class="muted">Chọn chiều dương là chiều chuyển động ban đầu của xe A (sang phải).</p>
+    </div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted">Xe A và xe B chuyển động trên đệm khí (bỏ qua ma sát). Tính vận tốc cần phóng xe A để sau va chạm, đại lượng mà cổng quang điện đo được đúng bằng yêu cầu (sai lệch ≤ 4%). Mỗi màn 3 lượt: +30, +20, +10.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, fmt, rand, randInt, pick, clamp, sfx, parse } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+const MS = [0.5, 1, 1.5, 2];
+const r2 = x => Math.round(x * 100) / 100;
+// Mỗi màn: sinh dữ liệu sao cho v1 cần thiết nằm trong [0.5; 3.6] m/s
+function gen(kind) {
+  for (let t = 0; t < 400; t++) {
+    let m1 = pick(MS), m2 = pick(MS), v2 = 0, target, v1, ask, type;
+    if (kind === 1) { type = 'mem'; target = r2(rand(.4, 1.6)); v1 = (m1 + m2) * target / m1; ask = { what: 'V', text: `Sau va chạm hai xe dính vào nhau và chuyển động với vận tốc <b>V = ${fmt(target, 2)} m/s</b>.` }; }
+    if (kind === 2) { type = 'dh'; target = r2(rand(.6, 2.4)); v1 = target * (m1 + m2) / (2 * m1); ask = { what: 'v2', text: `Sau va chạm, xe B phải chuyển động với vận tốc <b>v₂′ = ${fmt(target, 2)} m/s</b>.` }; }
+    if (kind === 3) { type = 'mem'; v2 = -r2(rand(.5, 2)); target = 0; v1 = -m2 * v2 / m1; ask = { what: 'V', text: 'Xe B đang chạy ngược về phía xe A. Sau va chạm hai xe dính vào nhau phải <b>đứng yên</b>.' }; }
+    if (kind === 4) { type = 'dh'; if (m1 >= m2) continue; target = -r2(rand(.3, 1.2)); v1 = target * (m1 + m2) / (m1 - m2); ask = { what: 'v1', text: `Sau va chạm, xe A phải <b>bật ngược trở lại</b> với tốc độ ${fmt(-target, 2)} m/s (v₁′ = ${fmt(target, 2)} m/s).` }; }
+    if (kind === 5) { type = 'mem'; v2 = r2(rand(.2, .8)); target = r2(rand(v2 + .3, v2 + 1.2)); v1 = ((m1 + m2) * target - m2 * v2) / m1; ask = { what: 'V', text: `Xe B đang chạy cùng chiều phía trước với v₂ = ${fmt(v2, 2)} m/s. Sau khi A đuổi kịp và dính vào B, cả hai phải chuyển động với <b>V = ${fmt(target, 2)} m/s</b>.` }; }
+    if (kind === 6) { type = 'dh'; v2 = -r2(rand(.3, 1)); target = r2(rand(.5, 1.8)); v1 = ((m1 + m2) * target - (m2 - m1) * v2) / (2 * m1); ask = { what: 'v2', text: `Xe B đang chạy ngược lại với tốc độ ${fmt(-v2, 2)} m/s. Sau va chạm, xe B phải bật ngược trở lại với <b>v₂′ = ${fmt(target, 2)} m/s</b>.` }; }
+    if (v1 >= 0.5 && v1 <= 3.6) return { kind, type, m1, m2, v2, target, v1need: v1, ask };
+  }
+  return gen(kind);
+}
+let levels = [], lv = 0, score = 0, S = null;
+function startGame() { levels = [1, 2, 3, 4, 5, 6].map(gen); lv = 0; score = 0; loadLevel(); }
+function loadLevel() {
+  const c = levels[lv];
+  S = { ...c, tries: 0, phase: 'ready', v1: +$('#v1').value };
+  resetCarts();
+  $('#kind').textContent = `Màn ${lv + 1} · ${c.type === 'mem' ? 'Va chạm mềm' : 'Va chạm đàn hồi'}`;
+  $('#goal').innerHTML = c.ask.text + ' Hãy chọn vận tốc phóng xe A.';
+  $('#givens').innerHTML = `<span>m<sub>A</sub> = ${fmt(c.m1, 1)} kg</span><span>m<sub>B</sub> = ${fmt(c.m2, 1)} kg</span><span>v<sub>B</sub> = ${fmt(c.v2, 2)} m/s</span><span>${c.type === 'mem' ? 'Đầu xe gắn băng dính (dính nhau)' : 'Đầu xe gắn lò xo (đàn hồi)'}</span>`;
+  $('#hint').innerHTML = c.type === 'mem' ? 'Bảo toàn động lượng: m<sub>A</sub>v<sub>A</sub> + m<sub>B</sub>v<sub>B</sub> = (m<sub>A</sub> + m<sub>B</sub>)V. Nhớ dấu của vận tốc: ngược chiều dương thì mang dấu âm.' : 'Dùng công thức va chạm đàn hồi (ở mục Kiến thức) rồi giải ra v<sub>A</sub>. Vận tốc mang dấu âm nghĩa là chuyển động sang trái.';
+  $('#left').textContent = 3; $('#goBtn').textContent = 'Phóng xe A ▶'; $('#goBtn').disabled = false;
+  $('#fb').textContent = ''; $('#fb').className = 'feedback'; $('#explain').textContent = '';
+  $('#hudLv').textContent = `${lv + 1}/${levels.length}`; $('#hudScore').textContent = score;
+  setV(S.v1);
+}
+function resetCarts() {
+  S.xA = 0.6; S.xB = S.v2 < 0 ? 4.6 : 2.6; S.vA = 0; S.vB = S.v2; S.hit = false; S.t = 0; S.tHit = 0; S.gate = null; S.stuck = false;
+}
+const setV = v => { S.v1 = v; $('#v1o').textContent = fmt(v, 2) + ' m/s'; };
+$('#v1').addEventListener('input', e => { setV(+e.target.value); $('#v1n').value = ''; });
+$('#v1n').addEventListener('input', e => { const v = parse(e.target.value); if (isFinite(v) && v >= 0 && v <= 6) { setV(v); $('#v1').value = Math.min(4, v); } });
+
+$('#goBtn').addEventListener('click', () => {
+  if (S.phase === 'end') { lv++; if (lv >= levels.length) return finish(); loadLevel(); return; }
+  if (S.phase === 'run') return;
+  resetCarts(); S.vA = S.v1; S.phase = 'run'; $('#goBtn').disabled = true; sfx.whoosh();
+});
+const HALF = 0.25;
+function collide() {
+  const { m1, m2 } = S, u1 = S.vA, u2 = S.vB;
+  S.before = { pA: m1 * u1, pB: m2 * u2, u1, u2 };
+  if (S.type === 'mem') { const V = (m1 * u1 + m2 * u2) / (m1 + m2); S.vA = S.vB = V; S.stuck = true; }
+  else { S.vA = ((m1 - m2) * u1 + 2 * m2 * u2) / (m1 + m2); S.vB = ((m2 - m1) * u2 + 2 * m1 * u1) / (m1 + m2); }
+  S.after = { pA: m1 * S.vA, pB: m2 * S.vB, v1: S.vA, v2: S.vB };
+  S.hit = true; S.tHit = S.t; sfx.click();
+}
+function update(dt) {
+  if (!S || S.phase !== 'run') return;
+  const steps = 8, h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    S.xA += S.vA * h; S.xB += S.vB * h; S.t += h;
+    if (!S.hit && S.xB - S.xA <= 2 * HALF) { S.xA = S.xB - 2 * HALF; collide(); }
+  }
+  if (S.hit && !S.gate) { const q = S.ask.what === 'V' ? S.vA : S.ask.what === 'v2' ? S.vB : S.vA; S.gate = q; }
+  if (!S.hit && S.t > 8) return evaluate(false);
+  if (S.hit && S.t - S.tHit > 2.2) return evaluate(true);
+}
+function evaluate(hit) {
+  S.phase = 'idle'; S.tries++;
+  const left = 3 - S.tries; $('#left').textContent = left;
+  const c = S;
+  const sol = solution();
+  if (!hit) { sfx.bad(); fb('Hai xe không va chạm với nhau!', 'bad'); }
+  else {
+    const q = S.gate, ok = Math.abs(q - c.target) <= Math.max(0.03, Math.abs(c.target) * 0.04);
+    const name = c.ask.what === 'V' ? 'V' : c.ask.what === 'v2' ? 'v₂′' : 'v₁′';
+    if (ok) {
+      const pts = [30, 20, 10][S.tries - 1]; score += pts; sfx.ok();
+      fb(`Chính xác! ${name} = ${fmt(q, 2)} m/s. +${pts}`, 'ok'); S.phase = 'end';
+    } else { sfx.bad(); fb(`Đo được ${name} = ${fmt(q, 2)} m/s, cần ${fmt(c.target, 2)} m/s.`, 'bad'); }
+  }
+  const b = $('#goBtn'); b.disabled = false;
+  if (S.phase !== 'end' && left <= 0) S.phase = 'end';
+  $('#explain').innerHTML = (S.hit ? `Trước va chạm: p = ${fmt(S.before.pA, 2)} + ${fmt(S.before.pB, 2)} = <b>${fmt(S.before.pA + S.before.pB, 2)}</b> kg·m/s. Sau va chạm: p′ = ${fmt(S.after.pA, 2)} + ${fmt(S.after.pB, 2)} = <b>${fmt(S.after.pA + S.after.pB, 2)}</b> kg·m/s. ` : '') + (S.phase === 'end' ? '<br>Lời giải: ' + sol : `Còn ${left} lượt.`);
+  b.textContent = S.phase === 'end' ? (lv + 1 >= levels.length ? 'Xem kết quả' : 'Màn tiếp →') : 'Phóng lại ▶';
+  $('#hudScore').textContent = score;
+}
+function solution() {
+  const { m1, m2, v2, target, v1need, kind } = S;
+  const f = x => fmt(x, 2);
+  if (kind === 1) return `m₁v₁ = (m₁ + m₂)V ⇒ v₁ = (${f(m1)} + ${f(m2)})·${f(target)}/${f(m1)} = <b>${f(v1need)} m/s</b>.`;
+  if (kind === 2) return `v₂′ = 2m₁v₁/(m₁ + m₂) ⇒ v₁ = v₂′(m₁ + m₂)/(2m₁) = <b>${f(v1need)} m/s</b>.`;
+  if (kind === 3) return `m₁v₁ + m₂v₂ = 0 ⇒ v₁ = −m₂v₂/m₁ = −${f(m2)}·(${f(v2)})/${f(m1)} = <b>${f(v1need)} m/s</b>.`;
+  if (kind === 4) return `v₁′ = (m₁ − m₂)v₁/(m₁ + m₂) ⇒ v₁ = v₁′(m₁ + m₂)/(m₁ − m₂) = <b>${f(v1need)} m/s</b>.`;
+  if (kind === 5) return `m₁v₁ + m₂v₂ = (m₁ + m₂)V ⇒ v₁ = [(m₁ + m₂)V − m₂v₂]/m₁ = <b>${f(v1need)} m/s</b>.`;
+  return `v₂′ = [(m₂ − m₁)v₂ + 2m₁v₁]/(m₁ + m₂) ⇒ v₁ = [(m₁ + m₂)v₂′ − (m₂ − m₁)v₂]/(2m₁) = <b>${f(v1need)} m/s</b>.`;
+}
+const fb = (m, k) => { $('#fb').textContent = m; $('#fb').className = 'feedback ' + (k || ''); };
+function finish() {
+  const max = levels.length * 30, st = score >= max * .8 ? 3 : score >= max * .5 ? 2 : score > 0 ? 1 : 0;
+  const old = VL.best('ch5', score); sfx.win();
+  VL.modal({ title: 'Chuyên gia động lượng!', stars: st, html: `<p>Điểm: <b>${score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: 'Về các chương', onClick: () => { location.href = 'index.html'; } }, { label: 'Chơi lại', primary: true, onClick: startGame }] });
+}
+
+const OX = 60, SC = 140, TY = 250;
+const X = x => OX + x * SC;
+function cart(x, m, col, name, v, spring) {
+  const w = 2 * HALF * SC, hgt = 30 + m * 14, cx = X(x);
+  ctx.fillStyle = col; VL.rrect(ctx, cx - w / 2, TY - hgt, w, hgt, 8); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(cx - w / 2, TY - 8, w, 8);
+  VL.text(ctx, name, cx, TY - hgt + 20, { size: 16, align: 'center', color: '#032b26', weight: 800 });
+  VL.text(ctx, fmt(m, 1) + ' kg', cx, TY - 14, { size: 12, align: 'center', color: '#032b26' });
+  if (spring === 'dh') { ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.beginPath(); const sx = name === 'A' ? cx + w / 2 : cx - w / 2, dir = name === 'A' ? 1 : -1; ctx.moveTo(sx, TY - 22); for (let i = 1; i <= 6; i++) ctx.lineTo(sx + dir * i * 2, TY - 22 + (i % 2 ? -6 : 6)); ctx.stroke(); }
+  else { ctx.fillStyle = '#facc15'; const sx = name === 'A' ? cx + w / 2 : cx - w / 2 - 4; ctx.fillRect(sx, TY - 30, 4, 16); }
+  if (Math.abs(v) > 0.01) {
+    const L = Math.sign(v) * (24 + Math.abs(v) * 40);
+    VL.arrow(ctx, cx - L / 2, TY - hgt - 16, cx + L / 2, TY - hgt - 16, '#ffb22e', 3);
+    VL.text(ctx, fmt(v, 2) + ' m/s', cx, TY - hgt - 30, { size: 13, color: '#ffb22e', align: 'center' });
+  }
+}
+function draw() {
+  ctx.fillStyle = '#0a1726'; ctx.fillRect(0, 0, W, H);
+  if (!S) return;
+  // đệm khí
+  ctx.fillStyle = '#334155'; ctx.fillRect(X(0) - 10, TY, X(6) - X(0) + 20, 16);
+  ctx.fillStyle = '#475569'; for (let x = 0; x <= 6; x += .1) ctx.fillRect(X(x), TY + 4, 2, 2);
+  for (let x = 0; x <= 6; x++) VL.text(ctx, x + ' m', X(x), TY + 36, { size: 12, color: '#9bb0c9', align: 'center' });
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(X(0) - 18, TY - 50, 10, 66); ctx.fillRect(X(6) + 8, TY - 50, 10, 66);
+  // cổng quang điện
+  const gx = X(S.ask.what === 'v1' ? 0.2 : 5.3);
+  ctx.fillStyle = '#475569'; ctx.fillRect(gx - 4, TY - 140, 8, 140);
+  ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(gx, TY - 120, 5, 0, 7); ctx.fill();
+  VL.label(ctx, S.gate != null ? `đo: ${fmt(S.gate, 2)} m/s` : 'cổng quang điện', gx, TY - 160, { size: 13, color: S.gate != null ? '#5eead4' : '#9bb0c9' });
+  const vis = (x) => x > -0.5 && x < 6.5;
+  if (vis(S.xA)) cart(S.xA, S.m1, '#5eead4', 'A', S.phase === 'run' || S.hit ? S.vA : 0, S.type);
+  if (vis(S.xB)) cart(S.xB, S.m2, '#c4b5fd', 'B', S.vB, S.type);
+  // biểu đồ động lượng
+  const by = 340, bx0 = 90;
+  ctx.fillStyle = 'rgba(19,35,58,.9)'; VL.rrect(ctx, 30, by - 20, 900, 190, 12); ctx.fill();
+  VL.text(ctx, 'Động lượng (kg·m/s) — chiều dương sang phải', 50, by + 4, { size: 14, color: '#cbd5e1' });
+  const zero = 480, k = 55;
+  ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(zero, by + 16); ctx.lineTo(zero, by + 160); ctx.stroke();
+  const pre = S.before || { pA: S.m1 * (S.phase === 'ready' ? S.v1 : S.vA), pB: S.m2 * S.v2 };
+  const rows = [['Trước: p_A', pre.pA, '#5eead4'], ['Trước: p_B', pre.pB, '#c4b5fd'], ['Trước: tổng', pre.pA + pre.pB, '#ffb22e']];
+  if (S.after) rows.push(['Sau: tổng', S.after.pA + S.after.pB, '#4ade80']);
+  rows.forEach(([lab, p, col], i) => {
+    const y = by + 30 + i * 34;
+    VL.text(ctx, lab, bx0 + 80, y + 14, { size: 13, color: '#cbd5e1', align: 'right' });
+    ctx.fillStyle = col; const w = clamp(p * k, -380, 380);
+    ctx.fillRect(Math.min(zero, zero + w), y, Math.abs(w), 20);
+    VL.text(ctx, fmt(p, 2), zero + w + (w >= 0 ? 8 : -8), y + 15, { size: 13, color: col, align: w >= 0 ? 'left' : 'right' });
+  });
+  if (S.phase === 'ready') VL.label(ctx, 'Chọn vận tốc xe A rồi bấm "Phóng xe A"', W / 2, 40, { size: 15 });
+}
+VL.loop(dt => { ctx.clearRect(0, 0, W, H); update(dt); draw(); });
+startGame();
+</script>
+</body>
+</html>

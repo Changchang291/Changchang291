@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trượt tới đích và Bập bênh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #a3e635; --accent-ink: #1a2a00; }
+  .palette { display: flex; gap: 8px; flex-wrap: wrap; }
+  .wt { width: 56px; height: 52px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel-2); font-weight: 800; font-family: var(--font-display); font-size: 1.1rem; }
+  .wt[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 25%, var(--panel-2)); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương III · Động lực học</small><h1>Trượt tới đích &amp; Bập bênh</h1></div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-mode="truot" aria-selected="true">Trượt tới đích</button>
+      <button class="tab" role="tab" data-mode="bapbenh" aria-selected="false">Bập bênh cân bằng</button>
+    </div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/6</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Sân chơi mô phỏng"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card" id="controls"></div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card" id="theory"></div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted"><b>Trượt tới đích:</b> tính vận tốc ban đầu (hoặc lực đẩy) để vật dừng đúng tâm vòng đích. Mỗi màn 2 lượt, tính lượt tốt nhất: ★ = 10 điểm.</p>
+      <p class="muted"><b>Bập bênh:</b> chọn quả nặng ở bảng bên rồi chạm vào vị trí trên tấm ván (bên phải) để đặt; chạm lại để gỡ. Bấm <b>Thả tay</b> để kiểm tra. Cân bằng ở lần đầu +30, lần hai +20, sau đó +10.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, $$, fmt, rand, randInt, pick, clamp, sfx, G } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+let mode = 'truot';
+const M = {
+  truot: { lv: 0, n: 6, score: 0, s: null, cfg: [] },
+  bapbenh: { lv: 0, n: 5, score: 0, s: null },
+};
+const fb = (msg, kind) => { $('#fb').textContent = msg; $('#fb').className = 'feedback ' + (kind || ''); };
+function hud() { const m = M[mode]; $('#hudLv').textContent = `${Math.min(m.lv + 1, m.n)}/${m.n}`; $('#hudScore').textContent = m.score; }
+
+/* =================== TRƯỢT TỚI ĐÍCH =================== */
+const SURF = {
+  bang: { name: 'mặt băng', mu: 0.02, col: '#bfe9ff', obj: 'stone' },
+  go: { name: 'sàn gỗ', mu: 0.2, col: '#b7864e', obj: 'crate' },
+  betong: { name: 'sàn bê tông', mu: 0.5, col: '#8a8f98', obj: 'crate' },
+  xi: { name: 'sàn xi măng', mu: 0.3, col: '#9ca3af', obj: 'crate' },
+};
+function truotConfigs() {
+  return [
+    { surf: 'bang', D: randInt(20, 32) },
+    { surf: 'go', D: randInt(5, 12) },
+    { surf: 'betong', D: randInt(3, 6) },
+    { surf: 'xi', push: true, m: pick([10, 20, 25]), d: 2, D: randInt(8, 14) },
+    { surf: 'go', push: true, m: pick([15, 30, 40]), d: 2, D: randInt(6, 12) },
+    { surf: 'bang', push: true, m: pick([18, 20]), d: 1, D: randInt(18, 30) },
+  ];
+}
+function truotLevel() {
+  const m = M.truot, c = m.cfg[m.lv], sf = SURF[c.surf];
+  m.s = { ...c, sf, mu: sf.mu, x: 0, v: 0, phase: 'ready', tries: 0, best: 0, marks: [], val: c.push ? 100 : 3, ts: 1 };
+  const s = m.s;
+  s.scale = 760 / (s.D + 6);
+  $('#kind').textContent = `Màn ${m.lv + 1} · ${s.push ? 'Định luật II Newton – lực đẩy' : 'Lực ma sát trượt'}`;
+  if (!s.push) {
+    $('#goal').innerHTML = `Đẩy mạnh vật rồi buông tay trên ${sf.name}. Chọn vận tốc lúc buông tay để vật dừng đúng tâm đích.`;
+    $('#givens').innerHTML = `<span>Khoảng cách đến tâm: ${s.D} m</span><span>μ<sub>t</sub> = ${fmt(s.mu, 2)}</span><span>g = 9,8 m/s²</span>`;
+  } else {
+    $('#goal').innerHTML = `Đẩy thùng hàng bằng lực F nằm ngang trên đoạn đầu dài <b>${s.d} m</b>, sau đó buông tay. Chọn F để thùng dừng đúng tâm đích.`;
+    $('#givens').innerHTML = `<span>m = ${s.m} kg</span><span>μ<sub>t</sub> = ${fmt(s.mu, 2)}</span><span>Đoạn đẩy: ${s.d} m</span><span>Tâm đích: ${s.D} m</span><span>g = 9,8 m/s²</span>`;
+  }
+  const max = s.push ? 1200 : 15, step = s.push ? 1 : 0.05;
+  $('#controls').innerHTML = `
+    <div class="field"><label for="val">${s.push ? 'Lực đẩy F' : 'Vận tốc lúc buông tay v₀'}</label><output id="valo"></output>
+      <input type="range" id="val" min="0" max="${max}" step="${step}" value="${s.val}"></div>
+    <div class="row"><label class="muted" for="valn" style="flex:1">Hoặc nhập chính xác:</label><input class="num" id="valn" style="width:120px" inputmode="decimal"></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">${s.push ? 'Đẩy!' : 'Buông tay!'}</button></div>
+    <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">${s.push
+      ? 'Áp dụng định lí: công của lực đẩy bằng công cản của ma sát trên cả quãng đường: F·d = μ·m·g·D.'
+      : 'Sau khi buông tay chỉ còn ma sát: a = −μg. Vật dừng khi v = 0 ⇒ v₀² = 2μgD.'}</p></details>`;
+  const unit = s.push ? ' N' : ' m/s';
+  const upd = v => { s.val = v; $('#valo').textContent = fmt(v, 2) + unit; };
+  $('#val').addEventListener('input', e => { upd(+e.target.value); $('#valn').value = ''; });
+  $('#valn').addEventListener('input', e => { const v = VL.parse(e.target.value); if (isFinite(v) && v >= 0) { upd(v); $('#val').value = v; } });
+  $('#goBtn').addEventListener('click', truotGo);
+  upd(s.val);
+  fb(''); $('#explain').textContent = '';
+  hud();
+}
+function truotGo() {
+  const s = M.truot.s;
+  if (s.phase === 'end') { nextLevel(); return; }
+  if (s.phase === 'run') return;
+  s.x = 0; s.t = 0;
+  if (s.push) {
+    s.F = s.val; s.v = 0;
+    if (s.F <= s.mu * s.m * G) { s.tries++; sfx.bad(); fb(`Thùng không nhúc nhích: F ≤ μmg = ${fmt(s.mu * s.m * G, 1)} N.`, 'bad'); s.marks.push({ x: 0 }); truotAfter(0); return; }
+  } else { s.F = 0; s.v = s.val; if (s.v <= 0) return; }
+  // ước lượng tổng thời gian để chọn hệ số tua nhanh
+  let v1 = s.v, T = 0;
+  if (s.push) { const a1 = (s.F - s.mu * s.m * G) / s.m; v1 = Math.sqrt(2 * a1 * s.d); T = v1 / a1; }
+  T += v1 / (s.mu * G);
+  s.ts = Math.max(1, T / 4);
+  s.phase = 'run'; s.pushing = !!s.push; $('#goBtn').disabled = true; sfx.whoosh();
+}
+function truotUpdate(dt) {
+  const s = M.truot.s; if (!s || s.phase !== 'run') return;
+  const steps = 10, h = dt * s.ts / steps;
+  for (let i = 0; i < steps; i++) {
+    if (s.push && s.x < s.d) {
+      const a = (s.F - s.mu * s.m * G) / s.m;
+      s.v += a * h; s.x += s.v * h;
+      if (s.x >= s.d) s.pushing = false;
+    } else {
+      s.pushing = false;
+      const vNew = s.v - s.mu * G * h;
+      if (vNew <= 0) { s.x += s.v * s.v / (2 * s.mu * G); s.v = 0; break; }
+      s.x += (s.v + vNew) / 2 * h; s.v = vNew;
+    }
+    s.t += h;
+  }
+  if (s.v <= 0 && !(s.push && s.x < s.d)) {
+    s.phase = 'idle'; s.tries++; s.marks.push({ x: s.x });
+    truotAfter(s.x);
+  }
+}
+function truotAfter(x) {
+  const s = M.truot.s, m = M.truot;
+  const err = Math.abs(x - s.D);
+  const st = err <= s.D * 0.02 + 0.15 ? 3 : err <= s.D * 0.06 + 0.3 ? 2 : err <= s.D * 0.12 + 0.5 ? 1 : 0;
+  if (x > 0) {
+    fb(st ? `${'★'.repeat(st)} Dừng tại ${fmt(x, 2)} m (lệch ${fmt(err, 2)} m)` : `Dừng tại ${fmt(x, 2)} m — lệch ${fmt(err, 2)} m so với tâm.`, st ? 'ok' : 'bad');
+    st ? sfx.ok() : sfx.bad();
+  }
+  if (st > s.best) { m.score += (st - s.best) * 10; s.best = st; }
+  const sol = s.push
+    ? `F·d = μmgD ⇒ F = μmgD/d = ${fmt(s.mu, 2)}·${s.m}·9,8·${s.D}/${s.d} ≈ <b>${fmt(s.mu * s.m * G * s.D / s.d, 1)} N</b>. (Trong lúc đẩy: a₁ = (F − μmg)/m; sau khi buông: a₂ = −μg.)`
+    : `a = −μg = −${fmt(s.mu * G, 3)} m/s²; v₀ = √(2μgD) = √(2·${fmt(s.mu, 2)}·9,8·${s.D}) ≈ <b>${fmt(Math.sqrt(2 * s.mu * G * s.D), 2)} m/s</b>.`;
+  const over = s.best === 3 || s.tries >= 2;
+  $('#explain').innerHTML = over ? 'Lời giải: ' + sol : `Còn ${2 - s.tries} lượt. Hãy điều chỉnh và thử lại!`;
+  const b = $('#goBtn'); b.disabled = false;
+  if (over) { s.phase = 'end'; b.textContent = m.lv + 1 >= m.n ? 'Xem kết quả' : 'Màn tiếp →'; }
+  hud();
+}
+function truotDraw() {
+  const s = M.truot.s; if (!s) return;
+  const ox = 90, gy = 380, k = s.scale, X = x => ox + x * k;
+  const g = ctx.createLinearGradient(0, 0, 0, gy); g.addColorStop(0, '#0e1e33'); g.addColorStop(1, '#1d3a5c');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, gy);
+  ctx.fillStyle = s.sf.col; ctx.fillRect(0, gy, W, 40);
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(0, gy + 40, W, H);
+  if (s.push) { ctx.fillStyle = 'rgba(163,230,53,.18)'; ctx.fillRect(X(0), gy - 120, s.d * k, 120); VL.text(ctx, `vùng đẩy ${s.d} m`, X(s.d / 2), gy - 128, { size: 13, color: '#a3e635', align: 'center' }); }
+  // thước
+  const stepM = s.D > 20 ? 5 : s.D > 8 ? 2 : 1;
+  for (let x = 0; X(x) < W; x += stepM) { ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(X(x) - 1, gy + 40, 2, 10); VL.text(ctx, x + ' m', X(x), gy + 68, { size: 12, color: '#cbd5e1', align: 'center' }); }
+  // vòng đích (nhìn nghiêng)
+  const tx = X(s.D);
+  [[1.0, '#ef4444'], [.66, '#f8fafc'], [.33, '#3b82f6']].forEach(([r, c]) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(tx, gy + 20, Math.max(14, s.D * .12 * k) * r + 6, 14 * r + 3, 0, 0, 7); ctx.fill(); });
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(tx - 1, gy - 130, 2, 130); VL.label(ctx, `đích ${s.D} m`, tx, gy - 142, { color: '#fecaca' });
+  // dấu các lượt trước
+  s.marks.forEach(mk => { ctx.fillStyle = '#ffb22e'; ctx.beginPath(); ctx.moveTo(X(mk.x), gy + 4); ctx.lineTo(X(mk.x) - 7, gy - 8); ctx.lineTo(X(mk.x) + 7, gy - 8); ctx.fill(); });
+  // vật
+  const bx = X(s.x), sz = 46;
+  if (s.sf.obj === 'stone') {
+    ctx.fillStyle = '#64748b'; ctx.beginPath(); ctx.ellipse(bx, gy - 16, 30, 16, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ef4444'; ctx.fillRect(bx - 6, gy - 44, 12, 16); ctx.fillRect(bx - 6, gy - 46, 26, 8);
+  } else {
+    ctx.fillStyle = '#c08443'; ctx.fillRect(bx - sz / 2, gy - sz, sz, sz);
+    ctx.strokeStyle = '#7c4a1e'; ctx.lineWidth = 3; ctx.strokeRect(bx - sz / 2, gy - sz, sz, sz);
+    ctx.beginPath(); ctx.moveTo(bx - sz / 2, gy - sz); ctx.lineTo(bx + sz / 2, gy); ctx.moveTo(bx + sz / 2, gy - sz); ctx.lineTo(bx - sz / 2, gy); ctx.stroke();
+    if (s.push) VL.text(ctx, s.m + ' kg', bx, gy - sz - 8, { size: 13, align: 'center' });
+  }
+  // lực
+  const cy = gy - 24, unit = 60;
+  VL.arrow(ctx, bx, cy, bx, cy + unit, '#f472b6', 3, 'P');
+  VL.arrow(ctx, bx, cy, bx, cy - unit, '#5cc8ff', 3, 'N');
+  if (s.phase === 'run' || (s.push && s.pushing)) {
+    if (s.v > 0) VL.arrow(ctx, bx, gy - 4, bx - unit * s.mu * 2 - 18, gy - 4, '#ff6b6b', 3, 'Fms');
+    if (s.pushing) VL.arrow(ctx, bx - 26 - Math.min(110, 20 + s.F / (s.m * G) * unit), cy, bx - 26, cy, '#a3e635', 4, 'F', 'mid');
+  }
+  VL.label(ctx, `x = ${fmt(s.x, 2)} m · v = ${fmt(s.v, 2)} m/s`, 180, 34, { size: 16 });
+  if (s.ts > 1.05 && s.phase === 'run') VL.label(ctx, `tua nhanh ×${fmt(s.ts, 1)}`, W - 90, 34, { size: 14, color: '#ffb22e' });
+}
+
+/* =================== BẬP BÊNH =================== */
+const UNIT = 66, PIV = { x: 480, y: 400 }, MASSES = [1, 2, 3, 4, 5];
+function solvable(target, maxN, blocked) {
+  const pegs = [1, 2, 3, 4, 5].filter(p => !blocked.includes(p));
+  if (maxN >= 1) for (const p of pegs) for (const m of MASSES) if (m * p === target) return true;
+  if (maxN >= 2) for (const p of pegs) for (const q of pegs) if (q > p) for (const a of MASSES) for (const b of MASSES) if (a * p + b * q === target) return true;
+  return false;
+}
+function bbLevel() {
+  const m = M.bapbenh, lv = m.lv;
+  const nLeft = [1, 2, 2, 3, 2][lv], maxN = [1, 2, 2, 2, 1][lv], presetR = lv === 2 || lv === 3;
+  let left, right, MR0, ok = false;
+  for (let tries = 0; tries < 500 && !ok; tries++) {
+    const pegs = VL.shuffle([1, 2, 3, 4, 5]).slice(0, nLeft);
+    left = pegs.map(p => ({ p, m: randInt(1, 4) }));
+    right = presetR ? [{ p: randInt(1, 2), m: randInt(1, 2), fixed: true }] : [];
+    const ML = left.reduce((a, w) => a + w.m * w.p, 0);
+    MR0 = right.reduce((a, w) => a + w.m * w.p, 0);
+    const need = ML - MR0;
+    ok = need > 0 && solvable(need, maxN, right.map(w => w.p));
+  }
+  m.s = { left, right, maxN, sel: 2, phase: 'hold', theta: 0, omega: 0, tries: 0 };
+  $('#kind').textContent = `Màn ${lv + 1} · Moment lực – quy tắc moment`;
+  $('#goal').innerHTML = `Đặt thêm <b>${maxN === 1 ? 'đúng 1 quả nặng' : 'tối đa 2 quả nặng'}</b> lên bên phải để bập bênh cân bằng nằm ngang.`;
+  $('#givens').innerHTML = `<span>Mỗi vạch cách nhau 0,5 m</span><span>Bỏ qua khối lượng tấm ván</span>`;
+  $('#controls').innerHTML = `<h3>Chọn quả nặng</h3><div class="palette" id="pal">${MASSES.map(x => `<button class="wt" type="button" data-m="${x}" aria-pressed="${x === 2}">${x} kg</button>`).join('')}</div>
+    <p class="muted" style="margin:8px 0">Chạm vào vạch trên nửa phải tấm ván để đặt / gỡ.</p>
+    <div class="row"><button class="btn primary big" id="relBtn" type="button">Thả tay</button><button class="btn" id="clrBtn" type="button">Gỡ hết</button></div>
+    <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">Bập bênh cân bằng khi tổng moment làm quay theo chiều kim đồng hồ bằng tổng moment làm quay ngược chiều: Σ m·g·d (trái) = Σ m·g·d (phải). Có thể giản ước g.</p></details>`;
+  $$('#pal .wt').forEach(b => b.addEventListener('click', () => { m.s.sel = +b.dataset.m; $$('#pal .wt').forEach(x => x.setAttribute('aria-pressed', String(x === b))); sfx.click(); }));
+  $('#relBtn').addEventListener('click', bbRelease);
+  $('#clrBtn').addEventListener('click', () => { const s = m.s; if (s.phase !== 'hold') return; s.right = s.right.filter(w => w.fixed); });
+  fb(''); $('#explain').textContent = '';
+  hud();
+}
+const mom = arr => arr.reduce((a, w) => a + w.m * w.p, 0);
+function bbRelease() {
+  const s = M.bapbenh.s, m = M.bapbenh;
+  if (s.phase === 'end') { nextLevel(); return; }
+  if (s.phase === 'swing') { s.phase = 'hold'; s.theta = 0; s.omega = 0; $('#relBtn').textContent = 'Thả tay'; fb(''); return; }
+  const added = s.right.filter(w => !w.fixed);
+  if (added.length === 0) { VL.toast('Hãy đặt ít nhất một quả nặng bên phải.', 'bad'); return; }
+  if (added.length > s.maxN) { VL.toast(`Màn này chỉ được đặt tối đa ${s.maxN} quả.`, 'bad'); return; }
+  s.tries++;
+  const ML = mom(s.left), MR = mom(s.right);
+  const txt = `M<sub>trái</sub> = ${s.left.map(w => `${w.m}·9,8·${fmt(w.p * .5, 1)}`).join(' + ')} = ${fmt(ML * G * .5, 2)} N·m; M<sub>phải</sub> = ${s.right.map(w => `${w.m}·9,8·${fmt(w.p * .5, 1)}`).join(' + ')} = ${fmt(MR * G * .5, 2)} N·m.`;
+  $('#explain').innerHTML = txt;
+  if (ML === MR) {
+    const pts = s.tries === 1 ? 30 : s.tries === 2 ? 20 : 10; m.score += pts;
+    s.phase = 'end'; sfx.ok(); fb(`Cân bằng hoàn hảo! +${pts}`, 'ok');
+    $('#relBtn').textContent = m.lv + 1 >= m.n ? 'Xem kết quả' : 'Màn tiếp →';
+  } else {
+    s.phase = 'swing'; s.omega = 0; sfx.bad();
+    fb(ML > MR ? 'Lệch về bên trái — moment bên phải còn thiếu.' : 'Lệch về bên phải — moment bên phải quá lớn.', 'bad');
+    $('#relBtn').textContent = 'Giữ lại & sửa';
+  }
+  hud();
+}
+function bbUpdate(dt) {
+  const s = M.bapbenh.s; if (!s || s.phase !== 'swing') return;
+  const net = mom(s.right) - mom(s.left);   // dương: nghiêng phải (theta dương = phải xuống)
+  const I = [...s.left, ...s.right].reduce((a, w) => a + w.m * w.p * w.p, 0) + 10;
+  s.omega += (net * 30 / I) * Math.cos(s.theta) * dt;
+  s.theta += s.omega * dt;
+  const lim = 0.24;
+  if (Math.abs(s.theta) > lim) { s.theta = Math.sign(s.theta) * lim; s.omega = -s.omega * 0.25; if (Math.abs(s.omega) < 0.05) s.omega = 0; }
+}
+function bbPegPos(side, p, th) { const d = side * p * UNIT; return { x: PIV.x + d * Math.cos(th), y: PIV.y - 18 - d * Math.sin(th) }; }
+function bbDraw() {
+  const s = M.bapbenh.s; if (!s) return;
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#13283f'); g.addColorStop(1, '#0b1422');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#1d5a3a'; ctx.fillRect(0, 470, W, 70);
+  // giá đỡ
+  ctx.fillStyle = '#64748b'; ctx.beginPath(); ctx.moveTo(PIV.x, PIV.y - 10); ctx.lineTo(PIV.x - 50, 470); ctx.lineTo(PIV.x + 50, 470); ctx.closePath(); ctx.fill();
+  const th = -s.theta;
+  ctx.save(); ctx.translate(PIV.x, PIV.y - 10); ctx.rotate(-th);
+  ctx.fillStyle = '#c08443'; VL.rrect(ctx, -5.6 * UNIT, -10, 11.2 * UNIT, 18, 6); ctx.fill();
+  for (let p = -5; p <= 5; p++) {
+    ctx.fillStyle = p === 0 ? '#fde68a' : '#7c4a1e'; ctx.fillRect(p * UNIT - 2, -10, 4, 18);
+    if (p) VL.text(ctx, fmt(Math.abs(p) * .5, 1), p * UNIT, 28, { size: 12, color: '#e2e8f0', align: 'center' });
+  }
+  ctx.restore();
+  ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(PIV.x, PIV.y - 10, 7, 0, 7); ctx.fill();
+  const drawW = (w, side) => {
+    const sz = 22 + w.m * 6; const pos = bbPegPos(side, w.p, th);
+    ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(-th);
+    ctx.fillStyle = side < 0 ? '#60a5fa' : w.fixed ? '#94a3b8' : '#a3e635';
+    VL.rrect(ctx, -sz / 2, -sz, sz, sz, 6); ctx.fill();
+    VL.text(ctx, w.m + ' kg', 0, -sz / 2 + 1, { size: 14, color: '#0b1422', align: 'center', base: 'middle', weight: 800 });
+    ctx.restore();
+  };
+  s.left.forEach(w => drawW(w, -1)); s.right.forEach(w => drawW(w, 1));
+  if (s.phase === 'hold') {
+    // tay giữ
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    for (let p = 1; p <= 5; p++) { if (s.right.some(w => w.p === p)) continue; const pos = bbPegPos(1, p, 0); ctx.strokeStyle = 'rgba(163,230,53,.6)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.strokeRect(pos.x - 22, pos.y - 44, 44, 44); ctx.setLineDash([]); }
+    VL.label(ctx, 'Đang giữ tấm ván nằm ngang — đặt quả nặng rồi bấm "Thả tay"', W / 2, 40, { size: 16 });
+  }
+  if (s.phase === 'end') VL.label(ctx, 'CÂN BẰNG!', W / 2, 60, { size: 26, color: '#4ade80' });
+}
+cv.addEventListener('pointerdown', e => {
+  if (mode !== 'bapbenh') return;
+  const s = M.bapbenh.s; if (!s || s.phase !== 'hold') return;
+  const pt = VL.pointer(cv, e, W, H);
+  for (let p = 1; p <= 5; p++) {
+    const pos = bbPegPos(1, p, 0);
+    if (Math.abs(pt.x - pos.x) < UNIT / 2 && pt.y > pos.y - 90 && pt.y < pos.y + 40) {
+      const ex = s.right.find(w => w.p === p);
+      if (ex && ex.fixed) { VL.toast('Quả nặng xám là cố định.', ''); return; }
+      if (ex) s.right = s.right.filter(w => w !== ex);
+      else {
+        if (s.right.filter(w => !w.fixed).length >= s.maxN) { VL.toast(`Chỉ được đặt tối đa ${s.maxN} quả.`, 'bad'); return; }
+        s.right.push({ p, m: s.sel });
+      }
+      sfx.click(); return;
+    }
+  }
+});
+
+/* =================== Chung =================== */
+function nextLevel() { const m = M[mode]; m.lv++; if (m.lv >= m.n) { endMode(); return; } mode === 'truot' ? truotLevel() : bbLevel(); }
+function endMode() {
+  const m = M[mode], max = mode === 'truot' ? m.n * 30 : m.n * 30;
+  const st = m.score >= max * .8 ? 3 : m.score >= max * .5 ? 2 : m.score > 0 ? 1 : 0;
+  const old = VL.best('ch3-' + mode, m.score); sfx.win();
+  VL.modal({ title: mode === 'truot' ? 'Bậc thầy ma sát!' : 'Bậc thầy moment!', stars: st, html: `<p>Điểm: <b>${m.score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: mode === 'truot' ? 'Sang Bập bênh' : 'Sang Trượt tới đích', onClick: () => switchMode(mode === 'truot' ? 'bapbenh' : 'truot', true) }, { label: 'Chơi lại', primary: true, onClick: () => startMode(mode) }] });
+}
+function startMode(md) { const m = M[md]; m.lv = 0; m.score = 0; if (md === 'truot') { m.cfg = truotConfigs(); truotLevel(); } else bbLevel(); theory(); }
+function switchMode(md, restart) {
+  mode = md; $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.mode === md)));
+  if (restart || !M[md].s || M[md].lv >= M[md].n) startMode(md); else { md === 'truot' ? truotLevel() : bbLevel(); theory(); }
+}
+function theory() {
+  $('#theory').innerHTML = mode === 'truot'
+    ? `<h2>Kiến thức: định luật II Newton và lực ma sát</h2><div class="formula">a = F<sub>hl</sub> / m</div><div class="formula">F<sub>ms</sub> = μ<sub>t</sub>·N = μ<sub>t</sub>·m·g (mặt ngang)</div><p class="muted">Lực ma sát trượt ngược chiều chuyển động, không phụ thuộc diện tích tiếp xúc và tốc độ, phụ thuộc vật liệu và tình trạng bề mặt. Trên mặt ngang, P và N cân bằng nhau.</p>`
+    : `<h2>Kiến thức: moment lực – cân bằng của vật có trục quay</h2><div class="formula">M = F·d &nbsp;(N·m)</div><div class="formula">Σ M<sub>cùng chiều kim đồng hồ</sub> = Σ M<sub>ngược chiều kim đồng hồ</sub></div><p class="muted">d là cánh tay đòn: khoảng cách từ trục quay đến giá của lực. Với quả nặng đặt trên ván ngang, F = P = mg.</p>`;
+}
+VL.tabs($('#tabs'), md => switchMode(md, false));
+VL.loop(dt => {
+  ctx.clearRect(0, 0, W, H);
+  if (mode === 'truot') { truotUpdate(dt); truotDraw(); } else { bbUpdate(dt); bbDraw(); }
+});
+startMode('truot');
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quăng đá</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #fb923c; --accent-ink: #331300; }
+  .readout { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-variant-numeric: tabular-nums; font-size: .95rem; }
+  .readout b { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương VI · Chuyển động tròn</small><h1>Quăng đá</h1></div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/6</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Nhìn từ trên xuống: hòn đá quay tròn quanh trục"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card">
+        <div class="field"><label for="w">Tốc độ góc ω</label><output id="wo"></output><input type="range" id="w" min="1" max="12" step="0.1" value="4"></div>
+        <div class="readout" id="readout"></div>
+        <div class="row" style="justify-content:space-between;margin-top:8px"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Quay ⟳</button></div>
+        <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted">Đá phải bay đủ nhanh: v = ωr ≥ v<sub>min</sub> ⇒ ω ≥ v<sub>min</sub>/r. Dây không được đứt: lực căng đóng vai trò lực hướng tâm F = mω²r ≤ T<sub>max</sub> ⇒ ω ≤ √(T<sub>max</sub>/(mr)). Khi thả, đá bay theo phương <b>tiếp tuyến</b> với quỹ đạo tại điểm thả.</p></details>
+      </div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card">
+      <h2>Kiến thức: chuyển động tròn đều</h2>
+      <div class="formula">θ (rad) = s / r &nbsp;·&nbsp; ω = Δθ/Δt = 2π/T = 2πf</div>
+      <div class="formula">v = ω·r &nbsp;·&nbsp; a<sub>ht</sub> = v²/r = ω²r</div>
+      <div class="formula">F<sub>ht</sub> = m·a<sub>ht</sub> = mω²r</div>
+      <p class="muted">Vectơ vận tốc luôn tiếp tuyến với quỹ đạo; gia tốc và lực hướng tâm luôn hướng vào tâm. Khi dây được thả (hay bị đứt), không còn lực hướng tâm nên vật bay thẳng theo phương tiếp tuyến.</p>
+    </div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted">1) Chọn ω rồi bấm <b>Quay</b>. Nếu lực căng vượt quá sức chịu của dây, dây đứt! 2) Bấm <b>THẢ</b> (hoặc phím Space, hoặc chạm sân chơi) đúng lúc để đá bay trúng thùng. Đá chỉ phá được thùng khi đủ tốc độ. Từ màn 4, đường ngắm tiếp tuyến bị ẩn. Mỗi màn 3 lượt: +30/+20/+10.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, fmt, rand, randInt, pick, clamp, sfx } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+const PIV = { x: 200, y: 280 }, SC = 62, TR = 0.55;
+function gen(i) {
+  const r = pick([0.8, 1, 1.2, 1.5]), m = pick([0.2, 0.3, 0.4, 0.5]);
+  const wlo = rand(3, 5.5), ratio = [1.6, 1.5, 1.4, 1.35, 1.3, 1.25][i];
+  const vmin = Math.round(wlo * r * 10) / 10;
+  const Tmax = i === 0 ? null : Math.round(m * (wlo * ratio) ** 2 * r);
+  const phi = rand(-30, 30) * Math.PI / 180, D = rand(4.5, 6.5);
+  return { r, m, vmin, Tmax, phi, D, tx: PIV.x + Math.cos(phi) * D * SC, ty: PIV.y + Math.sin(phi) * D * SC, preview: i < 3 };
+}
+let levels = [], lv = 0, score = 0, S = null;
+function startGame() { levels = [0, 1, 2, 3, 4, 5].map(gen); lv = 0; score = 0; loadLevel(); }
+function loadLevel() {
+  const c = levels[lv];
+  S = { ...c, tries: 0, phase: 'set', theta: Math.PI / 2, w: +$('#w').value, wNow: 0, stone: null };
+  $('#kind').textContent = `Màn ${lv + 1} · ${c.Tmax ? 'Lực hướng tâm & tốc độ góc' : 'Tốc độ góc & tốc độ dài'}`;
+  $('#goal').innerHTML = `Quay hòn đá (theo chiều kim đồng hồ khi nhìn từ trên) rồi thả để đá bay trúng thùng gỗ với tốc độ ít nhất <b>${fmt(c.vmin, 1)} m/s</b>.`;
+  $('#givens').innerHTML = `<span>r = ${fmt(c.r, 1)} m</span><span>m = ${fmt(c.m, 1)} kg</span><span>v<sub>min</sub> = ${fmt(c.vmin, 1)} m/s</span>${c.Tmax ? `<span>Dây chịu tối đa T<sub>max</sub> = ${c.Tmax} N</span>` : '<span>Dây rất bền</span>'}${c.preview ? '' : '<span>Không có đường ngắm</span>'}`;
+  $('#left').textContent = 3; $('#goBtn').textContent = 'Quay ⟳'; $('#goBtn').disabled = false; $('#w').disabled = false;
+  fb(''); $('#explain').textContent = '';
+  $('#hudLv').textContent = `${lv + 1}/${levels.length}`; $('#hudScore').textContent = score;
+  readout();
+}
+const fb = (m, k) => { $('#fb').textContent = m; $('#fb').className = 'feedback ' + (k || ''); };
+function readout() {
+  const w = S.w, v = w * S.r, a = w * w * S.r, F = S.m * a;
+  $('#wo').textContent = fmt(w, 1) + ' rad/s';
+  $('#readout').innerHTML = `<span>v = ωr: <b>${fmt(v, 2)} m/s</b></span><span>T = 2π/ω: <b>${fmt(2 * Math.PI / w, 2)} s</b></span><span>a<sub>ht</sub>: <b>${fmt(a, 1)} m/s²</b></span><span>F<sub>ht</sub>: <b>${fmt(F, 1)} N</b></span><span>f: <b>${fmt(w / (2 * Math.PI), 2)} vòng/s</b></span><span>${fmt(w * 60 / (2 * Math.PI), 0)} vòng/phút</span>`;
+}
+$('#w').addEventListener('input', e => { if (S.phase !== 'set') return; S.w = +e.target.value; readout(); });
+
+function action() {
+  if (S.phase === 'end') { lv++; if (lv >= levels.length) return finish(); loadLevel(); return; }
+  if (S.phase === 'set') { S.phase = 'spinup'; S.wNow = 0; $('#w').disabled = true; $('#goBtn').textContent = 'THẢ!'; sfx.click(); return; }
+  if (S.phase === 'spin' || S.phase === 'spinup') release(false);
+}
+$('#goBtn').addEventListener('click', action);
+window.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON|SUMMARY/.test(document.activeElement.tagName)) { e.preventDefault(); action(); } });
+cv.addEventListener('pointerdown', () => { if (S && (S.phase === 'spin' || S.phase === 'spinup')) action(); });
+
+// đá quay theo chiều kim đồng hồ trên màn hình (y hướng xuống ⇒ theta tăng)
+const stonePos = (th, r) => ({ x: PIV.x + Math.cos(th) * r * SC, y: PIV.y + Math.sin(th) * r * SC });
+function release(broke) {
+  const th = S.theta, w = S.wNow, v = w * S.r;
+  const p = stonePos(th, S.r);
+  const ux = -Math.sin(th), uy = Math.cos(th);
+  S.stone = { x: p.x, y: p.y, ux, uy, v, broke, trail: [] };
+  S.phase = 'fly'; $('#goBtn').disabled = true;
+  broke ? sfx.boom() : sfx.whoosh();
+}
+function update(dt) {
+  if (!S) return;
+  const tsc = clamp(2.4 / Math.max(S.w, 0.1), 0.25, 1);
+  S.tsc = tsc;
+  if (S.phase === 'spinup' || S.phase === 'spin') {
+    if (S.phase === 'spinup') { S.wNow = Math.min(S.w, S.wNow + S.w * dt * 1.4); if (S.wNow >= S.w) S.phase = 'spin'; }
+    S.theta += S.wNow * dt * tsc;
+    if (S.Tmax && S.m * S.wNow * S.wNow * S.r > S.Tmax) { fb('Phựt! Dây bị đứt vì lực căng vượt quá ' + S.Tmax + ' N.', 'bad'); release(true); }
+  } else if (S.phase === 'fly') {
+    const s = S.stone, sp = Math.max(s.v, 1.2) * SC * dt * tsc * 1.6;
+    s.x += s.ux * sp; s.y += s.uy * sp;
+    if (!s.trail.length || Math.hypot(s.trail[s.trail.length - 1][0] - s.x, s.trail[s.trail.length - 1][1] - s.y) > 10) s.trail.push([s.x, s.y]);
+    const dT = Math.hypot(s.x - S.tx, s.y - S.ty);
+    if (dT <= (TR + 0.12) * SC) return land(true);
+    if (s.x < -30 || s.x > W + 30 || s.y < -30 || s.y > H + 30) return land(false);
+  }
+}
+function land(hitBox) {
+  const s = S.stone; S.tries++;
+  const left = 3 - S.tries; $('#left').textContent = left;
+  const v = s.v, enough = v >= S.vmin - 1e-9;
+  let ok = false;
+  if (s.broke) { /* đã báo */ sfx.bad(); }
+  else if (!hitBox) { fb('Trượt! Đá bay theo tiếp tuyến tại điểm thả — hãy thả sớm hoặc muộn hơn.', 'bad'); sfx.bad(); }
+  else if (!enough) { fb(`Trúng nhưng quá yếu: v = ${fmt(v, 2)} m/s < ${fmt(S.vmin, 1)} m/s.`, 'bad'); sfx.bad(); }
+  else ok = true;
+  const wlo = S.vmin / S.r, whi = S.Tmax ? Math.sqrt(S.Tmax / (S.m * S.r)) : null;
+  const sol = `ω ≥ v<sub>min</sub>/r = ${fmt(S.vmin, 1)}/${fmt(S.r, 1)} = ${fmt(wlo, 2)} rad/s` + (whi ? `; ω ≤ √(T<sub>max</sub>/(mr)) = √(${S.Tmax}/(${fmt(S.m, 1)}·${fmt(S.r, 1)})) = ${fmt(whi, 2)} rad/s. Cửa sổ an toàn: <b>${fmt(wlo, 2)} ≤ ω ≤ ${fmt(whi, 2)} rad/s</b>.` : '.');
+  if (ok) {
+    const pts = [30, 20, 10][S.tries - 1]; score += pts; sfx.ok();
+    fb(`Bùm! Thùng vỡ tan. v = ${fmt(v, 2)} m/s. +${pts}`, 'ok'); S.phase = 'end'; S.boom = 1;
+  } else S.phase = left > 0 ? 'set' : 'end';
+  $('#explain').innerHTML = S.phase === 'end' ? 'Lời giải: ' + sol : `Còn ${left} lượt.`;
+  const b = $('#goBtn'); b.disabled = false; $('#w').disabled = S.phase === 'end';
+  b.textContent = S.phase === 'end' ? (lv + 1 >= levels.length ? 'Xem kết quả' : 'Màn tiếp →') : 'Quay lại ⟳';
+  if (S.phase === 'set') { S.wNow = 0; S.keepStone = S.stone; S.stone = null; }
+  $('#hudScore').textContent = score;
+}
+function finish() {
+  const max = levels.length * 30, st = score >= max * .8 ? 3 : score >= max * .5 ? 2 : score > 0 ? 1 : 0;
+  const old = VL.best('ch6', score); sfx.win();
+  VL.modal({ title: 'Cao thủ chuyển động tròn!', stars: st, html: `<p>Điểm: <b>${score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: 'Về các chương', onClick: () => { location.href = 'index.html'; } }, { label: 'Chơi lại', primary: true, onClick: startGame }] });
+}
+
+function draw() {
+  ctx.fillStyle = '#1f3a2a'; ctx.fillRect(0, 0, W, H);
+  // cỏ hoa văn
+  ctx.fillStyle = 'rgba(255,255,255,.03)';
+  for (let x = 0; x < W; x += 40) for (let y = (x / 40) % 2 * 20; y < H; y += 40) ctx.fillRect(x, y, 3, 3);
+  if (!S) return;
+  // vòng khoảng cách
+  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1;
+  for (let d = 2; d <= 9; d += 1) { ctx.beginPath(); ctx.arc(PIV.x, PIV.y, d * SC, -1.2, 1.2); ctx.stroke(); }
+  // thùng
+  if (!(S.phase === 'end' && S.boom)) {
+    const s = TR * SC * 1.6;
+    ctx.save(); ctx.translate(S.tx, S.ty); ctx.rotate(S.phi);
+    ctx.fillStyle = '#c08443'; ctx.fillRect(-s / 2, -s / 2, s, s);
+    ctx.strokeStyle = '#7c4a1e'; ctx.lineWidth = 3; ctx.strokeRect(-s / 2, -s / 2, s, s);
+    ctx.beginPath(); ctx.moveTo(-s / 2, -s / 2); ctx.lineTo(s / 2, s / 2); ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#c08443';
+    for (let i = 0; i < 10; i++) { const a = i * 0.63, d = 20 + (S.boom += 0.15) % 60; ctx.fillRect(S.tx + Math.cos(a) * d, S.ty + Math.sin(a) * d, 10, 6); }
+  }
+  VL.text(ctx, `${fmt(S.D, 1)} m`, S.tx, S.ty - TR * SC - 14, { size: 13, color: '#fde68a', align: 'center' });
+  // quỹ đạo tròn
+  ctx.strokeStyle = 'rgba(251,146,60,.4)'; ctx.setLineDash([6, 6]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(PIV.x, PIV.y, S.r * SC, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  // trục
+  ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(PIV.x, PIV.y, 8, 0, 7); ctx.fill();
+  if (S.phase !== 'fly' && !(S.phase === 'end' && S.stone)) {
+    const p = stonePos(S.theta, S.r);
+    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(PIV.x, PIV.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    if (S.preview && (S.phase === 'spin' || S.phase === 'spinup' || S.phase === 'set')) {
+      const ux = -Math.sin(S.theta), uy = Math.cos(S.theta);
+      ctx.strokeStyle = 'rgba(94,234,212,.5)'; ctx.setLineDash([3, 8]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + ux * 900, p.y + uy * 900); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (S.wNow > 0) {
+      const v = S.wNow * S.r, ux = -Math.sin(S.theta), uy = Math.cos(S.theta);
+      VL.arrow(ctx, p.x, p.y, p.x + ux * (20 + v * 8), p.y + uy * (20 + v * 8), '#5cc8ff', 3, 'v⃗');
+      const ax = PIV.x - p.x, ay = PIV.y - p.y, L = Math.hypot(ax, ay);
+      VL.arrow(ctx, p.x, p.y, p.x + ax / L * Math.min(L - 10, 18 + S.wNow * 4), p.y + ay / L * Math.min(L - 10, 18 + S.wNow * 4), '#f472b6', 3, '');
+    }
+    ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 2; ctx.stroke();
+  }
+  if (S.stone) {
+    const s = S.stone;
+    ctx.fillStyle = 'rgba(148,163,184,.5)'; s.trail.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); });
+    if (S.phase === 'fly') { ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, 7); ctx.fill(); }
+  } else if (S.keepStone && S.phase === 'set') {
+    ctx.fillStyle = 'rgba(148,163,184,.25)'; S.keepStone.trail.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); });
+  }
+  // đồng hồ lực căng
+  const F = S.m * S.wNow * S.wNow * S.r;
+  ctx.fillStyle = 'rgba(8,17,29,.85)'; VL.rrect(ctx, 20, 20, 300, S.Tmax ? 92 : 64, 10); ctx.fill();
+  VL.text(ctx, `ω = ${fmt(S.wNow, 2)} rad/s · v = ${fmt(S.wNow * S.r, 2)} m/s`, 34, 46, { size: 14 });
+  if (S.Tmax) {
+    VL.text(ctx, `Lực căng dây ${fmt(F, 1)} N / ${S.Tmax} N`, 34, 70, { size: 13, color: '#cbd5e1' });
+    ctx.fillStyle = '#1a3150'; ctx.fillRect(34, 80, 270, 14);
+    const f = clamp(F / S.Tmax, 0, 1); ctx.fillStyle = f > .9 ? '#ff6b6b' : f > .7 ? '#ffb22e' : '#4ade80'; ctx.fillRect(34, 80, 270 * f, 14);
+  } else VL.text(ctx, `a_ht = ${fmt(S.wNow * S.wNow * S.r, 1)} m/s²`, 34, 70, { size: 13, color: '#cbd5e1' });
+  if (S.tsc < 0.98 && (S.phase === 'spin' || S.phase === 'spinup' || S.phase === 'fly')) VL.label(ctx, `chiếu chậm ×${fmt(S.tsc, 2)}`, W - 90, 36, { size: 14, color: '#fb923c' });
+  if (S.phase === 'set') VL.label(ctx, 'Chọn ω rồi bấm "Quay"', W / 2 + 120, 510, { size: 15 });
+}
+VL.loop(dt => { ctx.clearRect(0, 0, W, H); update(dt); draw(); });
+startGame();
+</script>
+</body>
+</html>

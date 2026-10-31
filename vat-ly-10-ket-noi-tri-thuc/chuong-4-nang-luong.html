@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tàu lượn năng lượng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #f472b6; --accent-ink: #3a0620; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .9rem; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang các chương">←</a>
+    <div class="brand"><small>Chương IV · Năng lượng, công, công suất</small><h1>Tàu lượn năng lượng</h1></div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/5</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Đường ray tàu lượn"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card">
+        <div class="field"><label for="h0">Độ cao điểm thả h₀</label><output id="h0o"></output><input type="range" id="h0" min="3" max="30" step="0.5" value="10"></div>
+        <div class="row" style="justify-content:space-between"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Thả tàu ▶</button></div>
+        <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted" id="hint"></p></details>
+      </div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card">
+      <h2>Kiến thức: cơ năng và định luật bảo toàn</h2>
+      <div class="formula">W<sub>đ</sub> = ½mv² &nbsp;·&nbsp; W<sub>t</sub> = mgh &nbsp;·&nbsp; W = W<sub>đ</sub> + W<sub>t</sub></div>
+      <p class="muted">Khi chỉ có trọng lực thực hiện công, cơ năng được bảo toàn: động năng và thế năng chuyển hoá cho nhau. Khi có ma sát, một phần cơ năng chuyển thành nhiệt:</p>
+      <div class="formula">W<sub>đầu</sub> − W<sub>sau</sub> = F<sub>ms</sub>·s &nbsp;·&nbsp; H = W<sub>có ích</sub> / W<sub>toàn phần</sub></div>
+      <div class="legend"><span><i style="background:#5cc8ff"></i>Thế năng</span><span><i style="background:#ffb22e"></i>Động năng</span><span><i style="background:#ff6b6b"></i>Nhiệt do ma sát</span></div>
+    </div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted">Chọn độ cao điểm thả để tàu (thả không vận tốc đầu) vượt qua mọi đỉnh đồi và vào tới ga. Càng tiết kiệm năng lượng càng nhiều sao: cao hơn mức tối thiểu không quá 0,5 m được ★★★, không quá 1,5 m được ★★. Mỗi màn có 3 lượt.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, fmt, rand, randInt, pick, clamp, sfx, G } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+const MASS = 400;
+const LEVELS = () => [
+  { hills: [randInt(9, 13)], hs: randInt(3, 5), F: 0 },
+  { hills: [randInt(6, 9), randInt(12, 16)], hs: randInt(4, 7), F: 0 },
+  { hills: [randInt(8, 12)], hs: randInt(4, 6), F: pick([240, 320, 400]) },
+  { hills: [randInt(12, 15), randInt(6, 9)], hs: randInt(8, 11), F: pick([200, 280]) },
+  { hills: [randInt(7, 10), randInt(10, 13)], hs: randInt(5, 7), F: pick([300, 360]) },
+];
+let levels = [], lv = 0, score = 0, S = null;
+
+const RAMP = 8, DX = 0.05;
+function buildTrack(cfg, h0) {
+  const segs = [];
+  let x = RAMP + 2;
+  cfg.hills.forEach(Hh => { segs.push({ type: 'hill', x0: x, w: 12, H: Hh }); x += 14; });
+  const xr = x, wr = 8, xs = xr + wr, xe = xs + 8;
+  const yAt = X => {
+    if (X <= RAMP) return h0 * (1 - Math.sin(Math.PI * X / (2 * RAMP)));
+    for (const sg of segs) if (X >= sg.x0 && X <= sg.x0 + sg.w) return sg.H * (1 - Math.cos(2 * Math.PI * (X - sg.x0) / sg.w)) / 2;
+    if (X >= xr && X <= xs) return cfg.hs * (1 - Math.cos(Math.PI * (X - xr) / wr)) / 2;
+    if (X > xs) return cfg.hs;
+    return 0;
+  };
+  const xsArr = [], ys = [], ss = [];
+  let sAcc = 0;
+  for (let X = 0; X <= xe + 1e-9; X += DX) {
+    const y = yAt(X);
+    if (xsArr.length) sAcc += Math.hypot(DX, y - ys[ys.length - 1]);
+    xsArr.push(X); ys.push(y); ss.push(sAcc);
+  }
+  const tops = segs.map((sg, i) => ({ name: `Đỉnh đồi ${i + 1}`, x: sg.x0 + sg.w / 2, y: sg.H }));
+  tops.push({ name: 'Cửa ga', x: xs, y: cfg.hs });
+  tops.forEach(t => { t.i = Math.round(t.x / DX); t.s = ss[t.i]; });
+  return { xs: xsArr, ys, ss, segs, xs0: xs, xe, iStation: Math.round(xs / DX), tops };
+}
+function marginAt(cfg, h0) {
+  const T = buildTrack(cfg, h0), k = cfg.F / MASS;
+  let worst = Infinity;
+  for (let i = Math.round(1 / DX); i <= T.iStation; i++) worst = Math.min(worst, G * (h0 - T.ys[i]) - k * T.ss[i]);
+  return worst;
+}
+function hMin(cfg) {
+  let lo = 0.5, hi = 60;
+  for (let it = 0; it < 50; it++) { const mid = (lo + hi) / 2; marginAt(cfg, mid) > 0 ? hi = mid : lo = mid; }
+  return hi;
+}
+
+function startGame() { levels = LEVELS(); lv = 0; score = 0; loadLevel(); }
+function loadLevel() {
+  const cfg = levels[lv];
+  const hm = hMin(cfg);
+  const T = buildTrack(cfg, hm);
+  S = { cfg, hm, h0: +$('#h0').value, T, tries: 0, phase: 'ready', i: 0, sPos: 0, v: 0, heat: 0, ghosts: [] };
+  rebuild();
+  $('#kind').textContent = `Màn ${lv + 1} · ${cfg.F ? 'Có ma sát – cơ năng không bảo toàn' : 'Không ma sát – cơ năng bảo toàn'}`;
+  $('#goal').innerHTML = 'Chọn độ cao thả tàu (vận tốc đầu bằng 0) <b>thấp nhất có thể</b> mà tàu vẫn vượt qua hết các đồi và vào được ga.';
+  const g = [`<span>m = ${MASS} kg</span>`, `<span>g = 9,8 m/s²</span>`, cfg.F ? `<span>F<sub>ms</sub> = ${cfg.F} N (không đổi)</span>` : '<span>Bỏ qua ma sát</span>'];
+  T.tops.forEach(t => g.push(`<span>${t.name}: cao ${t.y} m${cfg.F ? `, cách điểm thả ≈ ${fmt(t.s, 1)} m đường ray` : ''}</span>`));
+  $('#givens').innerHTML = g.join('');
+  $('#hint').innerHTML = cfg.F
+    ? 'Tàu vượt được điểm có độ cao y nếu tại đó còn động năng: mgh₀ − F<sub>ms</sub>·s − mgy &gt; 0 ⇒ h₀ &gt; y + F<sub>ms</sub>·s/(mg). Tính cho từng đỉnh và cửa ga rồi chọn giá trị lớn nhất.'
+    : 'Không có ma sát: cơ năng bảo toàn, mgh₀ = ½mv² + mgy. Tàu vượt được đỉnh nếu h₀ lớn hơn độ cao của đỉnh cao nhất (kể cả cửa ga).';
+  $('#left').textContent = 3; $('#goBtn').textContent = 'Thả tàu ▶'; $('#goBtn').disabled = false; $('#h0').disabled = false;
+  $('#fb').textContent = ''; $('#explain').textContent = '';
+  $('#hudLv').textContent = `${lv + 1}/${levels.length}`; $('#hudScore').textContent = score;
+}
+function rebuild() { S.T = buildTrack(S.cfg, S.h0); S.sPos = 0; S.v = 0; S.heat = 0; S.i = 0; }
+$('#h0').addEventListener('input', e => { if (!S || S.phase === 'run') return; S.h0 = +e.target.value; $('#h0o').textContent = fmt(S.h0, 1) + ' m'; if (S.phase !== 'end') { S.phase = 'ready'; rebuild(); } });
+$('#h0o').textContent = fmt(+$('#h0').value, 1) + ' m';
+
+function posAt(sPos) {
+  const T = S.T; let lo = 0, hi = T.ss.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; T.ss[m] <= sPos ? lo = m : hi = m; }
+  const f = (sPos - T.ss[lo]) / ((T.ss[hi] - T.ss[lo]) || 1);
+  const x = T.xs[lo] + (T.xs[hi] - T.xs[lo]) * f, y = T.ys[lo] + (T.ys[hi] - T.ys[lo]) * f;
+  const sin = (T.ys[hi] - T.ys[lo]) / ((T.ss[hi] - T.ss[lo]) || 1);
+  return { x, y, sin, i: lo };
+}
+$('#goBtn').addEventListener('click', () => {
+  if (S.phase === 'end') { lv++; if (lv >= levels.length) return finishGame(); loadLevel(); return; }
+  if (S.phase === 'run') return;
+  rebuild(); S.phase = 'run'; S.reversed = false; S.braking = false; S.failShown = false; S.timer = 0; S.trail = [];
+  $('#goBtn').disabled = true; $('#h0').disabled = true; sfx.whoosh();
+});
+function update(dt) {
+  if (!S || S.phase !== 'run') return;
+  const k = S.cfg.F / MASS, steps = 20, h = dt * 1.4 / steps;
+  const sStation = S.T.ss[S.T.iStation], sEnd = S.T.ss[S.T.ss.length - 1];
+  for (let n = 0; n < steps; n++) {
+    const p = posAt(S.sPos);
+    if (S.braking) { S.v = Math.max(0, S.v - S.brakeA * h); S.sPos += S.v * h; if (S.v === 0) break; continue; }
+    let a = -G * p.sin;
+    if (Math.abs(S.v) > 1e-4) a -= k * Math.sign(S.v);
+    else if (Math.abs(G * p.sin) <= k) { S.v = 0; break; }
+    else a -= k * Math.sign(a);   // bắt đầu trượt: ma sát ngược chiều xu hướng chuyển động
+    const v0 = S.v; S.v += a * h;
+    if (v0 > 0 && S.v < 0) S.reversed = true;
+    const ds = (v0 + S.v) / 2 * h;
+    S.sPos += ds; S.heat += MASS * k * Math.abs(ds);
+    if (S.sPos < 0) { S.sPos = 0; S.v = -S.v * 0.3; }
+    if (S.sPos >= sStation && !S.reversed && !S.braking) { S.braking = true; S.brakeA = Math.max(4, S.v * S.v / (2 * 6.5)); }
+  }
+  S.timer += dt;
+  const p = posAt(S.sPos);
+  if (!S.trail.length || Math.abs(S.trail[S.trail.length - 1][0] - p.x) > .4) S.trail.push([p.x, p.y]);
+  if (S.braking && S.v === 0) return endRun(true);
+  if (S.reversed && (S.timer > 9 || (Math.abs(S.v) < 0.02 && Math.abs(G * p.sin) <= k + 1e-6))) return endRun(false);
+  if (S.reversed && !S.failShown) { S.failShown = true; sfx.bad(); fb('Tàu không đủ năng lượng và trôi ngược lại!', 'bad'); }
+  if (S.sPos >= sEnd) return endRun(true);
+}
+const fb = (m, k) => { $('#fb').textContent = m; $('#fb').className = 'feedback ' + (k || ''); };
+function endRun(ok) {
+  S.tries++; S.failShown = false;
+  const left = 3 - S.tries; $('#left').textContent = Math.max(0, left);
+  S.ghosts.push({ h0: S.h0, ok });
+  const sol = `h<sub>min</sub> ≈ <b>${fmt(S.hm, 2)} m</b>` + (S.cfg.F ? ` (với ma sát F<sub>ms</sub> = ${S.cfg.F} N, mỗi mét đường ray tàu mất ${S.cfg.F} J ⇒ tương đương độ cao ${fmt(S.cfg.F / (MASS * G), 3)} m).` : ' (bằng độ cao điểm cao nhất).');
+  if (ok) {
+    const d = S.h0 - S.hm, st = d <= 0.5 ? 3 : d <= 1.5 ? 2 : 1;
+    score += st * 10; sfx.ok();
+    fb(`${'★'.repeat(st)} Tàu vào ga! Thả từ ${fmt(S.h0, 1)} m (dư ${fmt(d, 2)} m so với mức tối thiểu).`, 'ok');
+    $('#explain').innerHTML = `Năng lượng ban đầu W = mgh₀ = ${fmt(MASS * G * S.h0 / 1000, 2)} kJ; nhiệt toả ra do ma sát ≈ ${fmt(S.heat / 1000, 2)} kJ. ` + sol;
+    S.phase = 'end';
+  } else {
+    sfx.bad();
+    $('#explain').innerHTML = left > 0 ? `Còn ${left} lượt. Hãy tăng độ cao thả.` : 'Hết lượt. ' + sol;
+    S.phase = left > 0 ? 'ready' : 'end';
+  }
+  const b = $('#goBtn'); b.disabled = false; $('#h0').disabled = S.phase === 'end';
+  b.textContent = S.phase === 'end' ? (lv + 1 >= levels.length ? 'Xem kết quả' : 'Màn tiếp →') : 'Thả lại ▶';
+  $('#hudScore').textContent = score;
+}
+function finishGame() {
+  const max = levels.length * 30, st = score >= max * .8 ? 3 : score >= max * .5 ? 2 : score > 0 ? 1 : 0;
+  const old = VL.best('ch4', score); sfx.win();
+  VL.modal({ title: 'Kĩ sư tàu lượn!', stars: st, html: `<p>Điểm: <b>${score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: 'Về các chương', onClick: () => { location.href = 'index.html'; } }, { label: 'Chơi lại', primary: true, onClick: startGame }] });
+}
+
+const SC = 14, OX = 50, GY = 500;
+const X = x => OX + x * SC, Y = y => GY - y * SC;
+function draw() {
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1b1036'); g.addColorStop(1, '#0b1422');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (!S) return;
+  const T = S.T;
+  // lưới độ cao
+  for (let y = 0; y <= 32; y += 2) {
+    ctx.strokeStyle = y % 10 === 0 ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(OX, Y(y)); ctx.lineTo(W, Y(y)); ctx.stroke();
+    if (y % 4 === 0) VL.text(ctx, y + ' m', OX - 6, Y(y) + 4, { size: 11, color: '#9bb0c9', align: 'right' });
+  }
+  ctx.fillStyle = '#14261d'; ctx.fillRect(0, GY, W, H - GY);
+  // h_min đường kẻ? chỉ hiện khi kết thúc
+  if (S.phase === 'end') { ctx.strokeStyle = '#4ade80'; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(OX, Y(S.hm)); ctx.lineTo(OX + 150, Y(S.hm)); ctx.stroke(); ctx.setLineDash([]); VL.label(ctx, `h_min ≈ ${fmt(S.hm, 2)} m`, OX + 220, Y(S.hm), { color: '#4ade80', size: 13 }); }
+  // cột đỡ
+  ctx.strokeStyle = '#3b2f5c'; ctx.lineWidth = 3;
+  for (let i = 0; i < T.xs.length; i += 30) { ctx.beginPath(); ctx.moveTo(X(T.xs[i]), Y(T.ys[i])); ctx.lineTo(X(T.xs[i]), GY); ctx.stroke(); }
+  // đường ray
+  ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 5; ctx.lineJoin = 'round';
+  ctx.beginPath(); T.xs.forEach((x, i) => i ? ctx.lineTo(X(x), Y(T.ys[i])) : ctx.moveTo(X(x), Y(T.ys[i]))); ctx.stroke();
+  ctx.strokeStyle = '#f5d0fe'; ctx.lineWidth = 1.5; ctx.stroke();
+  // ga
+  const xs = X(T.xs0), ys = Y(S.cfg.hs);
+  ctx.fillStyle = 'rgba(74,222,128,.18)'; ctx.fillRect(xs, ys - 70, X(T.xe) - xs, 70);
+  ctx.fillStyle = '#4ade80'; ctx.fillRect(xs, ys - 74, X(T.xe) - xs, 6);
+  VL.text(ctx, 'GA', (xs + X(T.xe)) / 2, ys - 82, { size: 16, align: 'center', color: '#4ade80', weight: 800 });
+  // nhãn đỉnh
+  T.tops.slice(0, -1).forEach(t => VL.text(ctx, `${t.y} m`, X(t.x), Y(t.y) - 14, { size: 13, align: 'center', color: '#f5d0fe' }));
+  // đài thả
+  ctx.fillStyle = '#ffb22e'; ctx.fillRect(X(0) - 18, Y(S.h0) - 4, 26, 6);
+  VL.label(ctx, `h₀ = ${fmt(S.h0, 1)} m`, X(0) + 50, Y(S.h0) - 18, { size: 13, color: '#ffb22e' });
+  // vệt chạy
+  if (S.trail) { ctx.fillStyle = 'rgba(255,178,46,.35)'; S.trail.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(X(x), Y(y) - 4, 2, 0, 7); ctx.fill(); }); }
+  // tàu
+  const p = posAt(S.sPos);
+  const ang = Math.atan2(p.sin, Math.sqrt(Math.max(0, 1 - p.sin * p.sin)));
+  ctx.save(); ctx.translate(X(p.x), Y(p.y)); ctx.rotate(-ang);
+  ctx.fillStyle = '#f472b6'; VL.rrect(ctx, -18, -24, 36, 18, 6); ctx.fill();
+  ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(-6, -28, 5, 0, 7); ctx.arc(7, -28, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(-10, -5, 5, 0, 7); ctx.arc(10, -5, 5, 0, 7); ctx.fill();
+  ctx.restore();
+  // thanh năng lượng
+  const Etot = MASS * G * S.h0, Wt = MASS * G * p.y, Wd = .5 * MASS * S.v * S.v, Q = S.heat;
+  const bx = 600, by = 24, bw = 330, bh = 22;
+  ctx.fillStyle = 'rgba(8,17,29,.85)'; VL.rrect(ctx, bx - 12, by - 12, bw + 24, 116, 10); ctx.fill();
+  VL.text(ctx, `Năng lượng toàn phần mgh₀ = ${fmt(Etot / 1000, 1)} kJ`, bx, by + 6, { size: 13, color: '#cbd5e1' });
+  let cx = bx; const seg = (val, col) => { const w = bw * clamp(val / Etot, 0, 1); ctx.fillStyle = col; ctx.fillRect(cx, by + 16, w, bh); cx += w; };
+  ctx.fillStyle = '#1a3150'; ctx.fillRect(bx, by + 16, bw, bh);
+  seg(Wt, '#5cc8ff'); seg(Wd, '#ffb22e'); seg(Q, '#ff6b6b');
+  VL.text(ctx, `Wt ${fmt(Wt / 1000, 1)} kJ`, bx, by + 60, { size: 13, color: '#5cc8ff' });
+  VL.text(ctx, `Wđ ${fmt(Wd / 1000, 1)} kJ`, bx + 115, by + 60, { size: 13, color: '#ffb22e' });
+  VL.text(ctx, `Nhiệt ${fmt(Q / 1000, 1)} kJ`, bx + 225, by + 60, { size: 13, color: '#ff6b6b' });
+  VL.text(ctx, `v = ${fmt(Math.abs(S.v), 2)} m/s · độ cao ${fmt(p.y, 2)} m`, bx, by + 86, { size: 13, color: '#eef4fb' });
+  if (S.phase === 'ready') VL.label(ctx, 'Kéo thanh trượt để chỉnh độ cao rồi bấm "Thả tàu"', W / 2 - 80, 520, { size: 14 });
+}
+VL.loop(dt => { ctx.clearRect(0, 0, W, H); update(dt); draw(); });
+startGame();
+</script>
+</body>
+</html>
