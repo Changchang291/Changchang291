@@ -5,6 +5,8 @@
 >
 > **Định hướng:** phát triển năng lực Vật lí, đồng thời hình thành năng lực số và năng lực sử dụng AI có trách nhiệm theo Khung năng lực số cho người học (Thông tư 02/2025/TT-BGDĐT).
 >
+> **Bộ theo từng khối:** mỗi khối có riêng 12 tiết trong `lop-10-12-tiet-ai.md`, `lop-11-12-tiet-ai.md`, `lop-12-12-tiet-ai.md` (các tiết ★ trong đó dùng kế hoạch chi tiết của tệp này).
+>
 > **Hình thức:** mỗi tiết 45 phút; tiến trình theo 4 hoạt động *Mở đầu → Hình thành kiến thức → Luyện tập → Vận dụng*. Giáo viên có thể dạy rời từng tiết đúng thời điểm của chương tương ứng, hoặc gom lại thành chủ đề STEM/hoạt động câu lạc bộ.
 
 ---
