@@ -349,7 +349,7 @@ textarea {
 
 <div class="overlay" id="overlay" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="resName">
-    <div class="eyebrow">Mời em</div>
+    <div class="eyebrow">Mời em · <span id="resNo"></span></div>
     <div class="name" id="resName"></div>
     <div class="sub">lên bảng kiểm tra bài cũ</div>
     <div class="row">
@@ -368,7 +368,12 @@ textarea {
     "Ngô Thanh Hằng", "Dương Văn Hiếu", "Lý Khánh Huyền", "Phan Tuấn Khang", "Trịnh Bảo Khánh",
     "Mai Phương Linh", "Đinh Hoàng Long", "Tạ Ngọc Mai", "Lương Đức Minh", "Châu Hải Nam",
     "Cao Thảo Nguyên", "Lâm Bảo Ngọc", "Hà Trọng Nhân", "Kiều Yến Nhi", "Tô Gia Phúc",
-    "Quách Minh Quân", "Văn Thanh Tâm", "Triệu Hữu Thắng", "Đoàn Thu Trang", "Võ Nhật Vy"
+    "Quách Minh Quân", "Văn Thanh Tâm", "Triệu Hữu Thắng", "Đoàn Thu Trang", "Võ Nhật Vy",
+    "Nguyễn Tuấn Anh", "Trần Gia Hân", "Lê Văn Khoa", "Phạm Thị Lan", "Hoàng Đức Lộc",
+    "Vũ Thảo My", "Đặng Hoài Nam", "Bùi Thị Ngân", "Đỗ Minh Nhật", "Hồ Thanh Phong",
+    "Ngô Kim Phượng", "Dương Quốc Bảo", "Lý Thu Hà", "Phan Đình Hùng", "Trịnh Thị Hoa",
+    "Mai Xuân Khôi", "Đinh Ngọc Lan", "Tạ Quang Vinh", "Lương Thị Yến", "Châu Minh Tú",
+    "Cao Đức Trung", "Lâm Thùy Linh", "Hà Văn Sơn", "Kiều Bảo Trâm", "Tô Hữu Tài"
   ].join("\n");
   const COLORS = ["#f4d35e", "#8fd3c7", "#f2a07b", "#b9a7e8", "#9cc9f0", "#e9a3c0", "#c4dc8a"];
   const KEY = "vong-quay-kiem-tra-bai-cu-v1";
@@ -399,10 +404,10 @@ textarea {
   // Bớt đi mỗi tên đã gọi một lần, để lớp có hai em trùng tên vẫn đúng.
   function rebuildPool() {
     students = parseNames(state.names);
-    pool = students.slice();
+    pool = students.map((name, i) => ({ name, no: i + 1 }));
     if (state.removeCalled) {
       for (const h of state.history) {
-        const i = pool.indexOf(h.name);
+        const i = pool.findIndex((p) => p.name === h.name);
         if (i !== -1) pool.splice(i, 1);
       }
     }
@@ -444,7 +449,8 @@ textarea {
   function fitLabel(name, maxW) {
     const words = name.split(/\s+/);
     const tries = [name];
-    if (words.length > 2) tries.push(words.slice(-2).join(" "));
+    if (pool.length > 40) tries.shift(); // lớp đông: chỉ ghi tên gọi cho dễ đọc
+    if (words.length > 2 && pool.length <= 40) tries.push(words.slice(-2).join(" "));
     if (words.length > 1) tries.push(words[words.length - 1]);
     for (const t of tries) if (ctx.measureText(t).width <= maxW) return t;
     let t = tries[tries.length - 1];
@@ -485,15 +491,15 @@ textarea {
       if (n > 1) { ctx.lineWidth = Math.max(1, S * 0.003); ctx.strokeStyle = "#1f3a32"; ctx.stroke(); }
     }
 
-    const fontPx = Math.max(10, Math.min(S * 0.042, seg * R * 0.5));
+    const fontPx = Math.max(10, Math.min(S * 0.042, seg * R * 0.62));
     ctx.font = `700 ${Math.round(fontPx)}px "Be Vietnam Pro", system-ui, sans-serif`;
     ctx.fillStyle = "#1b2a25";
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
-    const maxW = R * 0.7;
+    const maxW = R * (n > 40 ? 0.6 : 0.7);
     for (let i = 0; i < n; i++) {
       ctx.save();
       ctx.rotate(rot + (i + 0.5) * seg);
-      ctx.fillText(fitLabel(pool[i], maxW), R - S * 0.025, 0);
+      ctx.fillText(fitLabel(pool[i].name, maxW), R - S * 0.025, 0);
       ctx.restore();
     }
 
@@ -572,22 +578,23 @@ textarea {
       const e = 1 - Math.pow(1 - t, 4);
       rot = start + (end - start) * e;
       const idx = indexAt(rot, n);
-      if (idx !== last) { last = idx; tick(); setLive(pool[idx]); }
+      if (idx !== last) { last = idx; tick(); setLive(pool[idx].name); }
       draw();
       if (t < 1) requestAnimationFrame(frame);
       else finish(pool[indexAt(rot, n)]);
     }
-    setLive(pool[last]);
+    setLive(pool[last].name);
     requestAnimationFrame(frame);
   }
 
-  function finish(name) {
+  function finish(p) {
     rot = mod(rot, TAU);
     spinning = false;
-    picked = name;
+    picked = p;
     chime();
-    setLive(name);
-    $("resName").textContent = name;
+    setLive(p.name);
+    $("resName").textContent = p.name;
+    $("resNo").textContent = "Số thứ tự " + p.no;
     $("overlay").hidden = false;
     $("acceptBtn").focus();
   }
@@ -602,7 +609,8 @@ textarea {
   function record(status) {
     const d = new Date();
     state.history.push({
-      name: picked,
+      name: picked.name,
+      no: picked.no,
       status,
       score: "",
       time: d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
@@ -639,7 +647,7 @@ textarea {
       const who = document.createElement("div");
       who.className = "who";
       const b = document.createElement("b"); b.textContent = h.name;
-      const sp = document.createElement("span"); sp.textContent = h.time;
+      const sp = document.createElement("span"); sp.textContent = (h.no ? "Số " + h.no + " · " : "") + h.time;
       who.append(b, sp);
       let mid;
       if (h.status === "vang") {
@@ -664,8 +672,8 @@ textarea {
   }
 
   $("copyBtn").addEventListener("click", () => {
-    const lines = ["STT\tHọ và tên\tGiờ\tĐiểm miệng"].concat(state.history.map((h, i) =>
-      [i + 1, h.name, h.time, h.status === "vang" ? "Vắng" : String(h.score).replace(".", ",")].join("\t")));
+    const lines = ["Lượt\tSố TT\tHọ và tên\tGiờ\tĐiểm miệng"].concat(state.history.map((h, i) =>
+      [i + 1, h.no || "", h.name, h.time, h.status === "vang" ? "Vắng" : String(h.score).replace(".", ",")].join("\t")));
     const text = lines.join("\n");
     const msg = $("copyMsg");
     const show = (t) => { msg.textContent = t; msg.hidden = false; setTimeout(() => { msg.hidden = true; }, 3000); };
