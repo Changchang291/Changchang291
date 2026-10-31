@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mặt hồ giao thoa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #38bdf8; --accent-ink: #032235; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+  .toggles .btn { min-height: 38px; padding: 6px 12px; font-size: .9rem; }
+  .toggles .btn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 30%, var(--panel-2)); border-color: var(--accent); }
+  .stage { cursor: crosshair; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang chủ đề">←</a>
+    <div class="brand"><small>Vật lí 11 · Giao thoa sóng nước</small><h1>Mặt hồ giao thoa</h1></div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/9</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Mặt nước với hai nguồn sóng S1, S2 dao động cùng pha"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card">
+        <div id="answer"></div>
+        <div class="row" style="justify-content:space-between;margin-top:8px" id="leftRow"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Kiểm tra</button></div>
+        <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted" id="hint"></p></details>
+      </div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card">
+      <h2>Bảng hiển thị</h2>
+      <div class="toggles">
+        <button class="btn" type="button" id="tgMax" aria-pressed="false">Vân cực đại</button>
+        <button class="btn" type="button" id="tgMin" aria-pressed="false">Vân cực tiểu</button>
+        <button class="btn" type="button" id="tgPause" aria-pressed="false">Dừng hình</button>
+      </div>
+      <p class="muted">Ở một số màn, các vân bị ẩn cho tới khi em trả lời xong. Vùng sáng – tối xen kẽ trên mặt nước là các gợn sóng; những dải gần như phẳng lặng là vân cực tiểu.</p>
+    </div>
+    <div class="card">
+      <h2>Kiến thức: giao thoa của hai nguồn cùng pha</h2>
+      <div class="formula">λ = v / f = v·T</div>
+      <div class="formula">Cực đại: d₂ − d₁ = kλ &nbsp;·&nbsp; Cực tiểu: d₂ − d₁ = (k + ½)λ</div>
+      <p class="muted">Hai nguồn kết hợp: cùng tần số, hiệu số pha không đổi theo thời gian. Trên đoạn S₁S₂, hai cực đại (hoặc hai cực tiểu) liên tiếp cách nhau λ/2; cực đại và cực tiểu liền kề cách nhau λ/4. Đường trung trực của S₁S₂ là cực đại bậc 0. Các vân là những đường hypebol nhận S₁, S₂ làm tiêu điểm.</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, $$, fmt, parse, rand, randInt, pick, clamp, shuffle, sfx } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+// lưới tính sóng độ phân giải thấp rồi phóng to
+const GW = 240, GH = 135, CELL = W / GW;
+const off = document.createElement('canvas'); off.width = GW; off.height = GH;
+const octx = off.getContext('2d');
+const img = octx.createImageData(GW, GH);
+const AMP = new Float32Array(GW * GH), PH = new Float32Array(GW * GH);
+
+const LAMS = [1, 1.2, 1.5, 2, 2.4, 2.5, 3];
+const FS = [10, 15, 20, 25, 40, 50];
+const ORDER = ['demMax', 'loai', 'chamMax', 'demMin', 'khoangCach', 'loai', 'timV', 'chinhF', 'chamMin'];
+let levels = [], lv = 0, score = 0, S = null;
+let show = { max: false, min: false }, paused = false, t = 0;
+
+function baseLevel() {
+  const lam = pick(LAMS), f = pick(FS), v = Math.round(lam * f * 100) / 100;
+  const n = randInt(3, 7), frac = pick([rand(.15, .35), rand(.65, .85)]);
+  const d = Math.round((n + frac) * lam * 10) / 10;
+  return { lam, f, v, d };
+}
+// Đặt điểm M sao cho MS₁ = d1, MS₂ = d2 (phía trên S₁S₂) và nằm trong khung
+function placeM(L, delta) {
+  for (let i = 0; i < 300; i++) {
+    const d1 = Math.round(rand(.5, 1.4) * L.d * 10) / 10, d2 = Math.round((d1 + delta) * 100) / 100;
+    if (d2 <= 0.3 || d1 + d2 <= L.d + .2) continue;
+    const x = (d1 * d1 - d2 * d2) / (2 * L.d);              // toạ độ so với trung điểm (cm)
+    const y2 = d1 * d1 - (x + L.d / 2) ** 2; if (y2 <= 0.25) continue;
+    const y = -Math.sqrt(y2);
+    const sc = 420 / L.d, px = 480 + x * sc, py = 300 + y * sc;
+    if (px > 40 && px < 920 && py > 40) return { d1, d2, mx: x, my: y };
+  }
+  return null;
+}
+function gen(type) {
+  for (;;) {
+    const L = { ...baseLevel(), type };
+    if (type === 'loai' || type === 'timV' || type === 'chinhF') {
+      const isMax = type !== 'chinhF' ? Math.random() < .6 : Math.random() < .5;
+      const k = randInt(1, 3) * pick([1, -1]);
+      const delta = isMax ? k * L.lam : (k > 0 ? k - .5 : k + .5) * L.lam;
+      if (Math.abs(delta) >= L.d) continue;
+      const M = placeM(L, delta); if (!M) continue;
+      Object.assign(L, M, { isMax, k: Math.abs(k), delta });
+      if (type === 'timV') { L.isMax = true; L.delta = Math.abs(k) * L.lam * Math.sign(delta); const M2 = placeM(L, L.delta); if (!M2) continue; Object.assign(L, M2); }
+      if (type === 'chinhF') { L.fStart = pick(FS.filter(x => Math.abs(x - L.f) > 4)); }
+    }
+    if (type === 'chamMax') L.k = randInt(1, Math.min(3, Math.floor(L.d / L.lam)));
+    if (type === 'chamMin') L.k = randInt(1, Math.min(3, Math.floor(L.d / L.lam + .5)));
+    return L;
+  }
+}
+function recompute() {
+  const sc = 420 / S.d, lam = S.lamNow;
+  const s1x = 480 - S.d / 2 * sc, s2x = 480 + S.d / 2 * sc, sy = 300;
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const x = (i + .5) * CELL, y = (j + .5) * CELL;
+    const d1 = Math.hypot(x - s1x, y - sy) / sc, d2 = Math.hypot(x - s2x, y - sy) / sc;
+    const k = j * GW + i;
+    AMP[k] = Math.cos(Math.PI * (d2 - d1) / lam);
+    PH[k] = Math.PI * (d1 + d2) / lam;
+  }
+}
+
+function startGame() { levels = ORDER.map(gen); lv = 0; score = 0; loadLevel(); }
+function loadLevel() {
+  S = { ...levels[lv], tries: 0, phase: 'ask', clicks: [] };
+  S.lamNow = S.type === 'chinhF' ? S.v / S.fStart : S.lam;
+  S.fNow = S.type === 'chinhF' ? S.fStart : S.f;
+  recompute();
+  const hideLines = ['demMax', 'demMin', 'loai', 'chamMax', 'chamMin', 'timV', 'chinhF'].includes(S.type);
+  show = { max: !hideLines, min: false }; paintToggles();
+  const giv = [];
+  const ans = $('#answer');
+  const num = (id, label) => `<label for="${id}" style="font-weight:600">${label}</label><input class="num" id="${id}" inputmode="decimal" autocomplete="off" style="margin-top:6px">`;
+  $('#leftRow').hidden = false;
+  const kindName = { demMax: 'Đếm cực đại', demMin: 'Đếm cực tiểu', loai: 'Nhận dạng điểm M', chamMax: 'Săn vân cực đại', chamMin: 'Săn vân cực tiểu', khoangCach: 'Tính tốc độ truyền sóng', timV: 'Tính tốc độ truyền sóng', chinhF: 'Điều chỉnh tần số' }[S.type];
+  $('#kind').textContent = `Màn ${lv + 1} · ${kindName}`;
+  let hint = '';
+  if (S.type === 'demMax' || S.type === 'demMin') {
+    const mx = S.type === 'demMax';
+    $('#goal').innerHTML = `Hai nguồn S₁, S₂ dao động cùng pha. Trên đoạn S₁S₂ (không tính hai nguồn) có bao nhiêu điểm dao động với biên độ <b>${mx ? 'cực đại' : 'cực tiểu'}</b>?`;
+    giv.push(`<span>S₁S₂ = ${fmt(S.d, 1)} cm</span>`, mx ? `<span>λ = ${fmt(S.lam, 2)} cm</span>` : `<span>f = ${S.f} Hz</span><span>v = ${fmt(S.v, 2)} cm/s</span>`);
+    ans.innerHTML = num('a1', `Số điểm ${mx ? 'cực đại' : 'cực tiểu'}`);
+    hint = mx ? 'Điểm trên S₁S₂ có d₂ − d₁ = kλ và −S₁S₂ &lt; d₂ − d₁ &lt; S₁S₂ ⇒ −S₁S₂/λ &lt; k &lt; S₁S₂/λ. Đếm số giá trị nguyên của k.' : 'Tính λ = v/f. Cực tiểu: d₂ − d₁ = (k + ½)λ với −S₁S₂ &lt; (k + ½)λ &lt; S₁S₂. Đếm số giá trị nguyên của k.';
+  } else if (S.type === 'loai') {
+    $('#goal').innerHTML = `Điểm M trên mặt nước cách S₁ là ${fmt(S.d1, 2)} cm, cách S₂ là ${fmt(S.d2, 2)} cm. M thuộc loại vân nào?`;
+    giv.push(`<span>f = ${S.f} Hz</span><span>v = ${fmt(S.v, 2)} cm/s</span><span>Hai nguồn cùng pha</span>`);
+    const right = S.isMax ? `Cực đại bậc ${S.k}` : `Cực tiểu thứ ${S.k}`;
+    const pool = new Set([right]);
+    while (pool.size < 4) pool.add(pick([`Cực đại bậc ${randInt(0, 4)}`, `Cực tiểu thứ ${randInt(1, 4)}`]));
+    S.opts = shuffle([...pool]); S.right = right;
+    ans.innerHTML = '<div class="choices">' + S.opts.map((o, i) => `<button class="choice" type="button" data-i="${i}"><b>${'ABCD'[i]}.</b>${o}</button>`).join('') + '</div>';
+    ans.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerMC(+b.dataset.i)));
+    $('#leftRow').hidden = true;
+    hint = 'Tính λ = v/f rồi lập tỉ số (d₂ − d₁)/λ. Nếu là số nguyên k ⇒ cực đại bậc |k|; nếu là số bán nguyên (k + ½) ⇒ cực tiểu. Cực tiểu thứ n ứng với |d₂ − d₁| = (n − ½)λ.';
+  } else if (S.type === 'chamMax' || S.type === 'chamMin') {
+    const mx = S.type === 'chamMax';
+    $('#goal').innerHTML = `Chạm vào mặt nước tại một điểm nằm trên <b>${mx ? `vân cực đại bậc ${S.k}` : `vân cực tiểu thứ ${S.k}`}</b> (bên nào cũng được).`;
+    giv.push(`<span>S₁S₂ = ${fmt(S.d, 1)} cm</span><span>λ = ${fmt(S.lam, 2)} cm</span>`);
+    ans.innerHTML = '<p class="muted" style="margin:0">Chạm/nhấp chuột lên sân chơi. Gợi ý: hiệu khoảng cách tới hai nguồn được hiển thị khi em di chuột.</p>';
+    hint = mx ? `Vân cực đại bậc ${S.k}: |d₂ − d₁| = ${S.k}λ. Trên đoạn S₁S₂, vân này cắt tại điểm cách trung điểm ${S.k}·λ/2.` : `Vân cực tiểu thứ ${S.k}: |d₂ − d₁| = (${S.k} − ½)λ. Trên đoạn S₁S₂, vân này cắt tại điểm cách trung điểm (${S.k} − ½)·λ/2.`;
+    S.hover = null;
+  } else if (S.type === 'khoangCach') {
+    S.gap = S.lam / 2;
+    $('#goal').innerHTML = `Trên đoạn S₁S₂, khoảng cách giữa hai điểm dao động cực đại liên tiếp đo được là <b>${fmt(S.gap, 2)} cm</b>. Tính tốc độ truyền sóng trên mặt nước.`;
+    giv.push(`<span>f = ${S.f} Hz</span>`);
+    ans.innerHTML = num('a1', 'Tốc độ truyền sóng v (cm/s)');
+    hint = 'Hai cực đại liên tiếp trên S₁S₂ cách nhau λ/2 ⇒ λ = 2 × khoảng cách. Sau đó v = λf.';
+  } else if (S.type === 'timV') {
+    $('#goal').innerHTML = `Tại M cách S₁, S₂ lần lượt ${fmt(S.d1, 2)} cm và ${fmt(S.d2, 2)} cm, sóng có biên độ cực đại. Giữa M và đường trung trực của S₁S₂ có <b>${S.k - 1}</b> dãy cực đại khác. Tính tốc độ truyền sóng.`;
+    giv.push(`<span>f = ${S.f} Hz</span>`);
+    ans.innerHTML = num('a1', 'Tốc độ truyền sóng v (cm/s)');
+    hint = `Đường trung trực là cực đại bậc 0; có ${S.k - 1} dãy cực đại xen giữa nên M thuộc cực đại bậc k = ${S.k - 1} + 1. Khi đó |d₂ − d₁| = kλ, rồi v = λf.`;
+  } else if (S.type === 'chinhF') {
+    const target = S.isMax ? `cực đại bậc ${S.k}` : `cực tiểu thứ ${S.k}`;
+    $('#goal').innerHTML = `Điểm M cách S₁ là ${fmt(S.d1, 2)} cm, cách S₂ là ${fmt(S.d2, 2)} cm. Điều chỉnh tần số của cần rung để M nằm đúng trên <b>${target}</b>.`;
+    giv.push(`<span>v = ${fmt(S.v, 2)} cm/s (không đổi)</span>`);
+    ans.innerHTML = `<div class="field"><label for="fr">Tần số f</label><output id="fro"></output><input type="range" id="fr" min="5" max="60" step="0.5" value="${S.fStart}"></div>
+      <div class="row"><label class="muted" for="frn" style="flex:1">Hoặc nhập chính xác (Hz):</label><input class="num" id="frn" style="width:110px" inputmode="decimal"></div>`;
+    const setF = f => { S.fNow = f; S.lamNow = S.v / f; $('#fro').textContent = fmt(f, 2) + ' Hz · λ = ' + fmt(S.lamNow, 2) + ' cm'; recompute(); };
+    $('#fr').addEventListener('input', e => { setF(+e.target.value); $('#frn').value = ''; });
+    $('#frn').addEventListener('input', e => { const f = parse(e.target.value); if (isFinite(f) && f >= 1 && f <= 200) { setF(f); $('#fr').value = clamp(f, 5, 60); } });
+    setF(S.fStart);
+    hint = S.isMax ? `Cần |d₂ − d₁| = ${S.k}λ = ${S.k}v/f ⇒ f = ${S.k}v/|d₂ − d₁|.` : `Cần |d₂ − d₁| = (${S.k} − ½)λ ⇒ f = (${S.k} − ½)v/|d₂ − d₁|.`;
+  }
+  $('#givens').innerHTML = giv.join('');
+  $('#hint').innerHTML = hint;
+  $('#left').textContent = 3;
+  const b = $('#goBtn'); b.hidden = S.type === 'loai' || S.type.startsWith('cham'); b.disabled = false; b.textContent = 'Kiểm tra';
+  $('#fb').textContent = ''; $('#fb').className = 'feedback'; $('#explain').textContent = '';
+  $('#hudLv').textContent = `${lv + 1}/${levels.length}`; $('#hudScore').textContent = score;
+  const inp = $('#a1'); if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+}
+const fb = (m, k) => { $('#fb').textContent = m; $('#fb').className = 'feedback ' + (k || ''); };
+function countMax() { return 2 * Math.floor(S.d / S.lam) + 1; }
+function countMin() { return 2 * Math.floor(S.d / S.lam + .5); }
+function solution() {
+  const r = S.d / S.lam, f2 = x => fmt(x, 2);
+  switch (S.type) {
+    case 'demMax': return `−${f2(S.d)}/${f2(S.lam)} &lt; k &lt; ${f2(S.d)}/${f2(S.lam)} ⇔ −${f2(r)} &lt; k &lt; ${f2(r)} ⇒ k = −${Math.floor(r)}, …, ${Math.floor(r)}: <b>${countMax()} cực đại</b>.`;
+    case 'demMin': return `λ = v/f = ${f2(S.v)}/${S.f} = ${f2(S.lam)} cm. −${f2(r)} &lt; k + ½ &lt; ${f2(r)} ⇒ <b>${countMin()} cực tiểu</b>.`;
+    case 'loai': return `λ = v/f = ${f2(S.lam)} cm; (d₂ − d₁)/λ = ${f2(S.delta)}/${f2(S.lam)} = ${f2(S.delta / S.lam)} ⇒ <b>${S.right}</b>.`;
+    case 'khoangCach': return `λ = 2·${f2(S.gap)} = ${f2(S.lam)} cm; v = λf = ${f2(S.lam)}·${S.f} = <b>${f2(S.v)} cm/s</b>.`;
+    case 'timV': return `M thuộc cực đại bậc ${S.k}: λ = |d₂ − d₁|/${S.k} = ${f2(Math.abs(S.delta))}/${S.k} = ${f2(S.lam)} cm; v = λf = <b>${f2(S.v)} cm/s</b>.`;
+    case 'chinhF': { const m = S.isMax ? S.k : S.k - .5; return `f = ${fmt(m, 1)}·v/|d₂ − d₁| = ${fmt(m, 1)}·${f2(S.v)}/${f2(Math.abs(S.delta))} = <b>${f2(m * S.v / Math.abs(S.delta))} Hz</b>.`; }
+    case 'chamMax': return `Mọi điểm có |d₂ − d₁| = ${S.k}·${f2(S.lam)} = ${f2(S.k * S.lam)} cm (đường đỏ đậm).`;
+    case 'chamMin': return `Mọi điểm có |d₂ − d₁| = (${S.k} − ½)·${f2(S.lam)} = ${f2((S.k - .5) * S.lam)} cm (đường trắng đậm).`;
+  }
+}
+function finishLevel(ok, msg, pts) {
+  if (ok) { score += pts; sfx.ok(); fb(`${msg} +${pts}`, 'ok'); S.phase = 'end'; }
+  else { sfx.bad(); fb(msg, 'bad'); }
+  const left = 3 - S.tries; $('#left').textContent = Math.max(0, left);
+  if (!ok && (left <= 0 || S.type === 'loai')) S.phase = 'end';
+  if (S.phase === 'end') {
+    $('#explain').innerHTML = 'Lời giải: ' + solution();
+    show.max = true; if (/Min|loai|chinhF/.test(S.type) && !S.isMax || S.type === 'demMin' || S.type === 'chamMin') show.min = true; paintToggles();
+    const b = $('#goBtn'); b.hidden = false; b.disabled = false; b.textContent = lv + 1 >= levels.length ? 'Xem kết quả' : 'Màn tiếp →';
+  } else $('#explain').textContent = `Còn ${left} lượt.`;
+  $('#hudScore').textContent = score;
+}
+function answerMC(i) {
+  if (S.phase !== 'ask') return;
+  S.tries = 3;
+  const btns = $$('#answer .choice'), r = S.opts.indexOf(S.right);
+  btns.forEach((b, j) => { b.disabled = true; if (j === r) b.classList.add('ok'); else if (j === i) b.classList.add('no'); });
+  finishLevel(i === r, i === r ? 'Chính xác!' : 'Chưa đúng.', 30);
+}
+function check() {
+  if (S.phase === 'end') { lv++; if (lv >= levels.length) return finishGame(); loadLevel(); return; }
+  if (S.type === 'chinhF') {
+    S.tries++;
+    const ratio = Math.abs(S.delta) / S.lamNow, need = S.isMax ? S.k : S.k - .5;
+    const ok = Math.abs(ratio - need) <= 0.06;
+    return finishLevel(ok, ok ? `M nằm đúng trên vân! |d₂ − d₁|/λ = ${fmt(ratio, 2)}.` : `|d₂ − d₁|/λ = ${fmt(ratio, 2)}, cần ${fmt(need, 1)}.`, [30, 20, 10][S.tries - 1]);
+  }
+  const a = parse($('#a1') && $('#a1').value);
+  if (!isFinite(a)) { VL.toast('Hãy nhập một số.', 'bad'); return; }
+  S.tries++;
+  let right, ok;
+  if (S.type === 'demMax') { right = countMax(); ok = a === right; }
+  else if (S.type === 'demMin') { right = countMin(); ok = a === right; }
+  else { right = S.v; ok = Math.abs(a - right) <= Math.max(0.02 * right, 0.05); }
+  finishLevel(ok, ok ? 'Chính xác!' : (S.type.startsWith('dem') ? (a > right ? 'Nhiều quá rồi.' : 'Còn thiếu.') : (a > right ? 'Lớn hơn đáp án.' : 'Nhỏ hơn đáp án.')), [30, 20, 10][S.tries - 1]);
+}
+$('#goBtn').addEventListener('click', check);
+function finishGame() {
+  const max = levels.length * 30, st = score >= max * .8 ? 3 : score >= max * .5 ? 2 : score > 0 ? 1 : 0;
+  const old = VL.best('nuoc', score); sfx.win();
+  VL.modal({ title: 'Bậc thầy mặt hồ!', stars: st, html: `<p>Điểm: <b>${score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: 'Về trang chủ đề', onClick: () => { location.href = 'index.html'; } }, { label: 'Chơi lại', primary: true, onClick: startGame }] });
+}
+
+// ---------- nhấp chuột trên mặt nước ----------
+const toWorld = (p) => { const sc = 420 / S.d; return { x: (p.x - 480) / sc, y: (p.y - 300) / sc }; };
+const dists = (w) => ({ d1: Math.hypot(w.x + S.d / 2, w.y), d2: Math.hypot(w.x - S.d / 2, w.y) });
+cv.addEventListener('pointermove', e => { if (S && S.type.startsWith('cham')) S.hover = VL.pointer(cv, e, W, H); });
+cv.addEventListener('pointerleave', () => { if (S) S.hover = null; });
+cv.addEventListener('pointerdown', e => {
+  if (!S || !S.type.startsWith('cham') || S.phase !== 'ask') return;
+  const p = VL.pointer(cv, e, W, H), w = toWorld(p), { d1, d2 } = dists(w);
+  if (Math.min(d1, d2) < S.lam * .3) { VL.toast('Chạm xa nguồn sóng hơn một chút.', ''); return; }
+  const need = S.type === 'chamMax' ? S.k * S.lam : (S.k - .5) * S.lam;
+  const diff = Math.abs(d2 - d1), ok = Math.abs(diff - need) <= 0.12 * S.lam;
+  S.tries++; S.clicks.push({ ...p, ok });
+  finishLevel(ok, ok ? `Trúng vân! |d₂ − d₁| = ${fmt(diff, 2)} cm.` : `|d₂ − d₁| = ${fmt(diff, 2)} cm (= ${fmt(diff / S.lam, 2)}λ), cần ${fmt(need, 2)} cm.`, [30, 20, 10][S.tries - 1]);
+});
+
+// ---------- toggles ----------
+function paintToggles() { $('#tgMax').setAttribute('aria-pressed', String(show.max)); $('#tgMin').setAttribute('aria-pressed', String(show.min)); $('#tgPause').setAttribute('aria-pressed', String(paused)); }
+$('#tgMax').addEventListener('click', () => { if (S.phase !== 'end' && S.type !== 'khoangCach') { VL.toast('Trả lời xong mới được bật vân nhé!', ''); return; } show.max = !show.max; paintToggles(); });
+$('#tgMin').addEventListener('click', () => { if (S.phase !== 'end' && S.type !== 'khoangCach') { VL.toast('Trả lời xong mới được bật vân nhé!', ''); return; } show.min = !show.min; paintToggles(); });
+$('#tgPause').addEventListener('click', () => { paused = !paused; paintToggles(); });
+
+// ---------- vẽ ----------
+function hyper(delta, col, w, dash) {
+  const sc = 420 / S.d, c = S.d / 2, a = Math.abs(delta) / 2;
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash || []);
+  ctx.beginPath();
+  if (a < 1e-6) { ctx.moveTo(480, 0); ctx.lineTo(480, H); }
+  else {
+    const b = Math.sqrt(Math.max(c * c - a * a, 1e-9)), sgn = delta > 0 ? -1 : 1;
+    for (let i = -60; i <= 60; i++) {
+      const tt = i / 60 * 4, x = sgn * a * Math.cosh(tt), y = b * Math.sinh(tt);
+      const px = 480 + x * sc, py = 300 + y * sc;
+      i === -60 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+  }
+  ctx.stroke(); ctx.restore();
+}
+function draw(dt) {
+  if (!S) return;
+  if (!paused) t += dt;
+  const om = 2 * Math.PI * 1.1;                     // tần số hiển thị (chiếu chậm)
+  const data = img.data;
+  for (let k = 0; k < GW * GH; k++) {
+    const u = AMP[k] * Math.cos(om * t - PH[k]);   // ∈ [-1, 1]
+    const q = (u + 1) / 2;
+    data[k * 4] = 6 + q * 120; data[k * 4 + 1] = 40 + q * 170; data[k * 4 + 2] = 70 + q * 175; data[k * 4 + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 0, 0, W, H);
+  const sc = 420 / S.d, lam = S.lamNow;
+  // vân
+  const kMax = Math.floor(S.d / lam);
+  if (show.max) for (let k = -kMax; k <= kMax; k++) {
+    const strong = (S.type === 'chamMax' && Math.abs(k) === S.k) || (S.isMax && Math.abs(k) === S.k && /loai|timV|chinhF/.test(S.type));
+    hyper(k * lam, strong ? '#ff4d4d' : 'rgba(255,110,110,.75)', strong ? 4 : 2);
+  }
+  if (show.min) for (let k = -kMax - 1; k <= kMax; k++) {
+    const dlt = (k + .5) * lam; if (Math.abs(dlt) >= S.d) continue;
+    const n = k >= 0 ? k + 1 : -k;
+    const strong = (S.type === 'chamMin' && n === S.k) || (!S.isMax && n === S.k && /loai|chinhF/.test(S.type));
+    hyper(dlt, strong ? '#ffffff' : 'rgba(255,255,255,.6)', strong ? 4 : 1.6, [6, 5]);
+  }
+  // đoạn S1S2 và nguồn
+  const s1x = 480 - S.d / 2 * sc, s2x = 480 + S.d / 2 * sc;
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s1x, 300); ctx.lineTo(s2x, 300); ctx.stroke();
+  [[s1x, 'S₁'], [s2x, 'S₂']].forEach(([x, n]) => {
+    const r = 7 + 2 * Math.sin(2 * Math.PI * 1.1 * t);
+    ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(x, 300, r, 0, 7); ctx.fill();
+    VL.label(ctx, n, x, 330, { size: 15, color: '#fde68a' });
+  });
+  VL.label(ctx, `S₁S₂ = ${fmt(S.d, 1)} cm`, 480, 352, { size: 13 });
+  // đánh dấu cực đại trên S1S2 khi kết thúc màn đếm
+  if (S.phase === 'end' && (S.type === 'demMax' || S.type === 'demMin' || S.type === 'khoangCach')) {
+    const mx = S.type !== 'demMin';
+    for (let k = -kMax - 1; k <= kMax + 1; k++) {
+      const dl = mx ? k * lam : (k + .5) * lam; if (Math.abs(dl) >= S.d) continue;
+      const x = 480 - dl / 2 * sc;   // d2 − d1 = dl ⇒ x = −dl/2
+      ctx.fillStyle = mx ? '#ff4d4d' : '#ffffff'; ctx.beginPath(); ctx.arc(x, 300, 5, 0, 7); ctx.fill();
+    }
+  }
+  // điểm M
+  if (S.mx != null) {
+    const px = 480 + S.mx * sc, py = 300 + S.my * sc;
+    ctx.strokeStyle = 'rgba(253,230,138,.7)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(s1x, 300); ctx.lineTo(px, py); ctx.lineTo(s2x, 300); ctx.stroke(); ctx.setLineDash([]);
+    VL.label(ctx, `d₁ = ${fmt(S.d1, 2)}`, (s1x + px) / 2 - 30, (300 + py) / 2, { size: 12 });
+    VL.label(ctx, `d₂ = ${fmt(S.d2, 2)}`, (s2x + px) / 2 + 30, (300 + py) / 2, { size: 12 });
+    ctx.fillStyle = '#f472b6'; ctx.beginPath(); ctx.arc(px, py, 7, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    VL.label(ctx, 'M', px, py - 20, { size: 15, color: '#f9a8d4' });
+  }
+  // các lần chạm
+  S.clicks.forEach(c => { ctx.strokeStyle = c.ok ? '#4ade80' : '#ff6b6b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(c.x, c.y, 9, 0, 7); ctx.stroke(); });
+  if (S.hover && S.phase === 'ask') {
+    const w = toWorld(S.hover), { d1, d2 } = dists(w);
+    VL.label(ctx, `d₁ = ${fmt(d1, 2)} · d₂ = ${fmt(d2, 2)} · |d₂ − d₁| = ${fmt(Math.abs(d2 - d1), 2)} cm`, S.hover.x, S.hover.y - 24, { size: 13 });
+  }
+  if (S.phase === 'end' || /demMax|cham|chinhF/.test(S.type)) VL.label(ctx, `λ = ${fmt(lam, 2)} cm${S.type === 'chinhF' ? ` · f = ${fmt(S.fNow, 2)} Hz` : ''}`, 110, 28, { size: 14, color: '#bae6fd' });
+  if (paused) VL.label(ctx, 'Đang dừng hình', W - 90, 28, { size: 13, color: '#fde68a' });
+}
+VL.loop(dt => { ctx.clearRect(0, 0, W, H); draw(dt); });
+startGame();
+</script>
+</body>
+</html>

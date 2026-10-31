@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phòng thí nghiệm Young</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  :root { --accent: #c084fc; --accent-ink: #240640; }
+  .sw { display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: -4px; margin-right: 8px; box-shadow: 0 0 10px currentColor; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" href="index.html" aria-label="Về trang chủ đề">←</a>
+    <div class="brand"><small>Vật lí 11 · Giao thoa ánh sáng</small><h1>Phòng thí nghiệm Young</h1></div>
+    <div class="hud">
+      <div class="stat"><span>Màn</span><b id="hudLv">1/8</b></div>
+      <div class="stat"><span>Điểm</span><b id="hudScore">0</b></div>
+      <button class="icon-btn" id="muteBtn" type="button"></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage"><canvas id="cv" width="960" height="540" aria-label="Sơ đồ thí nghiệm Young và màn quan sát phóng to"></canvas></section>
+    <aside class="side">
+      <div class="card mission"><h3 id="kind"></h3><div class="goal" id="goal"></div><div class="givens" id="givens"></div></div>
+      <div class="card">
+        <div id="answer"></div>
+        <div class="row" style="justify-content:space-between;margin-top:8px" id="leftRow"><span class="muted">Lượt còn lại</span><b id="left">3</b></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary big" id="goBtn" type="button">Kiểm tra</button></div>
+        <details class="hint" style="margin-top:10px"><summary>Gợi ý</summary><p class="muted" id="hint"></p></details>
+      </div>
+      <div class="card"><p class="feedback" id="fb" aria-live="polite"></p><div class="muted" id="explain"></div></div>
+    </aside>
+  </main>
+
+  <div class="below">
+    <div class="card">
+      <h2>Kiến thức: thí nghiệm Young</h2>
+      <div class="formula">Khoảng vân: i = λD / a</div>
+      <div class="formula">Vân sáng: x = k·i &nbsp;·&nbsp; Vân tối: x = (k + ½)·i</div>
+      <p class="muted">a: khoảng cách giữa hai khe F₁, F₂; D: khoảng cách từ hai khe đến màn; λ: bước sóng ánh sáng. Vân trung tâm (k = 0) là vân sáng. Vân tối thứ n (tính từ vân trung tâm) cách vân trung tâm (n − ½)i. Hiện tượng giao thoa chứng tỏ ánh sáng có tính chất sóng.</p>
+      <p class="muted">Đổi đơn vị gọn: λ (µm) · D (m) / a (mm) = i (mm). 1 µm = 1000 nm.</p>
+    </div>
+    <div class="card">
+      <h2>Cách chơi</h2>
+      <p class="muted">Đèn trong phòng thí nghiệm đang tắt: em phải tính trước, nhập kết quả, rồi bật đèn để kiểm chứng trên màn. Riêng màn đo bước sóng, đèn bật sẵn và em dùng thước trên màn để đo. Mỗi màn 3 lượt: +30, +20, +10 (câu chọn đáp án chỉ có 1 lượt).</p>
+    </div>
+  </div>
+</div>
+
+<script src="chung.js"></script>
+<script>
+'use strict';
+const { $, $$, fmt, parse, rand, randInt, pick, clamp, shuffle, sfx } = VL;
+const W = 960, H = 540;
+const cv = $('#cv');
+const ctx = VL.stage(cv, W, H);
+VL.muteButton($('#muteBtn'));
+
+// màu theo bước sóng (µm)
+function rgb(l) {
+  const n = l * 1000; let r = 0, g = 0, b = 0;
+  if (n < 440) { r = -(n - 440) / 60; b = 1; } else if (n < 490) { g = (n - 440) / 50; b = 1; }
+  else if (n < 510) { g = 1; b = -(n - 510) / 20; } else if (n < 580) { r = (n - 510) / 70; g = 1; }
+  else if (n < 645) { r = 1; g = -(n - 645) / 65; } else r = 1;
+  const f = n < 420 ? .3 + .7 * (n - 380) / 40 : n > 700 ? .3 + .7 * (780 - n) / 80 : 1;
+  return [r * f * 255, g * f * 255, b * f * 255];
+}
+const css = l => `rgb(${rgb(l).map(Math.round).join(',')})`;
+const colorName = l => l < .45 ? 'tím' : l < .49 ? 'lam' : l < .57 ? 'lục' : l < .59 ? 'vàng' : l < .64 ? 'cam' : 'đỏ';
+
+const AS = [0.5, 0.8, 1, 1.2, 1.5, 2], DS = [1, 1.2, 1.5, 2, 2.5], LS = [0.4, 0.45, 0.48, 0.5, 0.55, 0.6, 0.64, 0.65, 0.7, 0.72, 0.75];
+function setup() {
+  for (;;) { const a = pick(AS), D = pick(DS), lam = pick(LS), i = lam * D / a; if (i >= .5 && i <= 2.4) return { a, D, lam, i }; }
+}
+const PAIRS = [[0.4, 0.6], [0.5, 0.75], [0.45, 0.6], [0.48, 0.64], [0.42, 0.56], [0.5, 0.7], [0.4, 0.5], [0.6, 0.75]];
+const gcd = (x, y) => y ? gcd(y, x % y) : x;
+const ORDER = ['sang', 'toi', 'loai', 'doLam', 'dem', 'chinhD', 'mau', 'trung'];
+function gen(type) {
+  const L = { type, ...setup() };
+  if (type === 'sang') L.k = randInt(2, 5);
+  if (type === 'toi') L.k = randInt(2, 5);
+  if (type === 'loai') { L.isS = Math.random() < .5; L.n = randInt(2, 6); L.xM = Math.round((L.isS ? L.n : L.n - .5) * L.i * 1000) / 1000; }
+  if (type === 'doLam') { L.n = randInt(5, 8); }
+  if (type === 'dem') { for (;;) { const r = rand(3.2, 7.8); if (Math.abs(r - Math.round(r)) > .15) { L.Lw = Math.round(2 * r * L.i * 10) / 10; if (Math.abs(L.Lw / (2 * L.i) - Math.round(L.Lw / (2 * L.i))) > .1) break; } } }
+  if (type === 'chinhD') { L.k = randInt(2, 4); L.Dtrue = pick([1.2, 1.5, 1.6, 1.8, 2, 2.4]); L.x0 = Math.round(L.k * L.lam * L.Dtrue / L.a * 100) / 100; L.D = 1; L.i = L.lam * L.D / L.a; }
+  if (type === 'mau') {
+    for (;;) { const opts = shuffle([0.42, 0.48, 0.54, 0.6, 0.66, 0.72]).slice(0, 4); L.opts = opts; L.lamR = pick(opts); L.k = randInt(2, 4); L.x0 = Math.round(L.k * L.lamR * L.D / L.a * 1000) / 1000;
+      if (opts.filter(l => Math.abs(L.x0 / (l * L.D / L.a) - Math.round(L.x0 / (l * L.D / L.a))) < .04).length === 1) break; }
+    L.lam = L.lamR; L.i = L.lam * L.D / L.a;
+  }
+  if (type === 'trung') {
+    const [l1, l2] = pick(PAIRS); L.l1 = l1; L.l2 = l2;
+    const p = Math.round(l2 * 100), q = Math.round(l1 * 100), g = gcd(p, q);
+    L.k1 = p / g; L.k2 = q / g; L.i1 = l1 * L.D / L.a; L.i2 = l2 * L.D / L.a; L.xT = L.k1 * L.i1; L.lam = l1; L.i = L.i1;
+    if (L.xT > 12) return gen(type);
+  }
+  return L;
+}
+
+let levels = [], lv = 0, score = 0, S = null;
+function startGame() { levels = ORDER.map(gen); lv = 0; score = 0; loadLevel(); }
+function loadLevel() {
+  S = { ...levels[lv], tries: 0, phase: 'ask', light: false, marks: [] };
+  const giv = [`<span>a = ${fmt(S.a, 2)} mm</span>`, `<span>D = ${fmt(S.D, 2)} m</span>`, `<span>λ = ${fmt(S.lam, 3)} µm</span>`];
+  const num = (label) => `<label for="a1" style="font-weight:600">${label}</label><input class="num" id="a1" inputmode="decimal" autocomplete="off" style="margin-top:6px">`;
+  const ans = $('#answer'); $('#leftRow').hidden = false;
+  const names = { sang: 'Vị trí vân sáng', toi: 'Vị trí vân tối', loai: 'Nhận dạng vân', doLam: 'Đo bước sóng', dem: 'Đếm vân sáng', chinhD: 'Dịch chuyển màn', mau: 'Chọn màu laser', trung: 'Vân trùng' };
+  $('#kind').textContent = `Màn ${lv + 1} · ${names[S.type]}`;
+  let goal = '', hint = '';
+  S.range = 6 * S.i;
+  switch (S.type) {
+    case 'sang': goal = `Vân sáng bậc ${S.k} cách vân sáng trung tâm bao nhiêu milimét?`; ans.innerHTML = num('Khoảng cách x (mm)'); hint = 'Tính khoảng vân i = λD/a rồi x = k·i.'; S.target = S.k * S.i; S.range = Math.max(S.target * 1.35, 4 * S.i); break;
+    case 'toi': goal = `Vân tối thứ ${S.k} (tính từ vân sáng trung tâm) cách vân trung tâm bao nhiêu milimét?`; ans.innerHTML = num('Khoảng cách x (mm)'); hint = 'Vân tối thứ n nằm giữa vân sáng bậc n − 1 và bậc n: x = (n − ½)·i.'; S.target = (S.k - .5) * S.i; S.range = Math.max(S.target * 1.35, 4 * S.i); break;
+    case 'loai': {
+      goal = `Điểm M trên màn cách vân sáng trung tâm <b>${fmt(S.xM, 3)} mm</b>. Tại M là vân gì?`;
+      S.right = S.isS ? `Vân sáng bậc ${S.n}` : `Vân tối thứ ${S.n}`;
+      const pool = new Set([S.right]); while (pool.size < 4) pool.add(pick([`Vân sáng bậc ${randInt(1, 7)}`, `Vân tối thứ ${randInt(1, 7)}`]));
+      S.opts = shuffle([...pool]);
+      ans.innerHTML = '<div class="choices">' + S.opts.map((o, i) => `<button class="choice" type="button" data-i="${i}"><b>${'ABCD'[i]}.</b>${o}</button>`).join('') + '</div>';
+      ans.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerMC(+b.dataset.i)));
+      $('#leftRow').hidden = true; hint = 'Lập tỉ số x<sub>M</sub>/i: nếu là số nguyên k ⇒ vân sáng bậc k; nếu có dạng n − ½ ⇒ vân tối thứ n.';
+      S.target = S.xM; S.range = Math.max(S.xM * 1.35, 4 * S.i); break;
+    }
+    case 'doLam': goal = `Đèn đã bật. Hãy dùng thước trên màn để đo khoảng cách giữa <b>${S.n} vân sáng liên tiếp</b>, rồi tính bước sóng λ của ánh sáng.`; giv.pop();
+      ans.innerHTML = num('Bước sóng λ (nm)'); hint = `${S.n} vân sáng liên tiếp có ${S.n - 1} khoảng vân ⇒ i = L/${S.n - 1}. Sau đó λ = i·a/D (nhớ đổi đơn vị).`; S.light = true; S.range = 6 * S.i; break;
+    case 'dem': goal = `Bề rộng vùng giao thoa trên màn là <b>L = ${fmt(S.Lw, 1)} mm</b>, đối xứng qua vân trung tâm. Có bao nhiêu vân sáng trong vùng giao thoa?`; ans.innerHTML = num('Số vân sáng'); hint = 'Số vân sáng N = 2·[L/(2i)] + 1, với [ ] là phần nguyên.'; S.range = S.Lw / 2 * 1.15; break;
+    case 'chinhD': goal = `Máy dò ánh sáng đặt cố định tại điểm cách vân trung tâm <b>${fmt(S.x0, 2)} mm</b>. Dịch màn (thay đổi D) để tại máy dò là <b>vân sáng bậc ${S.k}</b>, rồi bật đèn kiểm tra.`;
+      giv[1] = '<span>D: em tự chọn</span>';
+      ans.innerHTML = `<div class="field"><label for="dd">Khoảng cách từ hai khe đến màn D</label><output id="ddo"></output><input type="range" id="dd" min="0.5" max="3" step="0.01" value="1"></div>
+        <div class="row"><label class="muted" for="ddn" style="flex:1">Hoặc nhập chính xác (m):</label><input class="num" id="ddn" style="width:110px" inputmode="decimal"></div>`;
+      { const setD = d => { S.D = d; S.i = S.lam * d / S.a; $('#ddo').textContent = fmt(d, 3) + ' m'; S.light = false; };
+        $('#dd').addEventListener('input', e => { setD(+e.target.value); $('#ddn').value = ''; });
+        $('#ddn').addEventListener('input', e => { const d = parse(e.target.value); if (isFinite(d) && d > 0.1 && d < 10) { setD(d); $('#dd').value = clamp(d, .5, 3); } }); setD(1); }
+      hint = `Cần x₀ = k·λD/a ⇒ D = x₀·a/(kλ). Chú ý đơn vị: x₀ (mm), a (mm), λ (µm) cho D (m).`; S.range = S.x0 * 1.6; break;
+    case 'mau': goal = `Tại điểm N cách vân trung tâm <b>${fmt(S.x0, 3)} mm</b> cần có <b>vân sáng bậc ${S.k}</b>. Chọn laser phù hợp.`; giv.pop();
+      ans.innerHTML = '<div class="choices">' + S.opts.map((l, i) => `<button class="choice" type="button" data-i="${i}"><span class="sw" style="background:${css(l)};color:${css(l)}"></span>Laser ${colorName(l)} — λ = ${fmt(l * 1000, 0)} nm</button>`).join('') + '</div>';
+      ans.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerMau(+b.dataset.i)));
+      $('#leftRow').hidden = true; hint = 'λ = x·a/(kD). Tính ra rồi so với các laser.'; S.range = S.x0 * 1.5; break;
+    case 'trung': goal = `Chiếu đồng thời hai bức xạ λ₁ = ${fmt(S.l1 * 1000, 0)} nm và λ₂ = ${fmt(S.l2 * 1000, 0)} nm. Vân sáng cùng màu với vân trung tâm và <b>gần vân trung tâm nhất</b> cách nó bao nhiêu mm?`; giv.pop();
+      ans.innerHTML = num('Khoảng cách x (mm)'); hint = 'Vân trùng: k₁λ₁ = k₂λ₂ ⇒ k₁/k₂ = λ₂/λ₁ (rút gọn tối giản). Vân trùng gần nhất ứng với k₁ nhỏ nhất ⇒ x = k₁·i₁.'; S.target = S.xT; S.range = S.xT * 1.35; break;
+  }
+  $('#goal').innerHTML = goal; $('#givens').innerHTML = giv.join(''); $('#hint').innerHTML = hint;
+  $('#left').textContent = 3;
+  const b = $('#goBtn'); b.hidden = S.type === 'loai' || S.type === 'mau'; b.disabled = false; b.textContent = S.type === 'chinhD' ? 'Bật đèn kiểm tra 💡' : 'Kiểm tra';
+  $('#fb').textContent = ''; $('#fb').className = 'feedback'; $('#explain').textContent = '';
+  $('#hudLv').textContent = `${lv + 1}/${levels.length}`; $('#hudScore').textContent = score;
+  const inp = $('#a1'); if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+}
+const fb = (m, k) => { $('#fb').textContent = m; $('#fb').className = 'feedback ' + (k || ''); };
+function solution() {
+  const f = (x, d = 3) => fmt(x, d), i = S.lam * (S.type === 'chinhD' ? S.Dtrue : S.D) / S.a;
+  const iTxt = `i = λD/a = ${f(S.lam)}·${f(S.D, 2)}/${f(S.a, 2)} = ${f(i)} mm`;
+  switch (S.type) {
+    case 'sang': return `${iTxt}; x = ${S.k}i = <b>${f(S.k * i)} mm</b>.`;
+    case 'toi': return `${iTxt}; x = (${S.k} − ½)i = <b>${f((S.k - .5) * i)} mm</b>.`;
+    case 'loai': return `${iTxt}; x<sub>M</sub>/i = ${f(S.xM)}/${f(i)} = ${f(S.xM / i, 2)} ⇒ <b>${S.right}</b>.`;
+    case 'doLam': return `L = ${S.n - 1}i = ${f((S.n - 1) * i)} mm ⇒ i = ${f(i)} mm; λ = ia/D = ${f(i)}·${f(S.a, 2)}/${f(S.D, 2)} = ${f(S.lam)} µm = <b>${fmt(S.lam * 1000, 0)} nm</b>.`;
+    case 'dem': return `${iTxt}; L/(2i) = ${f(S.Lw / (2 * i), 2)} ⇒ N = 2·${Math.floor(S.Lw / (2 * i))} + 1 = <b>${2 * Math.floor(S.Lw / (2 * i)) + 1} vân sáng</b>.`;
+    case 'chinhD': return `D = x₀a/(kλ) = ${f(S.x0, 2)}·${f(S.a, 2)}/(${S.k}·${f(S.lam)}) = <b>${f(S.Dtrue, 2)} m</b>.`;
+    case 'mau': return `λ = x·a/(kD) = ${f(S.x0)}·${f(S.a, 2)}/(${S.k}·${f(S.D, 2)}) = ${f(S.lamR)} µm ⇒ <b>laser ${colorName(S.lamR)} ${fmt(S.lamR * 1000, 0)} nm</b>.`;
+    case 'trung': return `k₁/k₂ = λ₂/λ₁ = ${fmt(S.l2 * 1000, 0)}/${fmt(S.l1 * 1000, 0)} = ${S.k1}/${S.k2}; i₁ = ${f(S.i1)} mm ⇒ x = ${S.k1}·i₁ = <b>${f(S.xT)} mm</b> (trùng vân sáng bậc ${S.k1} của λ₁ và bậc ${S.k2} của λ₂).`;
+  }
+}
+function finishLevel(ok, msg, pts) {
+  if (ok) { score += pts; sfx.ok(); fb(`${msg} +${pts}`, 'ok'); S.phase = 'end'; }
+  else { sfx.bad(); fb(msg, 'bad'); }
+  const left = 3 - S.tries; $('#left').textContent = Math.max(0, left);
+  if (!ok && left <= 0) S.phase = 'end';
+  if (S.phase === 'end') {
+    if (S.type === 'chinhD') { S.D = S.Dtrue; S.i = S.lam * S.D / S.a; }
+    S.light = true;
+    $('#explain').innerHTML = 'Lời giải: ' + solution();
+    const b = $('#goBtn'); b.hidden = false; b.disabled = false; b.textContent = lv + 1 >= levels.length ? 'Xem kết quả' : 'Màn tiếp →';
+  } else $('#explain').textContent = `Còn ${left} lượt.`;
+  $('#hudScore').textContent = score;
+}
+function answerMC(i) {
+  if (S.phase !== 'ask') return; S.tries = 3;
+  const r = S.opts.indexOf(S.right);
+  $$('#answer .choice').forEach((b, j) => { b.disabled = true; if (j === r) b.classList.add('ok'); else if (j === i) b.classList.add('no'); });
+  S.marks.push({ x: S.xM, ok: i === r });
+  finishLevel(i === r, i === r ? 'Chính xác!' : 'Chưa đúng.', 30);
+}
+function answerMau(i) {
+  if (S.phase !== 'ask') return; S.tries = 3;
+  const r = S.opts.indexOf(S.lamR);
+  $$('#answer .choice').forEach((b, j) => { b.disabled = true; if (j === r) b.classList.add('ok'); else if (j === i) b.classList.add('no'); });
+  S.lam = S.opts[i]; S.i = S.lam * S.D / S.a; S.light = true;
+  const kk = S.x0 / S.i;
+  S.marks.push({ x: S.x0, ok: i === r });
+  finishLevel(i === r, i === r ? `Đúng! N là vân sáng bậc ${S.k}.` : `Với laser này, x/i = ${fmt(kk, 2)} — N không phải vân sáng bậc ${S.k}.`, 30);
+  if (i !== r) setTimeout(() => { S.lam = S.lamR; S.i = S.lam * S.D / S.a; }, 2500);
+}
+function check() {
+  if (S.phase === 'end') { lv++; if (lv >= levels.length) return finishGame(); loadLevel(); return; }
+  if (S.type === 'chinhD') {
+    S.tries++; S.light = true;
+    const r = S.x0 / S.i, ok = Math.abs(r - S.k) <= 0.06;
+    S.marks.push({ x: S.x0, ok });
+    return finishLevel(ok, ok ? `Máy dò sáng rực! Tại đó x/i = ${fmt(r, 2)}.` : `Tại máy dò x/i = ${fmt(r, 2)} (cần ${S.k}). Màn cần ${r > S.k ? 'lùi ra xa hơn' : 'dịch lại gần hơn'}.`, [30, 20, 10][S.tries - 1]);
+  }
+  const a = parse($('#a1') && $('#a1').value);
+  if (!isFinite(a)) { VL.toast('Hãy nhập một số.', 'bad'); return; }
+  S.tries++;
+  let ok, msg;
+  if (S.type === 'dem') { const N = 2 * Math.floor(S.Lw / (2 * S.i)) + 1; ok = a === N; msg = ok ? 'Chính xác!' : a > N ? 'Nhiều quá.' : 'Còn thiếu.'; }
+  else if (S.type === 'doLam') { const n = S.lam * 1000; ok = Math.abs(a - n) <= n * .04; msg = ok ? `Chính xác! λ ≈ ${fmt(n, 0)} nm.` : (a < 10 ? 'Đơn vị là nanômét (nm) nhé.' : a > n ? 'Lớn hơn đáp án.' : 'Nhỏ hơn đáp án.'); }
+  else { ok = Math.abs(a - S.target) <= Math.max(.02 * S.target, .02); S.marks.push({ x: a, ok }); msg = ok ? 'Chính xác!' : `Tại x = ${fmt(a, 3)} mm không phải vị trí cần tìm.`; }
+  finishLevel(ok, msg, [30, 20, 10][S.tries - 1]);
+}
+$('#goBtn').addEventListener('click', check);
+function finishGame() {
+  const max = levels.length * 30, st = score >= max * .8 ? 3 : score >= max * .5 ? 2 : score > 0 ? 1 : 0;
+  const old = VL.best('young', score); sfx.win();
+  VL.modal({ title: 'Nhà quang học tài ba!', stars: st, html: `<p>Điểm: <b>${score}/${max}</b>${old ? ` · Kỉ lục cũ: ${old}` : ''}</p>`,
+    buttons: [{ label: 'Về trang chủ đề', onClick: () => { location.href = 'index.html'; } }, { label: 'Chơi lại', primary: true, onClick: startGame }] });
+}
+
+// ---------- vẽ ----------
+function niceStep(range) { const raw = range / 12; const p = Math.pow(10, Math.floor(Math.log10(raw))); for (const m of [1, 2, 5, 10]) if (m * p >= raw) return m * p; return 10 * p; }
+function draw(t) {
+  ctx.fillStyle = '#07090f'; ctx.fillRect(0, 0, W, H);
+  if (!S) return;
+  const two = S.type === 'trung';
+  const lamList = two ? [S.l1, S.l2] : [S.lam];
+  const beam = two ? 'rgb(255,240,200)' : css(S.lam);
+  // ---- sơ đồ ----
+  const sy = 120, slitX = 300, scrX = 860;
+  ctx.fillStyle = '#1f2937'; VL.rrect(ctx, 40, sy - 26, 80, 52, 10); ctx.fill();
+  VL.text(ctx, 'Laser', 80, sy + 44, { size: 13, color: '#9bb0c9', align: 'center' });
+  ctx.fillStyle = S.light ? beam : '#374151'; ctx.beginPath(); ctx.arc(116, sy, 6, 0, 7); ctx.fill();
+  if (S.light) { ctx.strokeStyle = beam; ctx.globalAlpha = .7; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(122, sy); ctx.lineTo(slitX, sy); ctx.stroke(); ctx.globalAlpha = 1; }
+  // tấm chắn có 2 khe
+  const gap = 34;
+  ctx.fillStyle = '#9ca3af'; ctx.fillRect(slitX - 4, 20, 8, sy - gap / 2 - 4 - 20); ctx.fillRect(slitX - 4, sy - gap / 2 + 4, 8, gap - 8); ctx.fillRect(slitX - 4, sy + gap / 2 + 4, 8, 220 - sy - gap / 2 - 4);
+  VL.text(ctx, 'F₁', slitX - 22, sy - gap / 2 + 4, { size: 12, color: '#cbd5e1' }); VL.text(ctx, 'F₂', slitX - 22, sy + gap / 2 + 4, { size: 12, color: '#cbd5e1' });
+  ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(slitX + 14, sy - gap / 2); ctx.lineTo(slitX + 14, sy + gap / 2); ctx.stroke();
+  VL.text(ctx, `a = ${fmt(S.a, 2)} mm`, slitX + 20, sy + 4, { size: 13, color: '#fde68a' });
+  // tia
+  if (S.light) {
+    ctx.globalAlpha = .18; ctx.fillStyle = beam;
+    ctx.beginPath(); ctx.moveTo(slitX + 4, sy - gap / 2); ctx.lineTo(scrX, 22); ctx.lineTo(scrX, 218); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(slitX + 4, sy + gap / 2); ctx.lineTo(scrX, 22); ctx.lineTo(scrX, 218); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // màn (nhìn nghiêng) với vân nhỏ
+  for (let y = 22; y < 218; y += 2) {
+    const x = (y - sy) / 96 * S.range;
+    let c = [0, 0, 0];
+    if (S.light) lamList.forEach(l => { const ii = l * S.D / S.a, I = Math.cos(Math.PI * x / ii) ** 2; const cc = rgb(l); c = c.map((v, j) => v + cc[j] * I); });
+    ctx.fillStyle = S.light ? `rgb(${c.map(v => Math.min(255, v)).join(',')})` : '#1f2937'; ctx.fillRect(scrX, y, 12, 2);
+  }
+  VL.text(ctx, 'Màn', scrX + 6, 16, { size: 13, color: '#9bb0c9', align: 'center' });
+  ctx.strokeStyle = '#fde68a'; VL.arrow(ctx, slitX, 236, scrX, 236, '#fde68a', 1.5); VL.arrow(ctx, scrX, 236, slitX, 236, '#fde68a', 1.5);
+  VL.label(ctx, S.type === 'chinhD' ? `D = ${fmt(S.D, 3)} m` : `D = ${fmt(S.D, 2)} m`, (slitX + scrX) / 2, 236, { size: 13, color: '#fde68a' });
+  // ---- màn phóng to ----
+  const x0 = 40, x1 = 920, cx = (x0 + x1) / 2, top = 300, hh = 120, R = S.range;
+  const X = mm => cx + mm / R * (x1 - x0) / 2;
+  VL.text(ctx, 'Màn quan sát (phóng to)', x0, 286, { size: 13, color: '#9bb0c9' });
+  for (let px = x0; px < x1; px++) {
+    const mm = (px - cx) / ((x1 - x0) / 2) * R;
+    let c = [0, 0, 0];
+    if (S.light) lamList.forEach(l => { const ii = l * S.D / S.a, I = Math.cos(Math.PI * mm / ii) ** 2; const cc = rgb(l); c = c.map((v, j) => v + cc[j] * I); });
+    ctx.fillStyle = S.light ? `rgb(${c.map(v => Math.min(255, Math.round(v))).join(',')})` : '#151b26';
+    ctx.fillRect(px, top, 1, hh);
+  }
+  if (!S.light) VL.text(ctx, 'Đèn đang tắt — tính xong rồi kiểm tra để bật đèn', cx, top + hh / 2 + 6, { size: 16, color: '#64748b', align: 'center' });
+  if (S.type === 'dem') { ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(X(-S.Lw / 2), top - 6, X(S.Lw / 2) - X(-S.Lw / 2), hh + 12); ctx.setLineDash([]); VL.label(ctx, `L = ${fmt(S.Lw, 1)} mm`, cx, top - 16, { size: 12, color: '#fde68a' }); }
+  // thước
+  const st = niceStep(R * 2), minor = st / (st >= 1 && String(st)[0] === '2' ? 4 : 5);
+  ctx.fillStyle = '#e9d38f'; ctx.fillRect(x0, top + hh + 6, x1 - x0, 44);
+  ctx.strokeStyle = '#2b2108'; ctx.fillStyle = '#2b2108';
+  for (let v = -Math.floor(R / minor) * minor; v <= R + 1e-9; v += minor) {
+    const px = X(v), major = Math.abs(v / st - Math.round(v / st)) < 1e-6;
+    ctx.lineWidth = major ? 1.6 : 1; ctx.beginPath(); ctx.moveTo(px, top + hh + 6); ctx.lineTo(px, top + hh + 6 + (major ? 16 : 8)); ctx.stroke();
+    if (major) VL.text(ctx, fmt(Math.round(v * 1000) / 1000, 2), px, top + hh + 40, { size: 12, color: '#2b2108', align: 'center' });
+  }
+  VL.text(ctx, 'mm', x1 - 4, top + hh + 22, { size: 11, color: '#2b2108', align: 'right' });
+  ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(cx, top - 2); ctx.lineTo(cx - 6, top - 12); ctx.lineTo(cx + 6, top - 12); ctx.fill();
+  VL.text(ctx, 'O', cx + 10, top - 4, { size: 12, color: '#fca5a5' });
+  // máy dò / điểm cần xét
+  const det = S.type === 'chinhD' || S.type === 'mau' ? S.x0 : S.type === 'loai' ? S.xM : null;
+  if (det != null) { const px = X(det); ctx.fillStyle = '#22d3ee'; ctx.fillRect(px - 2, top - 10, 4, hh + 20); VL.label(ctx, S.type === 'chinhD' ? 'máy dò' : S.type === 'mau' ? 'N' : 'M', px, top + hh + 70, { size: 13, color: '#67e8f9' }); }
+  S.marks.forEach(m => { if (Math.abs(m.x) > R) return; const px = X(m.x); ctx.strokeStyle = m.ok ? '#4ade80' : '#ff6b6b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px, top - 14); ctx.lineTo(px, top + hh + 4); ctx.stroke(); });
+}
+VL.loop((dt, t) => { ctx.clearRect(0, 0, W, H); draw(t); });
+startGame();
+</script>
+</body>
+</html>

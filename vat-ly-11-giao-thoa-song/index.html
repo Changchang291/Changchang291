@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trò chơi Giao thoa sóng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="chung.css">
+<style>
+  .hero { padding: 18px 0 4px; }
+  .hero small { color: var(--accent); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; }
+  .hero h1 { font-family: var(--font-display); font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.05; margin: 4px 0 8px; }
+  .hero p { color: var(--muted); max-width: 70ch; margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .ch { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; position: relative; overflow: hidden; transition: transform .15s, border-color .15s; }
+  .ch:hover { transform: translateY(-2px); border-color: var(--c); }
+  .ch::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--c); }
+  .ch .no { font-family: var(--font-display); color: var(--c); font-weight: 800; font-size: .95rem; letter-spacing: .04em; }
+  .ch h2 { margin: 0; font-family: var(--font-display); font-size: 1.45rem; line-height: 1.1; }
+  .ch .topic { color: var(--muted); font-size: .92rem; }
+  .ch ul { margin: 0; padding-left: 18px; font-size: .92rem; }
+  .ch .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: .85rem; color: var(--muted); }
+  .ch .go { color: var(--c); font-weight: 700; }
+  .guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <small>Vật lí 11 · Kết nối tri thức · Bài Giao thoa sóng</small>
+    <h1>Bộ trò chơi giao thoa sóng</h1>
+    <p>Ba trò chơi cho chủ đề giao thoa: mô phỏng giao thoa sóng nước, thí nghiệm Young về giao thoa ánh sáng, và một cuộc đua tổng hợp theo đội cho tiết ôn tập. Mở trực tiếp bằng trình duyệt, chạy được trên máy chiếu, máy tính và điện thoại.</p>
+  </header>
+  <section class="grid" id="grid"></section>
+  <section class="guide">
+    <div class="card"><h2>Gợi ý tiến trình dạy học</h2><p class="muted"><b>Tiết 1:</b> dùng <i>Mặt hồ giao thoa</i> khi học giao thoa sóng nước. <b>Tiết 2:</b> dùng <i>Phòng thí nghiệm Young</i> khi học giao thoa ánh sáng. <b>Tiết luyện tập/ôn tập:</b> tổ chức <i>Đường đua giao thoa</i> theo đội.</p></div>
+    <div class="card"><h2>Cho học sinh tự luyện</h2><p class="muted">Số liệu sinh ngẫu nhiên nên mỗi lần chơi là đề mới. Mỗi màn có gợi ý công thức và lời giải chi tiết. Nhập số thập phân bằng dấu phẩy hoặc dấu chấm đều được.</p></div>
+  </section>
+</div>
+<script src="chung.js"></script>
+<script>
+const G = [
+  { f: 'giao-thoa-song-nuoc.html', no: 'Trò 1 · Giao thoa sóng nước', t: 'Mặt hồ giao thoa', c: '#38bdf8', k: 'nuoc',
+    items: ['Mặt nước gợn sóng mô phỏng theo thời gian thực', 'Đếm cực đại, cực tiểu trên S₁S₂', 'Chạm đúng vân cực đại/cực tiểu bậc k', 'Tính λ, v; chỉnh tần số để điểm M rơi vào vân'] },
+  { f: 'giao-thoa-anh-sang.html', no: 'Trò 2 · Giao thoa ánh sáng', t: 'Phòng thí nghiệm Young', c: '#c084fc', k: 'young',
+    items: ['Khoảng vân i = λD/a, vị trí vân sáng/tối', 'Đo bước sóng bằng thước trên màn', 'Dịch màn, chọn màu laser để được vân sáng bậc k', 'Vân trùng của hai bức xạ'] },
+  { f: 'tong-hop-giao-thoa.html', no: 'Trò 3 · Tổng hợp', t: 'Đường đua giao thoa', c: '#facc15', k: null,
+    items: ['Thi đấu 1–6 đội, đồng hồ đếm ngược', 'Câu lí thuyết +10, câu tính toán +20', 'Đường đua sóng động theo điểm số', 'Bục vinh danh cuối trận'] },
+];
+document.getElementById('grid').innerHTML = G.map(g => {
+  const best = g.k ? VL.store.get('best:' + g.k, 0) : 0;
+  return `<a class="ch" href="${g.f}" style="--c:${g.c}"><span class="no">${g.no}</span><h2>${g.t}</h2>
+    <ul>${g.items.map(i => `<li>${i}</li>`).join('')}</ul>
+    <span class="foot"><span>${g.k ? (best ? 'Kỉ lục: ' + best + ' điểm' : 'Chưa chơi') : 'Dành cho cả lớp'}</span><span class="go">Chơi →</span></span></a>`;
+}).join('');
+</script>
+</body>
+</html>
