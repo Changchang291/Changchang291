@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Team Vật lí Kỳ Anh</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: "bể sóng" — thanh tiêu đề dính trên cùng với các tab bài học; mỗi tab là một bàn thí nghiệm: hình mô phỏng lớn bên trái, bảng số đo bên phải, xếp thành một cột trên điện thoại. */
+:root {
+  --bg: #edf3f4;
+  --surface: #ffffff;
+  --surface-2: #e2ecee;
+  --ink: #0f2a33;
+  --muted: #52707a;
+  --line: #c9d9dc;
+  --accent: #0b7a85;      /* cực đại / gợn lồi */
+  --accent-ink: #ffffff;
+  --minima: #c9472c;      /* cực tiểu / gợn lõm đứng yên */
+  --ok: #1d8a4e;
+  --ok-bg: #e2f4ea;
+  --bad: #c0392b;
+  --bad-bg: #fbe7e4;
+  --font-display: "Bricolage Grotesque", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1a1f; --surface: #10252c; --surface-2: #163139; --ink: #e2eef0; --muted: #8ca8b0;
+    --line: #254650; --accent: #3cc3cf; --accent-ink: #04262b; --minima: #ff8566;
+    --ok: #4fd18a; --ok-bg: #12352a; --bad: #ff7a6b; --bad-bg: #3a1c1a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1a1f; --surface: #10252c; --surface-2: #163139; --ink: #e2eef0; --muted: #8ca8b0;
+  --line: #254650; --accent: #3cc3cf; --accent-ink: #04262b; --minima: #ff8566;
+  --ok: #4fd18a; --ok-bg: #12352a; --bad: #ff7a6b; --bad-bg: #3a1c1a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.45rem, 3.2vw, 1.9rem); font-weight: 800; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; font-weight: 600; }
+p { margin: 0; }
+var { font-style: italic; font-family: "Be Vietnam Pro", serif; }
+.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* Header */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 12px; padding-block: 12px 8px; }
+.brand svg { flex: none; }
+.brand-name { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; letter-spacing: -0.01em; line-height: 1.1; }
+.brand-sub { font-size: 0.8rem; color: var(--muted); }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 0; }
+nav.tabs::-webkit-scrollbar { display: none; }
+nav.tabs a {
+  flex: none; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 0.92rem;
+  padding: 8px 12px 10px; border-bottom: 3px solid transparent; white-space: nowrap;
+}
+nav.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs a:hover { color: var(--ink); }
+
+main { padding-block: 24px 48px; }
+.panel { display: grid; gap: 24px; }
+.lead { color: var(--muted); max-width: 68ch; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.head { display: grid; gap: 6px; }
+
+/* Theory */
+.theory { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.theory article { display: grid; gap: 28px; min-width: 0; }
+.theory section { display: grid; gap: 10px; }
+.theory section > p, .theory li { max-width: 68ch; }
+.theory ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.sec-no { font-family: var(--font-mono); color: var(--muted); font-size: 0.85rem; }
+.fx {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px 16px; display: grid; gap: 8px;
+}
+.fx-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.fx-eq { font-size: 1.2rem; font-weight: 600; }
+.fx-eq.max { color: var(--accent); }
+.fx-eq.min { color: var(--minima); }
+.fx small { color: var(--muted); font-size: 0.85rem; }
+.aside { position: sticky; top: 120px; display: grid; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 10px; }
+.card h3 { font-size: 1rem; }
+.memo { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 0.93rem; }
+.memo li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; }
+.memo li b.k { font-family: var(--font-mono); color: var(--accent); }
+figure { margin: 0; display: grid; gap: 6px; }
+figcaption { font-size: 0.85rem; color: var(--muted); }
+.diagram { width: 100%; height: auto; display: block; }
+.diagram .src { fill: var(--ink); }
+.diagram .lbl { fill: var(--ink); font: 600 13px var(--font-body); }
+.diagram .lbl-m { fill: var(--muted); font: 12px var(--font-body); }
+.diagram .ln-max { stroke: var(--accent); fill: none; stroke-width: 1.6; }
+.diagram .ln-min { stroke: var(--minima); fill: none; stroke-width: 1.4; stroke-dasharray: 5 4; }
+.diagram .ray { stroke: var(--ink); stroke-width: 1.2; fill: none; }
+.diagram .base { stroke: var(--muted); stroke-width: 1; }
+.diagram .scr { fill: var(--surface-2); stroke: var(--line); }
+
+/* Lab layout */
+.lab { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.stage { display: grid; gap: 10px; min-width: 0; }
+.tank-box { position: relative; border-radius: var(--r); overflow: hidden; background: #062634; aspect-ratio: 20 / 14; max-width: 100%; touch-action: none; }
+.tank-box canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 22px; height: 0; border-top: 2px solid var(--accent); display: inline-block; }
+.sw.min { border-top: 2px dashed var(--minima); }
+.ctrl { display: grid; gap: 14px; }
+.field { display: grid; gap: 4px; }
+.field-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 0.92rem; }
+.field-top output { font-family: var(--font-mono); font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+button, .btn {
+  font: inherit; font-weight: 600; font-size: 0.92rem; cursor: pointer;
+  border-radius: 999px; padding: 8px 16px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--surface-2); border-color: var(--accent); }
+.readout { display: grid; gap: 0; margin: 0; }
+.readout div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 0.93rem; }
+.readout div:last-child { border-bottom: 0; }
+.readout dt { color: var(--muted); }
+.readout dd { margin: 0; font-family: var(--font-mono); font-weight: 600; text-align: right; }
+.verdict { border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 0.95rem; background: var(--surface-2); }
+.verdict.max { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--ink); border-left: 4px solid var(--accent); }
+.verdict.min { background: color-mix(in srgb, var(--minima) 14%, var(--surface)); color: var(--ink); border-left: 4px solid var(--minima); }
+.hint { font-size: 0.85rem; color: var(--muted); }
+
+/* Young */
+.young-fig { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 10px; }
+.strip { width: 100%; height: 96px; display: block; border-radius: 8px; background: #000; cursor: crosshair; }
+.graph { width: 100%; height: 150px; display: block; }
+.swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; vertical-align: -2px; border: 1px solid var(--line); }
+
+/* Calculators */
+.calcs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.calc { display: grid; gap: 12px; }
+.inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.inputs label { display: grid; gap: 3px; font-size: 0.85rem; color: var(--muted); }
+.inputs input {
+  font: 600 1rem var(--font-mono); padding: 7px 10px; border-radius: 8px; width: 100%;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
+.steps { margin: 0; padding: 12px 14px; background: var(--surface-2); border-radius: 10px; display: grid; gap: 6px; font-size: 0.93rem; list-style: none; }
+.steps li { overflow-wrap: anywhere; }
+.steps b { font-family: var(--font-mono); }
+
+/* Quiz */
+.quiz { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.qcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.qmeta { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+.lv { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 10px; border-radius: 999px; background: var(--surface-2); color: var(--ink); }
+.qtext { font-size: 1.08rem; font-weight: 500; }
+.opts { display: grid; gap: 8px; }
+.opt {
+  text-align: left; border-radius: 10px; padding: 11px 14px; display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start;
+  background: var(--bg); font-weight: 500;
+}
+.opt .let { font-family: var(--font-mono); font-weight: 600; color: var(--muted); }
+.opt.right { background: var(--ok-bg); border-color: var(--ok); }
+.opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+.opt:disabled { cursor: default; color: var(--ink); }
+.tf { display: grid; gap: 8px; }
+.tf-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.tf-row.right { background: var(--ok-bg); border-color: var(--ok); }
+.tf-row.wrong { background: var(--bad-bg); border-color: var(--bad); }
+.tf-row .btns button { padding: 5px 12px; }
+.explain { border-left: 4px solid var(--accent); background: var(--surface-2); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 0.95rem; }
+.bar { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.score-big { font-family: var(--font-display); font-size: 3rem; font-weight: 800; line-height: 1; }
+
+footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+footer .wrap { padding-block: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+
+@media (max-width: 900px) {
+  .theory, .lab, .quiz { grid-template-columns: minmax(0, 1fr); }
+  .aside { position: static; }
+  .calcs { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+        <g fill="none" stroke="var(--accent)" stroke-width="2">
+          <circle cx="14" cy="20" r="5"/><circle cx="14" cy="20" r="11" opacity=".55"/>
+          <circle cx="26" cy="20" r="5"/><circle cx="26" cy="20" r="11" opacity=".55"/>
+        </g>
+        <circle cx="14" cy="20" r="2" fill="var(--ink)"/><circle cx="26" cy="20" r="2" fill="var(--ink)"/>
+      </svg>
+      <div>
+        <div class="brand-name">Team Vật lí Kỳ Anh</div>
+        <div class="brand-sub">Bài 12 · Giao thoa sóng · Vật lí 11 Kết nối tri thức</div>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Các phần học">
+      <a href="#ly-thuyet" data-tab="ly-thuyet">Lý thuyết</a>
+      <a href="#song-nuoc" data-tab="song-nuoc">Giao thoa sóng nước</a>
+      <a href="#khe-young" data-tab="khe-young">Thí nghiệm Young</a>
+      <a href="#giai-nhanh" data-tab="giai-nhanh">Giải nhanh</a>
+      <a href="#luyen-tap" data-tab="luyen-tap">Luyện tập</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ================= LÝ THUYẾT ================= -->
+<section class="panel" id="tab-ly-thuyet">
+  <div class="head">
+    <span class="eyebrow">Chương II · Sóng</span>
+    <h2>Giao thoa sóng</h2>
+    <p class="lead">Tóm tắt kiến thức trọng tâm của bài, kèm hình vẽ và công thức cần nhớ. Mỗi mục đều có mô phỏng tương ứng ở các tab bên cạnh.</p>
+  </div>
+
+  <div class="theory">
+    <article>
+      <section>
+        <span class="sec-no">I</span>
+        <h3>Thí nghiệm giao thoa sóng trên mặt nước</h3>
+        <p>Gắn hai mũi nhọn S<sub>1</sub>, S<sub>2</sub> vào cùng một cần rung, cho chạm nhẹ mặt nước. Khi cần rung dao động, hai mũi nhọn tạo ra hai sóng cùng tần số, cùng pha lan truyền trên mặt nước.</p>
+        <p>Kết quả quan sát được: trong vùng hai sóng gặp nhau xuất hiện những <b>gợn lồi</b> (dao động rất mạnh) xen kẽ với những <b>gợn lõm đứng yên</b> (gần như không dao động). Các gợn có dạng những đường hypebol nhận S<sub>1</sub>, S<sub>2</sub> làm tiêu điểm; đường trung trực của S<sub>1</sub>S<sub>2</sub> là một gợn lồi.</p>
+        <figure>
+          <svg class="diagram" viewBox="0 0 520 250" role="img" aria-label="Hai nguồn S1, S2 và điểm M cách hai nguồn các khoảng d1, d2; các đường cực đại và cực tiểu dạng hypebol">
+            <g id="th-hyp"></g>
+            <line class="base" x1="40" y1="200" x2="480" y2="200"/>
+            <line class="ray" x1="190" y1="200" x2="330" y2="50"/>
+            <line class="ray" x1="330" y1="200" x2="330" y2="50"/>
+            <circle class="src" cx="190" cy="200" r="5"/><circle class="src" cx="330" cy="200" r="5"/>
+            <circle cx="330" cy="50" r="5" fill="var(--accent)"/>
+            <text class="lbl" x="176" y="224">S₁</text><text class="lbl" x="322" y="224">S₂</text>
+            <text class="lbl" x="340" y="46">M</text>
+            <text class="lbl-m" x="232" y="118">d₁</text><text class="lbl-m" x="338" y="130">d₂</text>
+          </svg>
+          <figcaption>Đường liền: cực đại giao thoa (gợn lồi). Đường đứt: cực tiểu giao thoa (đứng yên). Hình vẽ cho λ bằng 0,4 lần S<sub>1</sub>S<sub>2</sub>.</figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <span class="sec-no">II</span>
+        <h3>Giải thích và định nghĩa</h3>
+        <p>Tại mỗi điểm, hai sóng truyền tới chồng chất lên nhau. Nơi hai sóng tới <b>cùng pha</b>, chúng tăng cường nhau: biên độ cực đại. Nơi hai sóng tới <b>ngược pha</b>, chúng triệt tiêu nhau: biên độ cực tiểu.</p>
+        <p><b>Giao thoa</b> là hiện tượng hai sóng kết hợp gặp nhau, tạo nên những điểm cố định ở đó biên độ sóng được tăng cường và những điểm cố định ở đó biên độ sóng bị giảm bớt hoặc triệt tiêu.</p>
+      </section>
+
+      <section>
+        <span class="sec-no">III</span>
+        <h3>Điều kiện giao thoa</h3>
+        <p>Hai nguồn phải là <b>hai nguồn kết hợp</b>, tức là hai nguồn:</p>
+        <ul>
+          <li>dao động cùng phương, cùng tần số;</li>
+          <li>có hiệu số pha không thay đổi theo thời gian.</li>
+        </ul>
+        <p>Sóng do hai nguồn kết hợp phát ra gọi là hai sóng kết hợp.</p>
+      </section>
+
+      <section>
+        <span class="sec-no">IV</span>
+        <h3>Vị trí cực đại và cực tiểu (hai nguồn cùng pha)</h3>
+        <p>Gọi d<sub>1</sub>, d<sub>2</sub> là khoảng cách từ điểm M đến S<sub>1</sub>, S<sub>2</sub>; λ là bước sóng.</p>
+        <div class="fx">
+          <div class="fx-row"><span class="fx-eq max"><var>d</var><sub>2</sub> − <var>d</var><sub>1</sub> = <var>k</var>λ</span><small>Cực đại giao thoa · <var>k</var> = 0, ±1, ±2, …</small></div>
+          <div class="fx-row"><span class="fx-eq min"><var>d</var><sub>2</sub> − <var>d</var><sub>1</sub> = (<var>k</var> + ½)λ</span><small>Cực tiểu giao thoa · <var>k</var> = 0, ±1, ±2, …</small></div>
+        </div>
+        <ul>
+          <li>Cực đại ứng với hiệu đường đi bằng một số nguyên lần bước sóng; cực tiểu ứng với một số bán nguyên lần bước sóng.</li>
+          <li>Trên đoạn S<sub>1</sub>S<sub>2</sub>, hai cực đại (hoặc hai cực tiểu) liên tiếp cách nhau <b>λ/2</b>; cực đại và cực tiểu liền kề cách nhau λ/4.</li>
+          <li>Số cực đại trên S<sub>1</sub>S<sub>2</sub>: số giá trị nguyên <var>k</var> thỏa −S<sub>1</sub>S<sub>2</sub> &lt; <var>k</var>λ &lt; S<sub>1</sub>S<sub>2</sub>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <span class="sec-no">V</span>
+        <h3>Giao thoa ánh sáng – thí nghiệm Young</h3>
+        <p>Chiếu chùm sáng đơn sắc (ví dụ tia laser) vào hai khe hẹp F<sub>1</sub>, F<sub>2</sub> song song, rất gần nhau. Hai khe đóng vai trò hai nguồn kết hợp. Trên màn đặt phía sau thu được các <b>vân sáng</b> và <b>vân tối</b> xen kẽ, song song và cách đều nhau. Thí nghiệm chứng tỏ ánh sáng có tính chất sóng.</p>
+        <figure>
+          <svg class="diagram" viewBox="0 0 520 170" role="img" aria-label="Sơ đồ thí nghiệm Young: nguồn sáng, hai khe cách nhau a, màn đặt cách khe khoảng D">
+            <rect x="24" y="70" width="44" height="30" rx="6" fill="var(--minima)"/>
+            <text class="lbl-m" x="18" y="122">Laser</text>
+            <line x1="68" y1="85" x2="150" y2="85" stroke="var(--minima)" stroke-width="3"/>
+            <rect x="150" y="20" width="8" height="54" fill="var(--ink)"/><rect x="150" y="80" width="8" height="10" fill="var(--ink)"/><rect x="150" y="96" width="8" height="54" fill="var(--ink)"/>
+            <text class="lbl" x="130" y="80">F₁</text><text class="lbl" x="130" y="104">F₂</text>
+            <line class="ray" x1="158" y1="77" x2="440" y2="50"/><line class="ray" x1="158" y1="93" x2="440" y2="50"/>
+            <rect class="scr" x="440" y="12" width="14" height="146"/>
+            <g id="th-fr"></g>
+            <line class="base" x1="160" y1="140" x2="438" y2="140"/>
+            <text class="lbl" x="292" y="160">D</text>
+            <text class="lbl" x="166" y="90">a</text>
+            <text class="lbl-m" x="462" y="54">M (x)</text>
+            <text class="lbl-m" x="462" y="89">O</text>
+          </svg>
+          <figcaption>a: khoảng cách hai khe · D: khoảng cách từ hai khe đến màn · O: vân sáng trung tâm.</figcaption>
+        </figure>
+        <div class="fx">
+          <div class="fx-row"><span class="fx-eq max"><var>i</var> = λ<var>D</var> / <var>a</var></span><small>Khoảng vân: khoảng cách giữa hai vân sáng (hoặc hai vân tối) liên tiếp</small></div>
+          <div class="fx-row"><span class="fx-eq max"><var>x</var><sub>s</sub> = <var>k</var>·λ<var>D</var>/<var>a</var> = <var>k</var><var>i</var></span><small>Vân sáng bậc |<var>k</var>|</small></div>
+          <div class="fx-row"><span class="fx-eq min"><var>x</var><sub>t</sub> = (<var>k</var> + ½)<var>i</var></span><small>Vân tối · <var>k</var> = 0 ứng với vân tối thứ nhất</small></div>
+          <div class="fx-row"><span class="fx-eq"><var>λ</var> = <var>a</var><var>i</var> / <var>D</var></span><small>Đo bước sóng ánh sáng từ khoảng vân</small></div>
+        </div>
+      </section>
+    </article>
+
+    <aside class="aside">
+      <div class="card">
+        <h3>Ghi nhớ nhanh</h3>
+        <ul class="memo">
+          <li><b class="k">1</b><span>Hai nguồn kết hợp: cùng phương, cùng tần số, hiệu số pha không đổi.</span></li>
+          <li><b class="k">2</b><span>Cực đại: Δd = kλ. Cực tiểu: Δd = (k + ½)λ.</span></li>
+          <li><b class="k">3</b><span>Trung trực S₁S₂ là cực đại bậc 0 (nguồn cùng pha).</span></li>
+          <li><b class="k">4</b><span>Trên S₁S₂: hai cực đại liên tiếp cách nhau λ/2.</span></li>
+          <li><b class="k">5</b><span>Khoảng vân i = λD/a; vân sáng x = ki; vân tối x = (k + ½)i.</span></li>
+          <li><b class="k">6</b><span>Đổi đơn vị trước khi tính: 1 μm = 10⁻⁶ m, 1 mm = 10⁻³ m, 1 nm = 10⁻⁹ m.</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Lỗi thường gặp</h3>
+        <ul class="memo">
+          <li><b class="k">!</b><span>Nhầm vân tối thứ n với k = n. Vân tối thứ n có x = (n − ½)i.</span></li>
+          <li><b class="k">!</b><span>Đếm số cực đại trên S₁S₂ dùng dấu “&lt;” chặt, vì tại hai nguồn không tính.</span></li>
+          <li><b class="k">!</b><span>Khoảng cách hai cực đại liên tiếp trên S₁S₂ là λ/2, không phải λ.</span></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= SÓNG NƯỚC ================= -->
+<section class="panel" id="tab-song-nuoc" hidden>
+  <div class="head">
+    <span class="eyebrow">Mô phỏng · Hai nguồn cùng pha</span>
+    <h2>Giao thoa sóng trên mặt nước</h2>
+    <p class="lead">Kéo thanh trượt để đổi tần số, tốc độ truyền sóng và khoảng cách hai nguồn. Chạm hoặc kéo trên mặt nước để đặt điểm M và xem M là cực đại hay cực tiểu.</p>
+  </div>
+  <div class="lab">
+    <div class="stage">
+      <div class="tank-box"><canvas id="tank" aria-label="Mặt nước có hai nguồn sóng S1, S2"></canvas></div>
+      <div class="legend">
+        <span><i class="sw"></i>Cực đại (gợn lồi)</span>
+        <span><i class="sw min"></i>Cực tiểu (đứng yên)</span>
+        <span>Hình chiếu chậm để dễ quan sát · mặt nước rộng 20 cm × 14 cm</span>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="card">
+        <div class="field">
+          <div class="field-top"><label for="w-f">Tần số f</label><output id="o-f" class="num"></output></div>
+          <input type="range" id="w-f" min="5" max="25" step="1" value="15">
+        </div>
+        <div class="field">
+          <div class="field-top"><label for="w-v">Tốc độ truyền sóng v</label><output id="o-v" class="num"></output></div>
+          <input type="range" id="w-v" min="20" max="60" step="1" value="30">
+        </div>
+        <div class="field">
+          <div class="field-top"><label for="w-d">Khoảng cách S₁S₂</label><output id="o-d" class="num"></output></div>
+          <input type="range" id="w-d" min="3" max="14" step="0.5" value="9">
+        </div>
+        <div class="btns">
+          <button type="button" id="w-play" class="primary">Tạm dừng</button>
+          <button type="button" id="w-lines" aria-pressed="true">Hiện đường cực đại, cực tiểu</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Số đo</h3>
+        <dl class="readout">
+          <div><dt>Bước sóng λ = v/f</dt><dd id="r-lam"></dd></div>
+          <div><dt>Số cực đại trên S₁S₂</dt><dd id="r-nmax"></dd></div>
+          <div><dt>Số cực tiểu trên S₁S₂</dt><dd id="r-nmin"></dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Điểm M</h3>
+        <dl class="readout">
+          <div><dt>d₁ = MS₁</dt><dd id="r-d1"></dd></div>
+          <div><dt>d₂ = MS₂</dt><dd id="r-d2"></dd></div>
+          <div><dt>d₂ − d₁</dt><dd id="r-dd"></dd></div>
+          <div><dt>(d₂ − d₁)/λ</dt><dd id="r-ratio"></dd></div>
+          <div><dt>Biên độ tại M</dt><dd id="r-amp"></dd></div>
+        </dl>
+        <div id="r-verdict" class="verdict"></div>
+        <p class="hint">Biên độ tính theo biên độ a của mỗi sóng tới M (bỏ qua sự tắt dần).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= YOUNG ================= -->
+<section class="panel" id="tab-khe-young" hidden>
+  <div class="head">
+    <span class="eyebrow">Mô phỏng · Giao thoa ánh sáng</span>
+    <h2>Thí nghiệm Young với hai khe hẹp</h2>
+    <p class="lead">Đổi bước sóng, khoảng cách hai khe và khoảng cách đến màn để thấy khoảng vân thay đổi theo công thức i = λD/a. Chạm vào dải vân để đo vị trí một vân.</p>
+  </div>
+  <div class="lab">
+    <div class="stage">
+      <div class="young-fig">
+        <canvas id="strip" class="strip" aria-label="Hệ vân giao thoa trên màn"></canvas>
+        <canvas id="graph" class="graph" aria-label="Đồ thị cường độ sáng theo vị trí trên màn"></canvas>
+        <p class="hint">Màn quan sát rộng 20 mm, vân trung tâm ở giữa. Vạch số dưới đồ thị là bậc k của vân sáng.</p>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="card">
+        <div class="field">
+          <div class="field-top"><label for="y-l">Bước sóng λ <span id="y-sw" class="swatch"></span></label><output id="o-l" class="num"></output></div>
+          <input type="range" id="y-l" min="380" max="760" step="5" value="600">
+        </div>
+        <div class="field">
+          <div class="field-top"><label for="y-a">Khoảng cách hai khe a</label><output id="o-a" class="num"></output></div>
+          <input type="range" id="y-a" min="0.3" max="1.5" step="0.05" value="0.8">
+        </div>
+        <div class="field">
+          <div class="field-top"><label for="y-D">Khoảng cách khe – màn D</label><output id="o-D" class="num"></output></div>
+          <input type="range" id="y-D" min="0.8" max="2.5" step="0.1" value="1.6">
+        </div>
+        <div class="btns">
+          <button type="button" id="y-white" aria-pressed="false">Dùng ánh sáng trắng</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Kết quả</h3>
+        <dl class="readout">
+          <div><dt>Khoảng vân i = λD/a</dt><dd id="y-i"></dd></div>
+          <div><dt>Vân sáng bậc 3</dt><dd id="y-s3"></dd></div>
+          <div><dt>Vân tối thứ 3</dt><dd id="y-t3"></dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Vị trí đã chạm</h3>
+        <dl class="readout">
+          <div><dt>x</dt><dd id="y-x"></dd></div>
+          <div><dt>x / i</dt><dd id="y-xi"></dd></div>
+        </dl>
+        <div id="y-verdict" class="verdict"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GIẢI NHANH ================= -->
+<section class="panel" id="tab-giai-nhanh" hidden>
+  <div class="head">
+    <span class="eyebrow">Công cụ</span>
+    <h2>Giải nhanh từng bước</h2>
+    <p class="lead">Nhập số liệu của bài tập, lời giải hiện ra theo từng bước như khi trình bày trên giấy. Dùng để kiểm tra lại kết quả sau khi tự làm.</p>
+  </div>
+  <div class="calcs">
+    <div class="card calc">
+      <h3>Điểm M trên mặt nước</h3>
+      <div class="inputs">
+        <label for="c1-f">f (Hz)<input id="c1-f" type="number" step="any" value="20"></label>
+        <label for="c1-v">v (cm/s)<input id="c1-v" type="number" step="any" value="40"></label>
+        <label for="c1-d1">d₁ (cm)<input id="c1-d1" type="number" step="any" value="10"></label>
+        <label for="c1-d2">d₂ (cm)<input id="c1-d2" type="number" step="any" value="16"></label>
+      </div>
+      <ol class="steps" id="c1-out"></ol>
+    </div>
+    <div class="card calc">
+      <h3>Đếm cực đại, cực tiểu trên S₁S₂</h3>
+      <div class="inputs">
+        <label for="c2-l">S₁S₂ (cm)<input id="c2-l" type="number" step="any" value="10"></label>
+        <label for="c2-lam">λ (cm)<input id="c2-lam" type="number" step="any" value="3"></label>
+      </div>
+      <ol class="steps" id="c2-out"></ol>
+    </div>
+    <div class="card calc">
+      <h3>Thí nghiệm Young</h3>
+      <div class="inputs">
+        <label for="c3-l">λ (μm)<input id="c3-l" type="number" step="any" value="0.5"></label>
+        <label for="c3-a">a (mm)<input id="c3-a" type="number" step="any" value="1"></label>
+        <label for="c3-D">D (m)<input id="c3-D" type="number" step="any" value="2"></label>
+        <label for="c3-k">Bậc / thứ k<input id="c3-k" type="number" step="1" value="3"></label>
+        <label for="c3-L">Bề rộng vùng L (mm)<input id="c3-L" type="number" step="any" value="13"></label>
+      </div>
+      <ol class="steps" id="c3-out"></ol>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LUYỆN TẬP ================= -->
+<section class="panel" id="tab-luyen-tap" hidden>
+  <div class="head">
+    <span class="eyebrow">Kiểm tra</span>
+    <h2>Luyện tập trắc nghiệm</h2>
+    <p class="lead">Câu hỏi nhiều lựa chọn và câu đúng/sai theo ba mức độ. Chọn đáp án để xem ngay lời giải.</p>
+  </div>
+  <div class="chips" role="group" aria-label="Lọc theo mức độ">
+    <button type="button" data-lv="all" aria-pressed="true">Tất cả</button>
+    <button type="button" data-lv="NB" aria-pressed="false">Nhận biết</button>
+    <button type="button" data-lv="TH" aria-pressed="false">Thông hiểu</button>
+    <button type="button" data-lv="VD" aria-pressed="false">Vận dụng</button>
+  </div>
+  <div class="quiz">
+    <div class="qcard" id="qcard"></div>
+    <div class="card">
+      <h3>Tiến độ</h3>
+      <div class="bar"><i id="q-bar"></i></div>
+      <dl class="readout">
+        <div><dt>Câu</dt><dd id="q-pos"></dd></div>
+        <div><dt>Điểm hiện tại</dt><dd id="q-score"></dd></div>
+        <div><dt>Điểm cao nhất của bạn</dt><dd id="q-best"></dd></div>
+      </dl>
+      <p class="hint">Câu đúng/sai: mỗi ý đúng được 0,25 điểm.</p>
+      <button type="button" id="q-restart">Làm lại từ đầu</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Team Vật lí Kỳ Anh</span>
+    <span>Vật lí 11 · Kết nối tri thức với cuộc sống · Bài 12: Giao thoa sóng</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 2) => Number.isFinite(n) ? n.toLocaleString("vi-VN", { maximumFractionDigits: d }) : "—";
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- Tabs (hash routing) ---------- */
+const TABS = ["ly-thuyet", "song-nuoc", "khe-young", "giai-nhanh", "luyen-tap"];
+let current = "";
+function show(id) {
+  if (!TABS.includes(id)) id = "ly-thuyet";
+  current = id;
+  TABS.forEach((t) => { $("tab-" + t).hidden = t !== id; });
+  document.querySelectorAll("nav.tabs a").forEach((a) => {
+    if (a.dataset.tab === id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  if (id === "song-nuoc") { sizeTank(); startTank(); }
+  if (id === "khe-young") drawYoung();
+}
+window.addEventListener("hashchange", () => { show(location.hash.slice(1)); window.scrollTo(0, 0); });
+
+/* ---------- Theory diagram ---------- */
+(function theoryDiagram() {
+  // S1 at x=190, S2 at x=330 (px), base y=200. Scale: S1S2 = 140 px; λ = 0.4·S1S2 = 56 px
+  const g = $("th-hyp"), cx = 260, cy = 200, c0 = 70, lam = 56;
+  let html = "";
+  const branch = (dd, cls) => {
+    if (Math.abs(dd) < 1e-6) { html += `<line class="${cls}" x1="${cx}" y1="${cy}" x2="${cx}" y2="10"/>`; return; }
+    const a = dd / 2, b = Math.sqrt(c0 * c0 - a * a), tmax = Math.asinh(190 / b);
+    let d = "";
+    for (let s = 0; s <= 40; s++) {
+      const t = (s / 40) * tmax, x = cx - a * Math.cosh(t), y = cy - b * Math.sinh(t);
+      d += (s ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    }
+    html += `<path class="${cls}" d="${d}"/>`;
+  };
+  for (let k = -3; k <= 3; k++) { if (Math.abs(k * lam) < 2 * c0) branch(k * lam, "ln-max"); }
+  for (let k = -3; k <= 2; k++) { if (Math.abs((k + 0.5) * lam) < 2 * c0) branch((k + 0.5) * lam, "ln-min"); }
+  g.innerHTML = html;
+  // Young fringes on the small screen
+  let fr = "";
+  for (let k = -4; k <= 4; k++) fr += `<rect x="441" y="${85 + k * 17 - 4}" width="12" height="8" fill="var(--minima)" opacity="${k === 0 ? 1 : 0.75}"/>`;
+  $("th-fr").innerHTML = fr;
+})();
+
+/* ---------- Water ripple tank ---------- */
+const TW = 20, TH = 14;               // cm
+const GW = 280, GH = 196;             // grid (14 px/cm)
+const W = { f: 15, v: 30, d: 9, lines: true, playing: !reduceMotion, M: { x: 2.2, y: 4.5 } };
+const tank = $("tank"), tctx = tank.getContext("2d");
+const off = document.createElement("canvas"); off.width = GW; off.height = GH;
+const octx = off.getContext("2d"), img = octx.createImageData(GW, GH);
+const amp = new Float32Array(GW * GH), ph = new Float32Array(GW * GH);
+const LUT = new Uint8ClampedArray(256 * 3);
+(function buildLut() {
+  const stops = [[0, [4, 30, 44]], [0.5, [18, 98, 118]], [1, [205, 246, 248]]];
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255, s = t < 0.5 ? 0 : 1, a = stops[s], b = stops[s + 1], u = (t - a[0]) / (b[0] - a[0]);
+    for (let c = 0; c < 3; c++) LUT[i * 3 + c] = a[1][c] + (b[1][c] - a[1][c]) * u;
+  }
+})();
+const lam = () => W.v / W.f;
+
+function rebuild() {
+  const L = lam(), c0 = W.d / 2;
+  let p = 0;
+  for (let j = 0; j < GH; j++) {
+    const y = TH / 2 - (j + 0.5) * TH / GH;
+    for (let i = 0; i < GW; i++, p++) {
+      const x = -TW / 2 + (i + 0.5) * TW / GW;
+      const d1 = Math.hypot(x + c0, y), d2 = Math.hypot(x - c0, y);
+      amp[p] = Math.cos(Math.PI * (d2 - d1) / L);
+      ph[p] = Math.PI * (d1 + d2) / L;
+    }
+  }
+}
+function paintWater(theta) {
+  const data = img.data;
+  for (let p = 0, q = 0; p < amp.length; p++, q += 4) {
+    const u = amp[p] * Math.cos(theta - ph[p]);
+    const k = ((u + 1) * 127.5) | 0, l = k * 3;
+    data[q] = LUT[l]; data[q + 1] = LUT[l + 1]; data[q + 2] = LUT[l + 2]; data[q + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+}
+function sizeTank() {
+  const r = tank.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (!r.width) return;
+  tank.width = Math.round(r.width * dpr); tank.height = Math.round(r.height * dpr);
+  drawTank();
+}
+const X = (x) => (x + TW / 2) / TW * tank.width;
+const Y = (y) => (TH / 2 - y) / TH * tank.height;
+let theta = 0;
+function drawTank() {
+  const cw = tank.width, ch = tank.height, s = cw / 600;
+  if (!cw) return;
+  paintWater(theta);
+  tctx.imageSmoothingEnabled = true;
+  tctx.drawImage(off, 0, 0, cw, ch);
+  const c0 = W.d / 2, L = lam();
+  if (W.lines) {
+    const hyp = (dd) => {
+      tctx.beginPath();
+      if (Math.abs(dd) < 1e-9) { tctx.moveTo(X(0), 0); tctx.lineTo(X(0), ch); tctx.stroke(); return; }
+      const a = dd / 2, b = Math.sqrt(Math.max(c0 * c0 - a * a, 1e-9)), tmax = Math.asinh((TH / 2 + 0.5) / b);
+      for (let n = 0; n <= 80; n++) {
+        const t = -tmax + (2 * tmax * n) / 80, x = -a * Math.cosh(t), y = b * Math.sinh(t);
+        n ? tctx.lineTo(X(x), Y(y)) : tctx.moveTo(X(x), Y(y));
+      }
+      tctx.stroke();
+    };
+    tctx.lineWidth = Math.max(1.2, 1.6 * s);
+    tctx.setLineDash([]); tctx.strokeStyle = "rgba(255,255,255,0.85)";
+    for (let k = -40; k <= 40; k++) if (Math.abs(k * L) < W.d - 1e-9) hyp(k * L);
+    tctx.setLineDash([6 * s, 5 * s]); tctx.strokeStyle = "#ff8a66";
+    for (let k = -40; k <= 40; k++) if (Math.abs((k + 0.5) * L) < W.d - 1e-9) hyp((k + 0.5) * L);
+    tctx.setLineDash([]);
+  }
+  // M rays
+  const M = W.M;
+  tctx.strokeStyle = "rgba(255,230,120,0.9)"; tctx.lineWidth = Math.max(1, 1.3 * s);
+  tctx.beginPath(); tctx.moveTo(X(-c0), Y(0)); tctx.lineTo(X(M.x), Y(M.y)); tctx.lineTo(X(c0), Y(0)); tctx.stroke();
+  // sources
+  const font = `600 ${Math.round(14 * s + 4)}px "Be Vietnam Pro", system-ui, sans-serif`;
+  tctx.font = font; tctx.textBaseline = "top";
+  [[-c0, "S₁"], [c0, "S₂"]].forEach(([x, t]) => {
+    tctx.fillStyle = "#ffffff"; tctx.beginPath(); tctx.arc(X(x), Y(0), 5 * s + 2, 0, 7); tctx.fill();
+    tctx.fillStyle = "#0b2430"; tctx.beginPath(); tctx.arc(X(x), Y(0), 2.5 * s + 1, 0, 7); tctx.fill();
+    tctx.fillStyle = "#ffffff"; tctx.fillText(t, X(x) - 8 * s, Y(0) + 9 * s + 3);
+  });
+  tctx.fillStyle = "#ffe678"; tctx.beginPath(); tctx.arc(X(M.x), Y(M.y), 5 * s + 2, 0, 7); tctx.fill();
+  tctx.strokeStyle = "#0b2430"; tctx.lineWidth = 2; tctx.stroke();
+  tctx.fillStyle = "#ffe678"; tctx.textBaseline = "bottom"; tctx.fillText("M", X(M.x) + 8 * s + 2, Y(M.y) - 4 * s);
+}
+function countOnSegment(L, d) {
+  let nmax = 0, nmin = 0;
+  for (let k = -200; k <= 200; k++) {
+    if (Math.abs(k * L) < d - 1e-9) nmax++;
+    if (Math.abs((k + 0.5) * L) < d - 1e-9) nmin++;
+  }
+  return [nmax, nmin];
+}
+function classify(ratio) {
+  const kr = Math.round(ratio), kh = Math.floor(ratio) + 0.5;
+  if (Math.abs(ratio - kr) <= 0.04) return { cls: "max", text: `M thuộc cực đại bậc ${Math.abs(kr)} (d₂ − d₁ = ${kr}λ). M dao động với biên độ cực đại 2a.` };
+  if (Math.abs(ratio - kh) <= 0.04) {
+    const k = Math.floor(ratio);
+    return { cls: "min", text: `M thuộc cực tiểu (d₂ − d₁ = (${k} + ½)λ). M gần như đứng yên.` };
+  }
+  return { cls: "", text: "M không nằm trên cực đại hay cực tiểu: M dao động với biên độ trung gian giữa 0 và 2a." };
+}
+function updateWaterReadout() {
+  const L = lam(), c0 = W.d / 2, M = W.M;
+  $("o-f").textContent = fmt(W.f) + " Hz";
+  $("o-v").textContent = fmt(W.v) + " cm/s";
+  $("o-d").textContent = fmt(W.d) + " cm";
+  $("r-lam").textContent = fmt(L, 3) + " cm";
+  const [nmax, nmin] = countOnSegment(L, W.d);
+  $("r-nmax").textContent = nmax; $("r-nmin").textContent = nmin;
+  const d1 = Math.hypot(M.x + c0, M.y), d2 = Math.hypot(M.x - c0, M.y), dd = d2 - d1, ratio = dd / L;
+  $("r-d1").textContent = fmt(d1) + " cm";
+  $("r-d2").textContent = fmt(d2) + " cm";
+  $("r-dd").textContent = fmt(dd) + " cm";
+  $("r-ratio").textContent = fmt(ratio);
+  $("r-amp").textContent = fmt(2 * Math.abs(Math.cos(Math.PI * ratio))) + "·a";
+  const v = classify(ratio), el = $("r-verdict");
+  el.className = "verdict " + v.cls; el.textContent = v.text;
+}
+let raf = 0, last = 0;
+function loop(ts) {
+  raf = 0;
+  if (current !== "song-nuoc" || !W.playing) return;
+  const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
+  theta += dt * 2 * Math.PI * 0.7;   // làm chậm: 0,7 chu kì mỗi giây
+  drawTank();
+  raf = requestAnimationFrame(loop);
+}
+function startTank() { if (!raf && W.playing) { last = 0; raf = requestAnimationFrame(loop); } else drawTank(); }
+function onWaterInput() {
+  W.f = +$("w-f").value; W.v = +$("w-v").value; W.d = +$("w-d").value;
+  rebuild(); updateWaterReadout(); drawTank();
+}
+["w-f", "w-v", "w-d"].forEach((id) => $(id).addEventListener("input", onWaterInput));
+$("w-play").addEventListener("click", () => {
+  W.playing = !W.playing; $("w-play").textContent = W.playing ? "Tạm dừng" : "Chạy sóng";
+  startTank();
+});
+$("w-play").textContent = W.playing ? "Tạm dừng" : "Chạy sóng";
+$("w-lines").addEventListener("click", () => {
+  W.lines = !W.lines; $("w-lines").setAttribute("aria-pressed", String(W.lines)); drawTank();
+});
+let dragging = false;
+function setM(e) {
+  const r = tank.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * TW - TW / 2, y = TH / 2 - ((e.clientY - r.top) / r.height) * TH;
+  W.M = { x: Math.max(-TW / 2, Math.min(TW / 2, x)), y: Math.max(-TH / 2, Math.min(TH / 2, y)) };
+  updateWaterReadout(); drawTank();
+}
+tank.addEventListener("pointerdown", (e) => { dragging = true; tank.setPointerCapture(e.pointerId); setM(e); });
+tank.addEventListener("pointermove", (e) => { if (dragging) setM(e); });
+tank.addEventListener("pointerup", () => { dragging = false; });
+tank.addEventListener("pointercancel", () => { dragging = false; });
+
+/* ---------- Young ---------- */
+const Yg = { l: 600, a: 0.8, D: 1.6, white: false, x: null };
+const XR = 10; // mm, nửa bề rộng màn
+function wlRGB(l) {
+  let r = 0, g = 0, b = 0;
+  if (l < 440) { r = -(l - 440) / 60; b = 1; }
+  else if (l < 490) { g = (l - 440) / 50; b = 1; }
+  else if (l < 510) { g = 1; b = -(l - 510) / 20; }
+  else if (l < 580) { r = (l - 510) / 70; g = 1; }
+  else if (l < 645) { r = 1; g = -(l - 645) / 65; }
+  else { r = 1; }
+  let f = 1;
+  if (l < 420) f = 0.3 + 0.7 * (l - 380) / 40; else if (l > 700) f = 0.3 + 0.7 * (780 - l) / 80;
+  return [r * f, g * f, b * f];
+}
+const toByte = (c) => Math.round(255 * Math.pow(Math.max(0, Math.min(1, c)), 0.8));
+const fringe = (l) => l * Yg.D / (Yg.a * 1000); // mm (l: nm, D: m, a: mm)
+function sizeCanvas(c) {
+  const r = c.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+  return dpr;
+}
+const WHITE = []; for (let l = 400; l <= 700; l += 10) WHITE.push([l, wlRGB(l)]);
+const WSUM = WHITE.reduce((s, [, c]) => [s[0] + c[0], s[1] + c[1], s[2] + c[2]], [0, 0, 0]);
+function intensityRGB(x) {
+  if (!Yg.white) {
+    const c = wlRGB(Yg.l), I = Math.cos(Math.PI * x / fringe(Yg.l)) ** 2;
+    return [c[0] * I, c[1] * I, c[2] * I, I];
+  }
+  let r = 0, g = 0, b = 0;
+  for (const [l, c] of WHITE) { const I = Math.cos(Math.PI * x / fringe(l)) ** 2; r += c[0] * I; g += c[1] * I; b += c[2] * I; }
+  r /= WSUM[0]; g /= WSUM[1]; b /= WSUM[2];
+  return [r, g, b, (r + g + b) / 3];
+}
+function drawYoung() {
+  const strip = $("strip"), graph = $("graph");
+  if (!strip.getBoundingClientRect().width) return;
+  const i = fringe(Yg.l);
+  $("o-l").textContent = Yg.white ? "trắng" : Yg.l + " nm";
+  const c = wlRGB(Yg.l);
+  $("y-sw").style.background = Yg.white ? "linear-gradient(90deg,#8000ff,#00f,#0f0,#ff0,#f00)" : `rgb(${toByte(c[0])},${toByte(c[1])},${toByte(c[2])})`;
+  $("o-a").textContent = fmt(Yg.a) + " mm";
+  $("o-D").textContent = fmt(Yg.D, 1) + " m";
+  $("y-i").textContent = Yg.white ? "phụ thuộc λ" : fmt(i, 3) + " mm";
+  $("y-s3").textContent = Yg.white ? "—" : "x = 3i = " + fmt(3 * i, 3) + " mm";
+  $("y-t3").textContent = Yg.white ? "—" : "x = 2,5i = " + fmt(2.5 * i, 3) + " mm";
+
+  const dpr = sizeCanvas(strip), sw = strip.width, sh = strip.height, sctx = strip.getContext("2d");
+  const vals = new Array(sw);
+  for (let p = 0; p < sw; p++) {
+    const x = ((p + 0.5) / sw - 0.5) * 2 * XR, v = intensityRGB(x); vals[p] = v[3];
+    sctx.fillStyle = `rgb(${toByte(v[0])},${toByte(v[1])},${toByte(v[2])})`;
+    sctx.fillRect(p, 0, 1, sh);
+  }
+  if (Yg.x !== null) {
+    const px = (Yg.x / (2 * XR) + 0.5) * sw;
+    sctx.strokeStyle = "#ffffff"; sctx.lineWidth = 2 * dpr; sctx.setLineDash([4 * dpr, 4 * dpr]);
+    sctx.beginPath(); sctx.moveTo(px, 0); sctx.lineTo(px, sh); sctx.stroke(); sctx.setLineDash([]);
+  }
+
+  sizeCanvas(graph);
+  const gw = graph.width, gh = graph.height, g = graph.getContext("2d");
+  const ink = css("--ink"), muted = css("--muted"), line = css("--line"), acc = css("--accent");
+  const top = 10 * dpr, base = gh - 30 * dpr, hgt = base - top;
+  g.clearRect(0, 0, gw, gh);
+  g.strokeStyle = line; g.lineWidth = 1 * dpr;
+  g.beginPath(); g.moveTo(0, base); g.lineTo(gw, base); g.moveTo(0, top); g.lineTo(gw, top); g.stroke();
+  g.beginPath();
+  for (let p = 0; p < gw; p++) {
+    const v = vals[Math.min(sw - 1, Math.floor(p / gw * sw))], y = base - v * hgt;
+    p ? g.lineTo(p, y) : g.moveTo(p, y);
+  }
+  g.lineTo(gw, base); g.lineTo(0, base); g.closePath();
+  g.fillStyle = acc + "22"; g.fill();
+  g.beginPath();
+  for (let p = 0; p < gw; p++) { const v = vals[Math.min(sw - 1, Math.floor(p / gw * sw))], y = base - v * hgt; p ? g.lineTo(p, y) : g.moveTo(p, y); }
+  g.strokeStyle = acc; g.lineWidth = 2 * dpr; g.stroke();
+  g.font = `${11 * dpr}px "JetBrains Mono", monospace`; g.textAlign = "center"; g.textBaseline = "top";
+  const pxPerMm = gw / (2 * XR);
+  if (!Yg.white) {
+    const step = i * pxPerMm, kmax = Math.floor(XR / i), every = step < 22 * dpr ? Math.ceil(22 * dpr / step) : 1;
+    for (let k = -kmax; k <= kmax; k++) {
+      const px = gw / 2 + k * step;
+      g.strokeStyle = k === 0 ? ink : muted; g.beginPath(); g.moveTo(px, base); g.lineTo(px, base + 5 * dpr); g.stroke();
+      if (k % every === 0) { g.fillStyle = k === 0 ? ink : muted; g.fillText(String(k), px, base + 8 * dpr); }
+    }
+  } else {
+    g.fillStyle = ink; g.fillText("0 (vân trắng trung tâm)", gw / 2, base + 8 * dpr);
+  }
+  g.textAlign = "left"; g.fillStyle = muted; g.fillText("I", 4 * dpr, top + 2 * dpr);
+  updateYoungProbe();
+}
+function updateYoungProbe() {
+  const el = $("y-verdict");
+  if (Yg.x === null) { $("y-x").textContent = "—"; $("y-xi").textContent = "—"; el.className = "verdict"; el.textContent = "Chạm vào dải vân để đo."; return; }
+  const x = Yg.x;
+  $("y-x").textContent = fmt(x, 2) + " mm";
+  if (Yg.white) { $("y-xi").textContent = "—"; el.className = "verdict"; el.textContent = "Với ánh sáng trắng, mỗi màu có khoảng vân riêng; chỉ vân trung tâm là vân trắng. Hai bên là dải màu, tím ở trong, đỏ ở ngoài."; return; }
+  const r = x / fringe(Yg.l); $("y-xi").textContent = fmt(r, 2);
+  const kr = Math.round(r), ar = Math.abs(r);
+  if (Math.abs(r - kr) <= 0.08) { el.className = "verdict max"; el.textContent = kr === 0 ? "Vân sáng trung tâm (k = 0)." : `Vân sáng bậc ${Math.abs(kr)}: x = ${kr}i.`; }
+  else if (Math.abs(ar - Math.floor(ar) - 0.5) <= 0.08) { const n = Math.floor(ar) + 1; el.className = "verdict min"; el.textContent = `Vân tối thứ ${n}: |x| = (${n} − ½)i = ${fmt(n - 0.5, 1)}i.`; }
+  else { el.className = "verdict"; el.textContent = "Điểm nằm giữa vân sáng và vân tối."; }
+}
+function onYoungInput() { Yg.l = +$("y-l").value; Yg.a = +$("y-a").value; Yg.D = +$("y-D").value; drawYoung(); }
+["y-l", "y-a", "y-D"].forEach((id) => $(id).addEventListener("input", onYoungInput));
+$("y-white").addEventListener("click", () => { Yg.white = !Yg.white; $("y-white").setAttribute("aria-pressed", String(Yg.white)); drawYoung(); });
+$("strip").addEventListener("pointerdown", (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  Yg.x = ((e.clientX - r.left) / r.width - 0.5) * 2 * XR; drawYoung();
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { if (current === "khe-young") drawYoung(); });
+new MutationObserver(() => { if (current === "khe-young") drawYoung(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+let rt = 0;
+window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (current === "song-nuoc") sizeTank(); if (current === "khe-young") drawYoung(); }, 120); });
+
+/* ---------- Calculators ---------- */
+const val = (id) => parseFloat(String($(id).value).replace(",", "."));
+function li(arr) { return arr.map((s) => `<li>${s}</li>`).join(""); }
+function calc1() {
+  const f = val("c1-f"), v = val("c1-v"), d1 = val("c1-d1"), d2 = val("c1-d2"), out = $("c1-out");
+  if (![f, v, d1, d2].every(Number.isFinite) || f <= 0 || v <= 0 || d1 < 0 || d2 < 0) { out.innerHTML = li(["Nhập f, v dương và d₁, d₂ không âm."]); return; }
+  const L = v / f, dd = d2 - d1, r = dd / L, kr = Math.round(r), kh = Math.floor(r);
+  let concl;
+  if (Math.abs(r - kr) < 1e-6) concl = `Δd = ${kr}λ là số nguyên lần bước sóng ⇒ M là <b>cực đại bậc ${Math.abs(kr)}</b>.` + (kr === 0 ? " M nằm trên đường trung trực." : ` Giữa M và đường trung trực còn ${Math.abs(kr) - 1} dãy cực đại khác.`);
+  else if (Math.abs(r - kh - 0.5) < 1e-6) concl = `Δd = (${kh} + ½)λ ⇒ M là <b>cực tiểu</b> (đứng yên), là dãy cực tiểu thứ ${kh >= 0 ? kh + 1 : -kh} tính từ trung trực về phía ${kh >= 0 ? "S₁" : "S₂"}.`;
+  else concl = `Δd/λ không là số nguyên hay bán nguyên ⇒ M dao động với biên độ trung gian ${fmt(2 * Math.abs(Math.cos(Math.PI * r)), 3)}·a.`;
+  out.innerHTML = li([
+    `Bước sóng: λ = v/f = ${fmt(v)}/${fmt(f)} = <b>${fmt(L, 4)} cm</b>`,
+    `Hiệu đường đi: Δd = d₂ − d₁ = ${fmt(d2)} − ${fmt(d1)} = <b>${fmt(dd, 4)} cm</b>`,
+    `Xét tỉ số: Δd/λ = <b>${fmt(r, 4)}</b>`,
+    concl,
+  ]);
+}
+function calc2() {
+  const l = val("c2-l"), L = val("c2-lam"), out = $("c2-out");
+  if (![l, L].every(Number.isFinite) || l <= 0 || L <= 0) { out.innerHTML = li(["Nhập S₁S₂ và λ dương."]); return; }
+  const q = l / L;
+  const ks = [], kt = [];
+  for (let k = -500; k <= 500; k++) { if (Math.abs(k) < q - 1e-9) ks.push(k); if (-q - 0.5 < k - 1e-9 && k < q - 0.5 - 1e-9) kt.push(k); }
+  const show = (a) => a.length > 9 ? `${a[0]}, ${a[1]}, …, ${a[a.length - 1]}` : a.join(", ");
+  out.innerHTML = li([
+    `S₁S₂/λ = ${fmt(l)}/${fmt(L)} = <b>${fmt(q, 4)}</b>`,
+    `Cực đại: −S₁S₂ &lt; kλ &lt; S₁S₂ ⇒ −${fmt(q, 3)} &lt; k &lt; ${fmt(q, 3)} ⇒ k ∈ {${show(ks)}} ⇒ <b>${ks.length} cực đại</b>`,
+    `Cực tiểu: −S₁S₂ &lt; (k + ½)λ &lt; S₁S₂ ⇒ ${fmt(-q - 0.5, 3)} &lt; k &lt; ${fmt(q - 0.5, 3)} ⇒ <b>${kt.length} cực tiểu</b>`,
+    `Hai cực đại liên tiếp trên S₁S₂ cách nhau λ/2 = <b>${fmt(L / 2, 4)} cm</b>`,
+  ]);
+}
+function calc3() {
+  const l = val("c3-l"), a = val("c3-a"), D = val("c3-D"), k = Math.round(val("c3-k")), Lw = val("c3-L"), out = $("c3-out");
+  if (![l, a, D].every(Number.isFinite) || l <= 0 || a <= 0 || D <= 0) { out.innerHTML = li(["Nhập λ, a, D dương."]); return; }
+  const i = (l * 1e-6) * D / (a * 1e-3) * 1e3; // mm
+  const rows = [
+    `Đổi đơn vị: λ = ${fmt(l, 4)}·10⁻⁶ m; a = ${fmt(a, 4)}·10⁻³ m; D = ${fmt(D, 4)} m`,
+    `Khoảng vân: i = λD/a = <b>${fmt(i, 4)} mm</b>`,
+  ];
+  if (Number.isFinite(k) && k > 0) {
+    rows.push(`Vân sáng bậc ${k}: x = ${k}i = <b>${fmt(k * i, 4)} mm</b>`);
+    rows.push(`Vân tối thứ ${k}: x = (${k} − ½)i = ${fmt(k - 0.5, 1)}i = <b>${fmt((k - 0.5) * i, 4)} mm</b>`);
+  }
+  if (Number.isFinite(Lw) && Lw > 0) {
+    const h = Lw / (2 * i), ns = 2 * Math.floor(h + 1e-9) + 1, nt = 2 * Math.floor(h + 0.5 + 1e-9);
+    rows.push(`Vùng giao thoa L = ${fmt(Lw)} mm (đối xứng qua vân trung tâm): L/(2i) = ${fmt(h, 4)}`);
+    rows.push(`Số vân sáng: N<sub>s</sub> = 2·[L/(2i)] + 1 = <b>${ns}</b>; số vân tối: N<sub>t</sub> = 2·[L/(2i) + 0,5] = <b>${nt}</b>`);
+  }
+  out.innerHTML = li(rows);
+}
+["c1-f", "c1-v", "c1-d1", "c1-d2"].forEach((id) => $(id).addEventListener("input", calc1));
+["c2-l", "c2-lam"].forEach((id) => $(id).addEventListener("input", calc2));
+["c3-l", "c3-a", "c3-D", "c3-k", "c3-L"].forEach((id) => $(id).addEventListener("input", calc3));
+
+/* ---------- Quiz ---------- */
+const LV = { NB: "Nhận biết", TH: "Thông hiểu", VD: "Vận dụng" };
+const Q = [
+  { lv: "NB", q: "Hai nguồn kết hợp là hai nguồn dao động", o: ["cùng biên độ và cùng pha ban đầu.", "cùng phương, cùng tần số và có hiệu số pha không đổi theo thời gian.", "cùng tần số nhưng khác phương dao động.", "cùng biên độ, tần số thay đổi theo thời gian."], a: 1, e: "Theo định nghĩa trong bài: hai nguồn kết hợp dao động cùng phương, cùng tần số và có hiệu số pha không đổi theo thời gian. Biên độ không cần bằng nhau." },
+  { lv: "NB", q: "Giao thoa sóng là hiện tượng", o: ["sóng bị đổi hướng khi gặp vật cản.", "sóng truyền qua khe hẹp bị lệch khỏi phương truyền thẳng.", "hai sóng kết hợp gặp nhau tạo ra những điểm cố định dao động tăng cường và những điểm cố định dao động giảm bớt hoặc triệt tiêu.", "hai sóng bất kì gặp nhau và cộng biên độ."], a: 2, e: "Giao thoa đòi hỏi hai sóng kết hợp; kết quả là các vị trí cố định có biên độ cực đại và cực tiểu xen kẽ." },
+  { lv: "NB", q: "Trong giao thoa sóng nước với hai nguồn cùng pha, điểm M là cực đại giao thoa khi hiệu đường đi d₂ − d₁ bằng", o: ["(k + ½)λ", "kλ/2", "kλ", "(2k + 1)λ/4"], a: 2, e: "Cực đại: d₂ − d₁ = kλ (k nguyên). Hai sóng tới M cùng pha nên tăng cường nhau." },
+  { lv: "NB", q: "Trong thí nghiệm Young, khoảng vân được tính bằng công thức", o: ["i = λa/D", "i = λD/a", "i = aD/λ", "i = D/(λa)"], a: 1, e: "Khoảng vân i = λD/a: tỉ lệ thuận với λ và D, tỉ lệ nghịch với a." },
+  { lv: "NB", q: "Thí nghiệm giao thoa ánh sáng của Young chứng tỏ", o: ["ánh sáng có tính chất sóng.", "ánh sáng truyền thẳng.", "ánh sáng là sóng dọc.", "ánh sáng bị phản xạ trên màn."], a: 0, e: "Chỉ sóng mới cho hiện tượng giao thoa, nên hệ vân sáng – tối chứng tỏ ánh sáng có tính chất sóng." },
+  { lv: "TH", q: "Trên đoạn S₁S₂ nối hai nguồn kết hợp cùng pha, khoảng cách giữa hai cực đại giao thoa liên tiếp bằng", o: ["λ/4", "λ", "2λ", "λ/2"], a: 3, e: "Trên S₁S₂, khi đi một đoạn x thì d₂ − d₁ thay đổi 2x. Để Δd thay đổi một lượng λ thì x = λ/2." },
+  { lv: "TH", q: "Với hai nguồn sóng nước cùng pha, đường trung trực của đoạn S₁S₂ là", o: ["một đường cực tiểu.", "một đường cực đại bậc 0.", "nơi các phần tử nước đứng yên.", "không có đặc điểm gì đặc biệt."], a: 1, e: "Mọi điểm trên trung trực có d₁ = d₂, tức Δd = 0 = 0·λ, nên là cực đại ứng với k = 0." },
+  { lv: "TH", q: "Trong thí nghiệm Young, vân tối thứ 3 (tính từ vân sáng trung tâm) cách vân trung tâm một khoảng", o: ["3i", "3,5i", "2,5i", "1,5i"], a: 2, e: "Vân tối thứ n có x = (n − ½)i. Với n = 3: x = 2,5i." },
+  { lv: "TH", q: "Trong thí nghiệm Young, nếu tăng khoảng cách D lên 2 lần và giảm khoảng cách a đi 2 lần thì khoảng vân", o: ["không đổi.", "tăng 2 lần.", "tăng 4 lần.", "giảm 4 lần."], a: 2, e: "i = λD/a. D tăng 2 lần nhân i lên 2; a giảm 2 lần nhân i thêm 2. Tổng cộng i tăng 4 lần." },
+  { lv: "TH", q: "Giữ nguyên a và D, thay ánh sáng đỏ bằng ánh sáng tím thì hệ vân", o: ["có khoảng vân lớn hơn.", "có khoảng vân nhỏ hơn.", "không thay đổi.", "biến mất."], a: 1, e: "λ tím nhỏ hơn λ đỏ, mà i tỉ lệ thuận với λ, nên khoảng vân nhỏ đi (vân sít nhau hơn)." },
+  { lv: "VD", q: "Hai nguồn sóng nước cùng pha có tần số 20 Hz, tốc độ truyền sóng 40 cm/s. Điểm M cách hai nguồn lần lượt 10 cm và 16 cm. M thuộc", o: ["cực tiểu.", "cực đại bậc 2.", "cực đại bậc 3.", "cực đại bậc 6."], a: 2, e: "λ = v/f = 40/20 = 2 cm. Δd = 16 − 10 = 6 cm = 3λ ⇒ cực đại bậc 3." },
+  { lv: "VD", q: "Hai nguồn sóng nước cùng pha, tần số 10 Hz, tốc độ truyền sóng 30 cm/s. Điểm N có d₁ = 12 cm, d₂ = 16,5 cm. Phần tử nước tại N", o: ["dao động với biên độ cực đại.", "đứng yên (cực tiểu).", "dao động với biên độ bằng biên độ một nguồn.", "không xác định được."], a: 1, e: "λ = 30/10 = 3 cm. Δd = 4,5 cm = 1,5λ = (1 + ½)λ ⇒ N là cực tiểu, đứng yên." },
+  { lv: "VD", q: "Hai nguồn kết hợp cùng pha cách nhau 10 cm trên mặt nước, bước sóng 3 cm. Số điểm cực đại trên đoạn S₁S₂ là", o: ["5", "6", "7", "9"], a: 2, e: "−10 < 3k < 10 ⇒ −3,33 < k < 3,33 ⇒ k = −3, …, 3: có 7 cực đại." },
+  { lv: "VD", q: "Trên mặt nước, khoảng cách giữa hai cực tiểu liên tiếp trên đoạn S₁S₂ là 1,5 cm, tần số sóng 20 Hz. Tốc độ truyền sóng là", o: ["30 cm/s", "60 cm/s", "15 cm/s", "120 cm/s"], a: 1, e: "Hai cực tiểu liên tiếp cách nhau λ/2 = 1,5 cm ⇒ λ = 3 cm. v = λf = 3·20 = 60 cm/s." },
+  { lv: "VD", q: "Hai nguồn sóng nước cùng pha, f = 15 Hz. Điểm M có d₁ = 16 cm, d₂ = 22 cm là cực đại; giữa M và đường trung trực của S₁S₂ có 2 dãy cực đại khác. Tốc độ truyền sóng là", o: ["20 cm/s", "45 cm/s", "30 cm/s", "60 cm/s"], a: 2, e: "Giữa M và trung trực (k = 0) có 2 dãy cực đại (k = 1, 2) ⇒ M ở k = 3. Δd = 6 cm = 3λ ⇒ λ = 2 cm. v = λf = 30 cm/s." },
+  { lv: "VD", q: "Thí nghiệm Young: a = 1 mm, D = 2 m, ánh sáng có λ = 0,5 μm. Khoảng vân là", o: ["0,1 mm", "1 mm", "0,25 mm", "10 mm"], a: 1, e: "i = λD/a = 0,5·10⁻⁶·2 / 10⁻³ = 10⁻³ m = 1 mm." },
+  { lv: "VD", q: "Thí nghiệm Young: a = 0,5 mm, D = 1,5 m, đo được khoảng vân 1,8 mm. Bước sóng ánh sáng là", o: ["0,45 μm", "0,54 μm", "0,6 μm", "0,75 μm"], a: 2, e: "λ = ai/D = 0,5·10⁻³ · 1,8·10⁻³ / 1,5 = 0,6·10⁻⁶ m = 0,6 μm." },
+  { lv: "VD", q: "Thí nghiệm Young: vân sáng bậc 4 cách vân trung tâm 6 mm. Khoảng cách từ vân sáng bậc 2 đến vân tối thứ 5 ở cùng một phía của vân trung tâm là", o: ["3,75 mm", "4,5 mm", "3 mm", "6,75 mm"], a: 0, e: "4i = 6 mm ⇒ i = 1,5 mm. Vân tối thứ 5: x = 4,5i = 6,75 mm; vân sáng bậc 2: x = 3 mm. Hiệu: 3,75 mm." },
+  { lv: "VD", q: "Thí nghiệm Young có khoảng vân 2 mm. Vùng giao thoa rộng 13 mm, đối xứng qua vân trung tâm. Số vân sáng trong vùng là", o: ["6", "7", "13", "8"], a: 1, e: "L/(2i) = 13/4 = 3,25. Số vân sáng = 2·3 + 1 = 7 (gồm cả vân trung tâm)." },
+  { lv: "TH", tf: true, q: "Trên mặt nước có hai nguồn kết hợp S₁, S₂ dao động cùng pha, bước sóng 2 cm, S₁S₂ = 9 cm. Mỗi nhận định sau đúng hay sai?",
+    s: [["Đường trung trực của S₁S₂ là một cực đại giao thoa.", true], ["Hai cực đại liên tiếp trên S₁S₂ cách nhau 2 cm.", false], ["Trên đoạn S₁S₂ có 9 cực đại giao thoa.", true], ["Điểm M có d₁ = 7 cm, d₂ = 10 cm là cực đại giao thoa.", false]],
+    e: "a) Đúng: Δd = 0. b) Sai: khoảng cách là λ/2 = 1 cm. c) Đúng: −4,5 < k < 4,5 ⇒ k = −4…4, có 9 giá trị. d) Sai: Δd = 3 cm = 1,5λ nên M là cực tiểu." },
+  { lv: "VD", tf: true, q: "Thí nghiệm Young dùng ánh sáng đơn sắc λ = 0,6 μm, a = 1,2 mm, D = 2 m. Mỗi nhận định sau đúng hay sai?",
+    s: [["Khoảng vân là 1 mm.", true], ["Vân sáng bậc 3 cách vân trung tâm 3 mm.", true], ["Vân tối thứ 2 cách vân trung tâm 2 mm.", false], ["Nếu dời màn ra xa để D = 3 m thì khoảng vân là 1,5 mm.", true]],
+    e: "a) i = 0,6·10⁻⁶·2 / 1,2·10⁻³ = 10⁻³ m = 1 mm: đúng. b) x = 3i = 3 mm: đúng. c) Vân tối thứ 2: x = 1,5i = 1,5 mm nên sai. d) i tỉ lệ với D: 1·3/2 = 1,5 mm: đúng." },
+];
+const QZ = { lv: "all", list: [], pos: 0, score: 0, answered: false, tfPick: [] };
+const LETTERS = ["A", "B", "C", "D"];
+function bestKey() { return "giaothoa-best-" + QZ.lv; }
+function getBest() { try { return localStorage.getItem(bestKey()); } catch (e) { return null; } }
+function setBest(v) { try { localStorage.setItem(bestKey(), String(v)); } catch (e) { /* bỏ qua */ } }
+function startQuiz() {
+  QZ.list = Q.filter((x) => QZ.lv === "all" || x.lv === QZ.lv);
+  QZ.pos = 0; QZ.score = 0; renderQ();
+}
+function side() {
+  const n = QZ.list.length;
+  $("q-pos").textContent = Math.min(QZ.pos + 1, n) + " / " + n;
+  $("q-score").textContent = fmt(QZ.score) + " / " + n;
+  const b = getBest(); $("q-best").textContent = b === null ? "chưa có" : fmt(+b) + " / " + n;
+  $("q-bar").style.width = (QZ.pos / n * 100) + "%";
+}
+function renderQ() {
+  const card = $("qcard"), n = QZ.list.length;
+  QZ.answered = false;
+  if (QZ.pos >= n) {
+    const b = getBest(); if (b === null || QZ.score > +b) setBest(QZ.score);
+    const pct = QZ.score / n;
+    const msg = pct >= 0.9 ? "Xuất sắc! Bạn đã nắm chắc bài Giao thoa sóng." : pct >= 0.7 ? "Tốt lắm. Xem lại những câu sai để hoàn thiện." : pct >= 0.5 ? "Đạt yêu cầu. Nên ôn lại tab Lý thuyết và thử mô phỏng." : "Cần ôn thêm. Đọc lại phần Lý thuyết rồi làm lại nhé.";
+    card.innerHTML = `<div class="qmeta"><span>Hoàn thành</span></div><div class="score-big num">${fmt(QZ.score)}<span style="font-size:1.4rem;color:var(--muted)"> / ${n}</span></div><p>${msg}</p><div class="btns"><button type="button" class="primary" id="q-again">Làm lại</button></div>`;
+    $("q-again").addEventListener("click", startQuiz);
+    side(); $("q-bar").style.width = "100%"; return;
+  }
+  const it = QZ.list[QZ.pos];
+  let body;
+  if (it.tf) {
+    QZ.tfPick = [null, null, null, null];
+    body = `<div class="tf">${it.s.map((s, j) => `<div class="tf-row" id="tf-${j}"><span><b class="mono">${"abcd"[j]})</b> ${s[0]}</span><div class="btns"><button type="button" data-j="${j}" data-v="1" aria-pressed="false">Đúng</button><button type="button" data-j="${j}" data-v="0" aria-pressed="false">Sai</button></div></div>`).join("")}</div><div class="btns"><button type="button" class="primary" id="tf-check" disabled>Kiểm tra</button></div>`;
+  } else {
+    body = `<div class="opts">${it.o.map((o, j) => `<button type="button" class="opt" data-j="${j}"><span class="let">${LETTERS[j]}</span><span>${o}</span></button>`).join("")}</div>`;
+  }
+  card.innerHTML = `<div class="qmeta"><span>Câu ${QZ.pos + 1}${it.tf ? " · Đúng/Sai" : ""}</span><span class="lv">${LV[it.lv]}</span></div><p class="qtext">${it.q}</p>${body}<div id="q-after" hidden></div>`;
+  if (it.tf) {
+    card.querySelectorAll(".tf-row button").forEach((b) => b.addEventListener("click", () => {
+      if (QZ.answered) return;
+      const j = +b.dataset.j; QZ.tfPick[j] = b.dataset.v === "1";
+      b.parentElement.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      $("tf-check").disabled = QZ.tfPick.some((x) => x === null);
+    }));
+    $("tf-check").addEventListener("click", () => {
+      QZ.answered = true;
+      let ok = 0;
+      it.s.forEach((s, j) => { const r = QZ.tfPick[j] === s[1]; if (r) ok++; $("tf-" + j).classList.add(r ? "right" : "wrong"); });
+      QZ.score += ok * 0.25; $("tf-check").hidden = true;
+      after(`Bạn đúng ${ok}/4 ý (+${fmt(ok * 0.25)} điểm). ${it.e}`);
+    });
+  } else {
+    card.querySelectorAll(".opt").forEach((b) => b.addEventListener("click", () => {
+      if (QZ.answered) return; QZ.answered = true;
+      const j = +b.dataset.j, right = j === it.a;
+      if (right) QZ.score += 1;
+      card.querySelectorAll(".opt").forEach((x, k) => { x.disabled = true; if (k === it.a) x.classList.add("right"); else if (k === j) x.classList.add("wrong"); });
+      after((right ? "Chính xác. " : `Chưa đúng. Đáp án là ${LETTERS[it.a]}. `) + it.e);
+    }));
+  }
+  side();
+}
+function after(text) {
+  const a = $("q-after"); a.hidden = false;
+  a.innerHTML = `<div class="explain">${text}</div><div class="btns" style="margin-top:12px"><button type="button" class="primary" id="q-next">${QZ.pos + 1 < QZ.list.length ? "Câu tiếp theo" : "Xem kết quả"}</button></div>`;
+  $("q-next").addEventListener("click", () => { QZ.pos++; renderQ(); });
+  side(); $("q-score").textContent = fmt(QZ.score) + " / " + QZ.list.length;
+}
+document.querySelectorAll(".chips button").forEach((b) => b.addEventListener("click", () => {
+  QZ.lv = b.dataset.lv;
+  document.querySelectorAll(".chips button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  startQuiz();
+}));
+$("q-restart").addEventListener("click", startQuiz);
+
+/* ---------- Boot ---------- */
+rebuild(); updateWaterReadout();
+calc1(); calc2(); calc3();
+startQuiz(); updateYoungProbe();
+show(location.hash.slice(1));
+})();
+</script>
+</body>
+</html>
